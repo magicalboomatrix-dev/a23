@@ -1,0 +1,793 @@
+@import url('https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,100..900;1,100..900&display=swap');
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font: 14px "Exo 2", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  html {
+    color-scheme: dark;
+  }
+}
+body {
+    margin: 0;
+    font-family: "Exo 2", sans-serif;
+    background: #fff;
+    line-height: 150%;
+}
+
+.page-wrapper-login h1.title {
+    font-size: 16px;
+    font-weight: 500;
+    margin: 10px 0;
+}
+
+.page-wrapper-login .login-bx {
+    padding: 0 10px;
+    margin: 15px 0;
+}
+.page-wrapper-login .login-bx .login-btn {
+    border: 0;
+    background: #1d1c20;
+    color: #fff;
+    padding: 11px 0px;
+    border-radius: 40px;
+    width: 100%;
+    margin-bottom: 6px;
+    font-weight: 600;
+    font-size: 14px;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+}
+
+.page-wrapper-login .login-bx p.text {
+    color: #ff0036;
+    font-weight: 500;
+    font-size: 13px;
+    text-align: center;
+}
+
+/*===========header ===============*/
+.back-btn a {
+    display: inline-block;
+    margin-top: 15px;
+    margin-left: 5px;
+}
+
+.back-btn a img {
+    max-width: 20px;
+    height: auto;
+}
+
+header.header {
+    background: #000;
+    color: #fff;
+}
+
+header.header .tophader {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 15px;
+    align-items: center;
+}
+
+header.header .tophader .right {
+    display: flex;
+    gap: 7px;
+}
+
+header.header .tophader .right a.btn {
+    background: #f36c21;
+    color: #fff;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 13px;
+}
+
+header.header .tophader .left a {
+    font-size: 21px;
+}
+
+header.top-header{
+  width:100%;
+  background:#000;
+  color:#fff;
+  position: relative;
+}
+
+header .header-inner{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:10px 15px;
+}
+
+header .left{
+  display:flex;
+  align-items:center;
+  gap:15px;
+}
+
+header .menu-icon{
+  font-size:22px;
+  cursor:pointer;
+}
+
+header .logo img{
+  height:28px;
+}
+
+header .right{
+  display:flex;
+  align-items:center;
+  gap:15px;
+}
+
+header .search{
+  font-size:18px;
+  cursor:pointer;
+}
+
+header .balance {
+    text-align: center;
+    background: #b88422;
+    border-radius: 40px;
+    padding: 8px 14px 4px 14px;
+    line-height: 120%;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+header .balance span {
+    font-size: 14px;
+    font-weight: bold;
+    display: block;
+    line-height: normal;
+    line-height: 90%;
+}
+
+header .balance small{
+  color:#00ff66;
+  font-size:11px;
+  font-weight: 600;
+}
+
+header .user{
+  background:#b88422;
+  padding:8px 10px;
+  border-radius:4px;
+}
+
+header .user img{
+    width: 17px;
+}
+
+header .notice-bar{
+  background:#b88422;
+  text-align:center;
+  padding:4px 6px 2px;
+  font-size:13px;
+  line-height: normal;
+  background: transparent linear-gradient(94deg, #b6842d, #ebda8d 55%, #b7862f);
+}
+
+header .overlay{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.4);
+opacity:0;
+visibility:hidden;
+transition:0.3s;
+}
+
+header .overlay.active{
+opacity:1;
+visibility:visible;
+}
+
+header .sidebar{
+position:fixed;
+top:0;
+left:0;
+width:300px;
+height:100%;
+background:#c28c2d;
+transform:translateX(-100%);
+transition:0.35s ease;
+z-index:1000;
+overflow: auto;
+}
+
+header .sidebar.active{
+transform:translateX(0);
+}
+
+header .menu-list{
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-top: 1px solid #fff;
+    margin-top: 14px;
+}
+
+header .menu-list li{
+    color: #fff;
+    cursor: pointer;
+    border-bottom: 1px solid #fff;
+    padding: 12px 20px;
+    font-size: 16px;
+}
+
+header .sidebar-header .logo a img {
+    height: auto;
+    width: 60%;
+}
+
+header .sidebar-header .logo {
+    text-align: center;
+    padding-top: 14px;
+}
+
+header .sidebar-header span.close-btn {
+    position: absolute;
+    top: 20px;
+    left: 9%;
+}
+
+header marquee {
+    padding: 0px 0;
+}
+
+.notice-bar{
+background:#b88422;
+text-align:center;
+padding:4px 6px;
+font-size:13px;
+color:#fff;
+}
+
+header .blink-text, .blink-text{
+animation:blinkAnim 1s infinite;
+}
+
+@keyframes blinkAnim{
+0%{opacity:1;}
+50%{opacity:0;}
+100%{opacity:1;}
+}
+
+.drawer {
+    z-index: 99;
+    color: #000;
+    visibility: hidden;
+    opacity: 0;
+    background: #fffffff2;
+    width: 200px;
+    height: auto;
+    transition: all .35s;
+    position: absolute;
+    right: 15px;
+    overflow-y: auto;
+    box-shadow: -3px 0 10px #0003;
+    top: 100% !important;
+}
+
+.drawer.active{
+visibility: visible;
+    opacity: 1;
+    top: 60% !important;
+}
+
+.wallet-box{
+background:#f1f1f1;
+padding:5px 5px 0px 5px;
+border-bottom:1px solid #b88831;
+}
+
+.wallet-item{
+justify-content: space-between;
+    margin: 5px 0 12px 0;
+    font-size: 13px;
+    display: flex;
+    line-height: 16px;
+}
+
+.gold-btn{
+color: #fff;
+    background: #c9972b;
+    border: none;
+    border-radius: 25px;
+    width: 90%;
+    margin: 6px auto;
+    padding: 8px 12px;
+    display: block;
+}
+
+.outline-btn{
+background:white;
+border:1px solid #c9972b;
+padding:6px 10px;
+width:90%;
+margin:6px auto;
+display:block;
+border-radius:25px;
+color:#c9972b;
+}
+
+ul.menu {
+    border-top: 1px solid #b88831;
+    margin-top: 7px;
+}
+.menu{
+list-style:none;
+padding:0;
+margin:0;
+}
+
+.menu li a {
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+    padding: 5px 20px;
+    display: inline-block;
+    width: 100%;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.menu a.dropdown-item i {
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    text-align: center;
+    justify-content: center;
+    align-items: center;
+    border-radius: 50px;
+    font-size: 10px;
+    margin-right: 10px;
+}
+
+.backheader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 11px 10px 11px;
+    position: fixed;
+    left: 0;
+    right: 0;
+    max-width: 100%;
+    margin: auto;
+    background: #fff;
+    box-sizing: border-box;
+    top: 0;
+}
+
+.backheader .brdc {
+    width: 100%;
+    padding-top: 0px;
+}
+.backheader .brdc {
+    display: flex;
+    align-items: center;
+    padding-top: 15px;
+    position: relative;
+}
+.backheader .brdc .back-btn {
+    margin-right: 10px;
+    position: relative;
+    z-index: 9;
+}
+.backheader .brdc .back-btn a {
+    margin-top: 0;
+    display: flex;
+}
+.backheader .back-btn a img {
+    max-width: 20px;
+}
+.backheader .brdc h3 {
+    position: absolute;
+    left: 0;
+    right: 0;
+    width: auto;
+    margin: auto;
+    text-align: center;
+    color: #333;
+    font-size: 18px;
+}
+.payment-issues {
+    background: #111;
+    border-radius: 15px;
+    padding: 10px !important;
+    text-align: center;
+}
+.payment-issues b {
+    text-transform: uppercase;
+    color: #fff;
+    font-size: 12px;
+    display: block;
+    font-weight: 400;
+}
+
+.payment-issues i {
+    font-size: 20px;
+    color: #fff;
+    animation: zoom-in-zoom-out 2s ease-out infinite;
+    font-weight: 700;
+}
+/*===========addbackbtn ===============*/
+.page-wrapper {
+    padding: 14px 15px 14px 15px;
+    box-sizing: border-box;
+    overflow: auto;
+    margin: 50px 0 45px;
+    background: #f3f2f6;
+    height: 100vh;
+    margin-bottom: 0;
+}
+
+.add-bank-btn {
+    background: #fff;
+    padding: 50px 15px 0;
+    padding-top: 5px;
+    padding-bottom: 20px;
+    margin: 0px 0px 10px;
+}
+
+.add-bank-btn .button-style {
+    background: #fff;
+    border: 2px dotted #33db91;
+    padding: 17px 0;
+    display: flex;
+    justify-content: center;
+    color: #000;
+    align-items: center;
+    font-size: 16px;
+    color: #333;
+    font-weight: 800;
+    border-radius: 5px;
+    letter-spacing: .5px;
+    max-width: 90%;
+    margin: auto;
+    margin-top: 15px;
+    cursor: pointer;
+}
+.add-bank-btn .button-style img.icon {
+    max-width: 20px;
+    margin-right: 10px;
+}
+.card-wrap {
+    background: #fff;
+    box-shadow: none;
+    border: 1px solid #eee;
+    -webkit-transition: all 0.3s ease;
+    transition: all 0.3s ease;
+    border-radius: 5px;
+    padding: 8px;
+    margin-bottom: 20px;
+}
+.card-wrap .card-body {
+        padding: 10px;
+    }
+
+/*===========bindbank ===============*/
+.form-bx .form-rw {
+    border: 1px solid #ccc;
+    border-radius: 0px;
+}
+.form-bx .form-rw
+ {
+    position: relative;
+    margin: 15px 0 10px;
+    display: inline-block;
+    width: 100%;
+}
+.form-bx .form-rw .pos {
+    position: relative;
+}
+.form-bx .form-rw label.text {
+    position: absolute;
+    left: 5px;
+    background: #ffff;
+    top: -9px;
+    padding: 0 10px;
+    font-weight: 400;
+    right: auto;
+    box-sizing: border-box;
+    width: auto;
+    display: inline-block;
+    font-size: 13px;
+}
+.form-bx .form-rw input[type="text"], .form-bx .form-rw input[type="number"] {
+    border: 0px solid #ccc;
+    padding: 15px;
+    width: 100%;
+    display: inline-block;
+    border-radius: 5px;
+    background: #f1f1f1;
+    font-weight: bold;
+    color: #000;
+    box-sizing: border-box;
+    outline: none;
+        background: transparent;
+    margin-top: 10px;
+    font-weight: normal;
+}
+.form-bx .login-btn, .button-style {
+    cursor: pointer;
+    border: 0;
+    background: #1d1c20;
+    color: #fff;
+    padding: 11px 0px;
+    border-radius: 40px;
+    width: 100%;
+    margin-top: 15px;
+    font-weight: 600;
+    font-size: 14px;
+    text-decoration: none;
+    display: inline-block;
+    font-family: "Mona Sans", sans-serif;
+    text-align: center;
+}
+
+
+/*===========banenrslider ===============*/
+.banenrslider{
+    padding:2px; 
+}
+.banenrinside {
+    border-radius: 2px;
+    overflow: hidden           
+}
+.banenrslider span.swiper-pagination-bullet{
+    padding: 2px 5px;
+    min-width: 20px;
+    height: 2px;
+    border-radius: 0;
+    background-color: #eee;
+    opacity: .5;
+}
+
+.banenrslider span.swiper-pagination-bullet-active{
+  background-color: #fff;
+  opacity: 1;
+}
+
+.banenrinside .swiper-slide {
+    /*display: grid;
+    flex-wrap: wrap;
+    grid-template-columns: 4fr;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 2px 5px;
+    overflow: hidden;*/
+}
+
+.banenrinside .swiper-slide img {
+    border-radius: 2px;
+    float: left;
+}
+
+/*===========newlaunch ===============*/
+.newlaunchinside span.title-text {
+    text-transform: uppercase;
+    font-size: 17px;
+    padding: 3px 0;
+    display: block;
+    font-weight: 400;
+}
+
+.newlaunchinside span.title-text {
+    text-transform: uppercase;
+    font-size: 17px;
+    padding: 0px 0;
+    display: block;
+    font-weight: 400;
+}
+
+/*===========diposit-withdraw ===============*/
+.diposit-withdraw {
+    margin: 0 0 0px;
+}
+
+.diposit-withdraw .flex > a {
+      text-align: center;
+    color: #fff;
+    text-transform: uppercase;
+    background: #eee;
+    border-radius: 0;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    width: 50%;
+    padding: 6px 0;
+    display: flex;
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.diposit-withdraw .flex > a.green {
+  background-color: green;
+}
+
+.diposit-withdraw .flex > a.red {
+  background-color: #830b0b;
+}
+
+.diposit-withdraw .flex {
+    justify-content: center;
+    gap: 0;
+    padding: 0;
+    display: flex;
+}
+
+/*===========loginPage ===============*/
+.loginPage .page-wrapper-login h1.title {
+    font-size: 20px;
+}
+.loginPage .login-bx.mb-0 {
+  margin-top: 25px;
+  margin-bottom: 0;
+}
+.loginPage .login-bx.mb-0 .btntext {
+    font-size: 12px;
+    line-height: normal;
+}
+
+/*===========loginaccountPage ===============*/
+.loginaccountPage section.section-1 {
+    padding: 25px 30px 40px 30px;
+    font-family: "Exo 2", sans-serif;
+}
+    .loginaccountPage section.section-1 h3.title {
+    font-weight: 500;
+    font-size: 20px;
+    color: #333;
+    padding-bottom: 10px;
+    font-family: "Exo 2", sans-serif;
+    line-height: 130%;
+}
+    .loginaccountPage .form-bx .form-rw {
+    position: relative;
+    margin: 25px 0 0;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    display: inline-block;
+    width: 100%;
+}
+    .loginaccountPage .form-bx label.text {
+    display: inline-block;
+    width: 100%;
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 5px;
+}
+    .loginaccountPage .form-bx .form-rw label.text {
+    position: absolute;
+    left: 5px;
+    background: #ffff;
+    top: -9px;
+    padding: 0 10px;
+    font-weight: 400;
+    right: auto;
+    box-sizing: border-box;
+    width: auto;
+    display: inline-block;
+    font-size: 13px;
+    font-family: "Exo 2", sans-serif;
+}
+
+
+.loginaccountPage .form-bx .form-rw input[type="text"] {
+    border: 0px solid #ccc;
+    padding: 15px;
+    width: 100%;
+    display: inline-block;
+    border-radius: 5px;
+    background: #f1f1f1;
+    font-weight: nornal;
+    color: #000;
+    box-sizing: border-box;
+    outline: none;
+    background: transparent;
+}
+    
+.loginaccountPage .form-bx input[type="text"], .loginaccountPage .form-bx input[type="number"] {
+    background: transparent;
+    margin-top: 10px;
+    font-weight: normal;
+    font-family: "Exo 2", sans-serif;
+}
+.loginaccountPage .form-bx .form-rw .pos {
+    position: relative;
+}
+    
+.loginaccountPage .form-bx .form-rw .pos button {
+    position: absolute;
+    right: 7px;
+    top: 13px;
+    background: #333;
+    border: 0;
+    color: #fff;
+    padding: 5px 10px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-family: "Exo 2", sans-serif;
+    bottom: auto;
+    top: auto;
+    bottom: 10px;
+}
+    
+.loginaccountPage .form-bx .login-btn, .button-style {
+    cursor: pointer;
+    border: 0;
+    background: #1d1c20;
+    color: #fff;
+    padding: 11px 0px;
+    border-radius: 40px;
+    width: 100%;
+    margin-top: 15px;
+    font-weight: 600;
+    font-size: 14px;
+    text-decoration: none;
+    display: inline-block;
+    font-family: "Exo 2", sans-serif;
+    text-align: center;
+}
+
+.loginaccountPage .page-wrapperss.form-wrapper .login-btn {
+    margin-top: 25px;
+}
+
+.loginaccountPage .login-bx.mb-0 {
+        margin-top: 25px;
+        margin-bottom: 0;
+      }
+          .login-bx.mb-0 .btntext {
+    font-size: 12px;
+    line-height: normal;
+}
+
+.loginaccountPage .form-bx span.astr {
+    font-size: 20px;
+    position: relative;
+    top: 2px;
+    line-height: 0;
+}
