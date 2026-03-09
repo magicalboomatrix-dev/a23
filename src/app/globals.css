@@ -1311,6 +1311,8 @@ section.playtable .chart-table > thead > tr > th {
     border: 1px solid #fff;
     padding: 7px 9px;
     font-size: 12.5px;
+  transform: skew(338deg);
+    border-width: 6px;
 }
 
 section.playtable .chart-table {
