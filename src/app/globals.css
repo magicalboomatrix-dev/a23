@@ -1086,6 +1086,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     text-transform: uppercase;
     width: 100%;
     width: 40%;
+    outline: none;
+    background: #fff;
 }
 
 .select-dropdown.first {
