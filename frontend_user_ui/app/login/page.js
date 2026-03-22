@@ -42,7 +42,7 @@ const LoginPage = () => {
                 
               </div>
               <p className="mt-2 text-center text-[13px] font-medium text-[#ff0036]">
-                  First time login will register new account for you
+                  First-time login uses OTP. After that, login with your MPIN.
                 </p>
             </section>
           </div>

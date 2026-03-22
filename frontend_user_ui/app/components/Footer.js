@@ -2,11 +2,13 @@
 import { usePathname } from "next/navigation";
 import Link from 'next/link'
 import React from 'react'
+import { useAuth } from '../lib/AuthContext';
 
 const Footer = () => {
   const pathname = usePathname();
+  const { isLoggedIn } = useAuth();
   const hideFooterRoutes = ["/login", "/login-account", "/bind-bank-card", "/game-page"];
-  if (hideFooterRoutes.includes(pathname)) {
+  if (!isLoggedIn || hideFooterRoutes.includes(pathname)) {
     return null;
   }
 

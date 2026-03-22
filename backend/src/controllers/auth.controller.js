@@ -1,6 +1,8 @@
 const pool = require('../config/database');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { sendOtpSms } = require('../utils/sms');
+const { normalizePhone } = require('../utils/phone');
 
 const MAX_MPIN_ATTEMPTS = 5;
 const MPIN_BLOCK_MINUTES = 30;
@@ -16,9 +18,9 @@ function generateOTP() {
 // Check if a user exists and whether MPIN is set
 exports.checkUser = async (req, res, next) => {
   try {
-    const { phone } = req.body;
-    if (!phone || !/^[6-9]\d{9}$/.test(phone)) {
-      return res.status(400).json({ error: 'Valid 10-digit phone number required.' });
+    const phone = normalizePhone(req.body.phone);
+    if (!phone) {
+      return res.status(400).json({ error: 'Valid phone number with country code required.' });
     }
 
     const [users] = await pool.query(
@@ -43,9 +45,10 @@ exports.checkUser = async (req, res, next) => {
 // Send OTP — only for new registration or MPIN reset
 exports.sendOTP = async (req, res, next) => {
   try {
-    const { phone, purpose } = req.body;
-    if (!phone || !/^[6-9]\d{9}$/.test(phone)) {
-      return res.status(400).json({ error: 'Valid 10-digit phone number required.' });
+    const phone = normalizePhone(req.body.phone);
+    const { purpose } = req.body;
+    if (!phone) {
+      return res.status(400).json({ error: 'Valid phone number with country code required.' });
     }
 
     // Validate purpose
@@ -76,15 +79,20 @@ exports.sendOTP = async (req, res, next) => {
     await pool.query('UPDATE otps SET is_used = 1 WHERE phone = ? AND is_used = 0', [phone]);
 
     const otp = generateOTP();
-    const expiresAt = new Date(Date.now() + (parseInt(process.env.OTP_EXPIRY_MINUTES) || 5) * 60 * 1000);
+    const otpExpiryMinutes = parseInt(process.env.OTP_EXPIRY_MINUTES) || 5;
+    const expiresAt = new Date(Date.now() + otpExpiryMinutes * 60 * 1000);
 
-    await pool.query(
+    const [insertResult] = await pool.query(
       'INSERT INTO otps (phone, purpose, otp, expires_at) VALUES (?, ?, ?, ?)',
       [phone, purpose, otp, expiresAt]
     );
 
-    // In production, send OTP via SMS gateway
-    console.log(`[DEV] OTP for ${phone}: ${otp}`);
+    try {
+      await sendOtpSms({ phone, otp, purpose, expiryMinutes: otpExpiryMinutes });
+    } catch (smsError) {
+      await pool.query('UPDATE otps SET is_used = 1 WHERE id = ?', [insertResult.insertId]);
+      throw smsError;
+    }
 
     res.json({ message: 'OTP sent successfully.', ...(process.env.NODE_ENV !== 'production' && { otp }) });
   } catch (error) {
@@ -95,7 +103,8 @@ exports.sendOTP = async (req, res, next) => {
 // Verify OTP — for new user registration or MPIN reset
 exports.verifyOTP = async (req, res, next) => {
   try {
-    const { phone, otp, purpose } = req.body;
+    const phone = normalizePhone(req.body.phone);
+    const { otp, purpose } = req.body;
     if (!phone || !otp) {
       return res.status(400).json({ error: 'Phone and OTP are required.' });
     }
@@ -314,10 +323,11 @@ exports.resetMpin = async (req, res, next) => {
 // Login with MPIN — primary login for existing users
 exports.loginMpin = async (req, res, next) => {
   try {
-    const { phone, mpin } = req.body;
+    const phone = normalizePhone(req.body.phone);
+    const { mpin } = req.body;
 
-    if (!phone || !/^[6-9]\d{9}$/.test(phone)) {
-      return res.status(400).json({ error: 'Valid 10-digit phone number required.' });
+    if (!phone) {
+      return res.status(400).json({ error: 'Valid phone number with country code required.' });
     }
     if (!mpin || !/^\d{4}$/.test(mpin)) {
       return res.status(400).json({ error: 'MPIN must be exactly 4 digits.' });

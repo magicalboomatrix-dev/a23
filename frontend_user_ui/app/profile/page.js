@@ -29,7 +29,7 @@ const Profile = () => {
     }, [notifications]);
 
   const ph = profile?.phone || user?.phone || '';
-  const maskedPhone = ph.length >= 10 ? `+91 ${ph.substring(0,3)}****${ph.substring(7)}` : '+91 ****';
+    const maskedPhone = ph.length >= 8 ? `${ph.slice(0, 4)}****${ph.slice(-3)}` : '****';
     const tickerItems = notifications.length > 0
         ? notifications.map((item) => item.message || item.title || 'Notification')
         : ['No recent notifications'];

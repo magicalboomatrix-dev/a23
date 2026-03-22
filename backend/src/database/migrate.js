@@ -21,7 +21,7 @@ async function migrate() {
     CREATE TABLE IF NOT EXISTS users (
       id INT AUTO_INCREMENT PRIMARY KEY,
       name VARCHAR(100),
-      phone VARCHAR(15) NOT NULL UNIQUE,
+      phone VARCHAR(20) NOT NULL UNIQUE,
       password VARCHAR(255),
       mpin_hash VARCHAR(255),
       mpin_enabled TINYINT(1) DEFAULT 0,
@@ -66,12 +66,15 @@ async function migrate() {
   try {
     await connection.query(`ALTER TABLE users ADD COLUMN scanner_enabled TINYINT(1) DEFAULT 1 AFTER scanner_label`);
   } catch (e) { /* column already exists */ }
+  try {
+    await connection.query(`ALTER TABLE users MODIFY COLUMN phone VARCHAR(20) NOT NULL`);
+  } catch (e) { /* column already updated */ }
 
   // OTP table
   await connection.query(`
     CREATE TABLE IF NOT EXISTS otps (
       id INT AUTO_INCREMENT PRIMARY KEY,
-      phone VARCHAR(15) NOT NULL,
+      phone VARCHAR(20) NOT NULL,
       purpose ENUM('register', 'reset_mpin') NOT NULL DEFAULT 'register',
       otp VARCHAR(6) NOT NULL,
       expires_at TIMESTAMP NOT NULL,
@@ -90,6 +93,9 @@ async function migrate() {
   try {
     await connection.query('CREATE INDEX idx_phone_purpose ON otps (phone, purpose)');
   } catch (e) { /* index already exists */ }
+  try {
+    await connection.query(`ALTER TABLE otps MODIFY COLUMN phone VARCHAR(20) NOT NULL`);
+  } catch (e) { /* column already updated */ }
 
   // Wallets table
   await connection.query(`

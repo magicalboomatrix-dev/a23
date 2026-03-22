@@ -17,6 +17,21 @@ const STEPS = {
   RESET_MPIN: 'resetMpin',
 };
 
+function sanitizePhoneInput(rawValue) {
+  const compact = String(rawValue || '').replace(/[\s()-]/g, '');
+  const normalized = compact.replace(/(?!^)\+/g, '');
+
+  if (normalized.startsWith('+')) {
+    return `+${normalized.slice(1).replace(/\D/g, '').slice(0, 15)}`;
+  }
+
+  return normalized.replace(/\D/g, '').slice(0, 15);
+}
+
+function isValidPhone(phoneValue) {
+  return /^\+[1-9]\d{7,14}$/.test(phoneValue);
+}
+
 function PinInput({ length, value, onChange, autoFocus }) {
   const refs = useRef([]);
 
@@ -93,13 +108,14 @@ const LoginAccountPage = () => {
   const [referralCode, setReferralCode] = useState('');
   const [tempToken, setTempToken] = useState(null);
   const [otpPurpose, setOtpPurpose] = useState(null);
+  const [authFlow, setAuthFlow] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   // Step 1: Check user after phone entry
   const handleCheckUser = async () => {
-    if (!phone || !/^[6-9]\d{9}$/.test(phone)) {
-      setError('Enter a valid 10-digit mobile number');
+    if (!isValidPhone(phone)) {
+      setError('Enter a valid phone number with country code');
       return;
     }
     setError('');
@@ -107,17 +123,19 @@ const LoginAccountPage = () => {
     try {
       const data = await authAPI.checkUser(phone);
       if (!data.exists) {
-        // New user → send OTP for registration
         await authAPI.sendOTP(phone, 'register');
         setOtpPurpose('register');
+        setAuthFlow('register');
+        setOtp('');
         setStep(STEPS.OTP);
       } else if (!data.mpinSet) {
-        // Existing user without MPIN → send OTP so they can set one
         await authAPI.sendOTP(phone, 'reset_mpin');
         setOtpPurpose('reset_mpin');
+        setAuthFlow('firstMpinSetup');
+        setOtp('');
         setStep(STEPS.OTP);
       } else {
-        // Existing user with MPIN → show MPIN login
+        setAuthFlow('mpinLogin');
         setStep(STEPS.MPIN);
       }
     } catch (err) {
@@ -138,9 +156,14 @@ const LoginAccountPage = () => {
     try {
       const data = await authAPI.verifyOTP(phone, otp, otpPurpose);
       setTempToken(data.tempToken);
+      setOtp('');
 
-      if (data.isNewUser) {
+      if (authFlow === 'register' && data.isNewUser) {
         setStep(STEPS.PROFILE);
+      } else if (authFlow === 'firstMpinSetup' && data.resetMpin) {
+        setMpin('');
+        setMpinConfirm('');
+        setStep(STEPS.SET_MPIN);
       } else if (data.resetMpin) {
         setStep(STEPS.RESET_MPIN);
       }
@@ -174,7 +197,15 @@ const LoginAccountPage = () => {
     setError('');
     setLoading(true);
     try {
-      const data = await authAPI.completeProfile(name.trim(), referralCode, mpin, tempToken);
+      let data;
+
+      if (authFlow === 'register') {
+        data = await authAPI.completeProfile(name.trim(), referralCode, mpin, tempToken);
+      } else {
+        await authAPI.resetMpin(mpin, tempToken);
+        data = await authAPI.loginMpin(phone, mpin);
+      }
+
       login(data.token, data.user);
       router.push('/home');
     } catch (err) {
@@ -194,6 +225,7 @@ const LoginAccountPage = () => {
     setLoading(true);
     try {
       const data = await authAPI.loginMpin(phone, mpin);
+      setAuthFlow('mpinLogin');
       login(data.token, data.user);
       router.push('/home');
     } catch (err) {
@@ -210,6 +242,7 @@ const LoginAccountPage = () => {
     try {
       await authAPI.sendOTP(phone, 'reset_mpin');
       setOtpPurpose('reset_mpin');
+      setAuthFlow('forgotMpinReset');
       setOtp('');
       setStep(STEPS.RESET_OTP);
     } catch (err) {
@@ -230,6 +263,8 @@ const LoginAccountPage = () => {
     try {
       const data = await authAPI.verifyOTP(phone, otp, 'reset_mpin');
       setTempToken(data.tempToken);
+      setAuthFlow('forgotMpinReset');
+      setOtp('');
       setMpin('');
       setMpinConfirm('');
       setStep(STEPS.RESET_MPIN);
@@ -268,9 +303,9 @@ const LoginAccountPage = () => {
   const getTitle = () => {
     switch (step) {
       case STEPS.PHONE: return 'Login to A23 Satta';
-      case STEPS.OTP: return 'Verify OTP';
+      case STEPS.OTP: return authFlow === 'firstMpinSetup' ? 'Verify Mobile Number' : 'Verify OTP';
       case STEPS.PROFILE: return 'Complete Your Profile';
-      case STEPS.SET_MPIN: return 'Set Your MPIN';
+      case STEPS.SET_MPIN: return authFlow === 'firstMpinSetup' ? 'Set Your MPIN' : 'Create Your MPIN';
       case STEPS.MPIN: return 'Enter MPIN';
       case STEPS.FORGOT_MPIN: return 'Forgot MPIN';
       case STEPS.RESET_OTP: return 'Verify OTP';
@@ -281,10 +316,16 @@ const LoginAccountPage = () => {
 
   const getSubtitle = () => {
     switch (step) {
-      case STEPS.PHONE: return 'Enter your mobile number to continue.';
-      case STEPS.OTP: return `We sent a 6-digit code to ${phone}`;
+      case STEPS.PHONE: return 'Enter your phone number with country code to continue.';
+      case STEPS.OTP:
+        return authFlow === 'firstMpinSetup'
+          ? `Verify ${phone} once to create your MPIN.`
+          : `We sent a 6-digit code to ${phone}`;
       case STEPS.PROFILE: return 'Tell us your name to get started.';
-      case STEPS.SET_MPIN: return 'Create a 4-digit MPIN for quick login.';
+      case STEPS.SET_MPIN:
+        return authFlow === 'firstMpinSetup'
+          ? 'Create your 4-digit MPIN. You will use it for future logins.'
+          : 'Create a 4-digit MPIN for quick login.';
       case STEPS.MPIN: return `Welcome back! Enter your MPIN for ${phone}`;
       case STEPS.RESET_OTP: return `We sent a verification code to ${phone}`;
       case STEPS.RESET_MPIN: return 'Create a new 4-digit MPIN.';
@@ -297,11 +338,11 @@ const LoginAccountPage = () => {
     setMpin('');
     setMpinConfirm('');
     switch (step) {
-      case STEPS.OTP: setOtp(''); setOtpPurpose(null); setStep(STEPS.PHONE); break;
+      case STEPS.OTP: setOtp(''); setOtpPurpose(null); setAuthFlow(null); setStep(STEPS.PHONE); break;
       case STEPS.PROFILE: setStep(STEPS.OTP); break;
-      case STEPS.SET_MPIN: setStep(STEPS.PROFILE); break;
-      case STEPS.MPIN: setStep(STEPS.PHONE); break;
-      case STEPS.RESET_OTP: setOtp(''); setOtpPurpose(null); setStep(STEPS.MPIN); break;
+      case STEPS.SET_MPIN: setStep(authFlow === 'register' ? STEPS.PROFILE : STEPS.OTP); break;
+      case STEPS.MPIN: setAuthFlow(null); setStep(STEPS.PHONE); break;
+      case STEPS.RESET_OTP: setOtp(''); setOtpPurpose(null); setAuthFlow('mpinLogin'); setStep(STEPS.MPIN); break;
       case STEPS.RESET_MPIN: setStep(STEPS.RESET_OTP); break;
       default: break;
     }
@@ -345,17 +386,17 @@ const LoginAccountPage = () => {
                     <label className={labelClass}>Mobile Number</label>
                     <input
                       className={inputClass}
-                      placeholder="Enter your 10-digit number"
+                      placeholder="Enter phone number, e.g. +919876543210"
                       type="tel"
-                      inputMode="numeric"
-                      maxLength={10}
+                      inputMode="tel"
+                      maxLength={16}
                       value={phone}
-                      onChange={e => setPhone(e.target.value.replace(/\D/g, ''))}
+                      onChange={e => setPhone(sanitizePhoneInput(e.target.value))}
                     />
                   </div>
                   <div className="px-1 pt-2 text-left">
                     <p className="text-[13px] font-medium text-[#ff0036]">
-                      First time login will register a new account for you.
+                      OTP is only needed the first time. After setup, login uses your MPIN.
                     </p>
                   </div>
                   <button type="button" className={buttonClass} onClick={handleCheckUser} disabled={loading}>
@@ -398,7 +439,7 @@ const LoginAccountPage = () => {
               {step === STEPS.SET_MPIN && (
                 <>
                   <label className={helperLabelClass}>
-                    Create 4-Digit MPIN
+                    {authFlow === 'firstMpinSetup' ? 'Set 4-Digit MPIN' : 'Create 4-Digit MPIN'}
                   </label>
                   <PinInput length={4} value={mpin} onChange={setMpin} autoFocus />
                   <label className={helperLabelClass}>
@@ -406,7 +447,7 @@ const LoginAccountPage = () => {
                   </label>
                   <PinInput length={4} value={mpinConfirm} onChange={setMpinConfirm} />
                   <button type="button" className={buttonClass} onClick={handleSetMpinRegister} disabled={loading}>
-                    {loading ? 'Creating Account...' : 'Create Account'}
+                    {loading ? (authFlow === 'register' ? 'Creating Account...' : 'Saving MPIN...') : (authFlow === 'register' ? 'Create Account' : 'Save MPIN & Login')}
                   </button>
                 </>
               )}
