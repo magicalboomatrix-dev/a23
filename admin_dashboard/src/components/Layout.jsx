@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
@@ -25,7 +25,7 @@ export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-100">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden" onClick={() => setSidebarOpen(false)} />
@@ -53,10 +53,10 @@ export default function Layout() {
                 key={item.path}
                 to={item.path}
                 onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg mb-1 transition-colors ${
+                className={`flex items-center gap-3 px-4 py-3 mb-px transition-colors border-l-2 ${
                   isActive
-                    ? 'bg-primary-600 text-white'
-                    : 'text-dark-300 hover:bg-dark-800 hover:text-white'
+                    ? 'border-primary-400 bg-primary-600 text-white'
+                    : 'border-transparent text-dark-300 hover:bg-dark-800 hover:text-white'
                 }`}
               >
                 <span className="text-lg">{item.icon}</span>
@@ -72,7 +72,7 @@ export default function Layout() {
           </div>
           <button
             onClick={logout}
-            className="w-full px-4 py-2 text-sm bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+            className="w-full px-4 py-2 text-sm bg-red-600 hover:bg-red-700 transition-colors"
           >
             Logout
           </button>
@@ -82,7 +82,7 @@ export default function Layout() {
       {/* Main content */}
       <div className="lg:ml-64 min-h-screen">
         {/* Top bar */}
-        <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+        <header className="bg-white border-b border-gray-300 px-6 py-4 flex items-center justify-between">
           <button
             onClick={() => setSidebarOpen(true)}
             className="lg:hidden text-gray-600 hover:text-gray-800"
@@ -103,7 +103,7 @@ export default function Layout() {
         </header>
 
         {/* Page content */}
-        <main className="p-6 overflow-x-hidden">
+        <main className="p-6 overflow-x-hidden bg-gray-100 min-h-[calc(100vh-65px)]">
           <Outlet />
         </main>
       </div>

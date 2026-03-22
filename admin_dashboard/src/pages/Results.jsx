@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import api from '../utils/api';
 
 function formatDayLabel(day, month) {
@@ -326,7 +326,7 @@ export default function Results() {
   return (
     <div className="results-admin-page space-y-6">
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <form onSubmit={handleResultSave} className="bg-white rounded-xl border p-5 space-y-4">
+        <form onSubmit={handleResultSave} className="bg-white border p-5 space-y-4">
           <div>
             <h3 className="text-lg font-semibold text-gray-800">{editingResultId ? 'Edit Result' : 'Add Or Update Result'}</h3>
             <p className="text-sm text-gray-500 mt-1">Use game, date, and result number. Existing rows are updated in place.</p>
@@ -340,19 +340,19 @@ export default function Results() {
           <div className="flex flex-wrap gap-3">
             <button className="header_btn" type="submit">{editingResultId ? 'Update Result' : 'Save Result'}</button>
             {editingResultId && (
-              <button className="px-4 py-2 rounded-full border border-gray-300 text-sm font-medium text-gray-700" type="button" onClick={resetEditor}>Cancel Edit</button>
+              <button className="px-4 py-2 border border-gray-300 text-sm font-medium text-gray-700" type="button" onClick={resetEditor}>Cancel Edit</button>
             )}
           </div>
         </form>
 
-        <form onSubmit={handleImport} className="bg-white rounded-xl border p-5 space-y-4 xl:col-span-2">
+        <form onSubmit={handleImport} className="bg-white border p-5 space-y-4 xl:col-span-2">
           <div>
             <h3 className="text-lg font-semibold text-gray-800">Import Yearly Chart File</h3>
             <p className="text-sm text-gray-500 mt-1">Upload one game at a time. File format: first column is day, next columns are JAN to DEC exactly like the yearly frontend chart.</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <button className="px-4 py-2 rounded-full border border-amber-300 bg-amber-50 text-sm font-semibold text-amber-800" type="button" onClick={() => downloadTemplate('csv')}>Download CSV Template</button>
-            <button className="px-4 py-2 rounded-full border border-amber-300 bg-amber-50 text-sm font-semibold text-amber-800" type="button" onClick={() => downloadTemplate('xlsx')}>Download XLSX Template</button>
+            <button className="px-4 py-2 border border-amber-300 bg-amber-50 text-sm font-semibold text-amber-800" type="button" onClick={() => downloadTemplate('csv')}>Download CSV Template</button>
+            <button className="px-4 py-2 border border-amber-300 bg-amber-50 text-sm font-semibold text-amber-800" type="button" onClick={() => downloadTemplate('xlsx')}>Download XLSX Template</button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <select className="results-input" value={importForm.game_id} onChange={(event) => setImportForm((current) => ({ ...current, game_id: event.target.value }))}>
@@ -364,7 +364,7 @@ export default function Results() {
           </div>
           <button className="header_btn" type="submit">Import Year File</button>
           {importSummary && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-gray-700">
+            <div className="border border-amber-200 bg-amber-50 p-4 text-sm text-gray-700">
               <p><strong>Processed:</strong> {importSummary.processed} cells</p>
               <p><strong>Skipped:</strong> {importSummary.skipped_count}</p>
               {importSummary.skipped?.length > 0 && (
@@ -378,12 +378,12 @@ export default function Results() {
       </div>
 
       {(message || error) && (
-        <div className={`rounded-xl border p-4 text-sm ${error ? 'border-red-200 bg-red-50 text-red-700' : 'border-green-200 bg-green-50 text-green-700'}`}>
+        <div className={`border p-4 text-sm ${error ? 'border-red-200 bg-red-50 text-red-700' : 'border-green-200 bg-green-50 text-green-700'}`}>
           {error || message}
         </div>
       )}
 
-      <div className="bg-white rounded-xl border p-5 space-y-4">
+      <div className="bg-white border p-5 space-y-4">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div>
             <h3 className="text-lg font-semibold text-gray-800">Result History</h3>
@@ -391,7 +391,7 @@ export default function Results() {
           </div>
           <div className="flex items-center gap-3">
             <div className="text-sm text-gray-500">{pagination.total || 0} results</div>
-            <button className="px-4 py-2 rounded-full border border-red-200 bg-red-50 text-sm font-semibold text-red-700 disabled:opacity-50" type="button" onClick={handleBulkDelete} disabled={selectedResultIds.length === 0}>Delete Selected</button>
+            <button className="px-4 py-2 border border-red-200 bg-red-50 text-sm font-semibold text-red-700 disabled:opacity-50" type="button" onClick={handleBulkDelete} disabled={selectedResultIds.length === 0}>Delete Selected</button>
           </div>
         </div>
 
@@ -433,15 +433,15 @@ export default function Results() {
                   <td className="px-4 py-3">{formatTimestamp(row.declared_at)}</td>
                   <td className="px-4 py-3">
                     {Number(row.linked_bet_count) > 0 ? (
-                      <span className="inline-flex px-2 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">Locked</span>
+                      <span className="inline-flex px-2 py-1 text-xs font-semibold bg-amber-100 text-amber-800">Locked</span>
                     ) : (
-                      <span className="inline-flex px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">Editable</span>
+                      <span className="inline-flex px-2 py-1 text-xs font-semibold bg-green-100 text-green-700">Editable</span>
                     )}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-2">
-                      <button className="px-3 py-1.5 rounded-full border border-blue-200 bg-blue-50 text-xs font-semibold text-blue-700 disabled:opacity-50" type="button" onClick={() => startEdit(row)} disabled={Number(row.linked_bet_count) > 0}>Edit</button>
-                      <button className="px-3 py-1.5 rounded-full border border-red-200 bg-red-50 text-xs font-semibold text-red-700 disabled:opacity-50" type="button" onClick={() => deleteSingle(row)} disabled={Number(row.linked_bet_count) > 0}>Delete</button>
+                      <button className="px-3 py-1.5 border border-blue-200 bg-blue-50 text-xs font-semibold text-blue-700 disabled:opacity-50" type="button" onClick={() => startEdit(row)} disabled={Number(row.linked_bet_count) > 0}>Edit</button>
+                      <button className="px-3 py-1.5 border border-red-200 bg-red-50 text-xs font-semibold text-red-700 disabled:opacity-50" type="button" onClick={() => deleteSingle(row)} disabled={Number(row.linked_bet_count) > 0}>Delete</button>
                     </div>
                   </td>
                 </tr>
@@ -457,7 +457,7 @@ export default function Results() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl border p-5">
+        <div className="bg-white border p-5">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
             <div>
               <h3 className="text-lg font-semibold text-gray-800">Monthly Chart View</h3>
@@ -474,7 +474,7 @@ export default function Results() {
           <AdminMonthlyChart data={monthlyData} />
         </div>
 
-        <div className="bg-white rounded-xl border p-5">
+        <div className="bg-white border p-5">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
             <div>
               <h3 className="text-lg font-semibold text-gray-800">Yearly Chart View</h3>

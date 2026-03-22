@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import api, { buildUploadUrl } from '../utils/api';
 
@@ -138,34 +138,34 @@ export default function ModeratorDetail() {
           <p className="text-sm text-gray-500 mt-1">Moderator detail, deposit audit, assigned users, and float history</p>
         </div>
         <div className="flex gap-2">
-          <Link to="/moderator-scanners" className="px-4 py-2 bg-white border rounded-lg hover:bg-gray-50 text-sm font-medium text-gray-700">Scanner View</Link>
-          <Link to="/moderator-floats" className="px-4 py-2 bg-white border rounded-lg hover:bg-gray-50 text-sm font-medium text-gray-700">Float Table</Link>
-          <Link to="/moderators" className="px-4 py-2 bg-white border rounded-lg hover:bg-gray-50 text-sm font-medium text-gray-700">Back</Link>
+          <Link to="/moderator-scanners" className="px-4 py-2 bg-white border hover:bg-gray-50 text-sm font-medium text-gray-700">Scanner View</Link>
+          <Link to="/moderator-floats" className="px-4 py-2 bg-white border hover:bg-gray-50 text-sm font-medium text-gray-700">Float Table</Link>
+          <Link to="/moderators" className="px-4 py-2 bg-white border hover:bg-gray-50 text-sm font-medium text-gray-700">Back</Link>
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl border p-5">
+        <div className="bg-white border p-5">
           <p className="text-sm text-gray-500">Float Balance</p>
           <p className="text-2xl font-bold text-green-700 mt-1">{formatCurrency(moderator.float_balance)}</p>
         </div>
-        <div className="bg-white rounded-xl border p-5">
+        <div className="bg-white border p-5">
           <p className="text-sm text-gray-500">Assigned Users</p>
           <p className="text-2xl font-bold text-blue-700 mt-1">{moderator.user_count}</p>
         </div>
-        <div className="bg-white rounded-xl border p-5">
+        <div className="bg-white border p-5">
           <p className="text-sm text-gray-500">Approved Deposits</p>
           <p className="text-2xl font-bold text-gray-800 mt-1">{moderator.approved_deposit_count}</p>
           <p className="text-xs text-gray-500 mt-1">{formatCurrency(moderator.approved_deposit_amount)}</p>
         </div>
-        <div className="bg-white rounded-xl border p-5">
+        <div className="bg-white border p-5">
           <p className="text-sm text-gray-500">Pending Deposits</p>
           <p className="text-2xl font-bold text-amber-700 mt-1">{moderator.pending_deposits}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl border p-5 space-y-4">
+        <div className="bg-white border p-5 space-y-4">
           <h4 className="text-lg font-semibold text-gray-800">Scanner</h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-600">
             <div><span className="font-medium text-gray-800">Phone:</span> {moderator.phone}</div>
@@ -183,7 +183,7 @@ export default function ModeratorDetail() {
           <div className="space-y-2">
             {moderator.qr_code_image ? (
               <>
-                <img src={buildUploadUrl(moderator.qr_code_image)} alt={`${moderator.name} QR`} className="h-48 w-48 rounded-lg border object-contain bg-white p-2" />
+                <img src={buildUploadUrl(moderator.qr_code_image)} alt={`${moderator.name} QR`} className="h-48 w-48 border object-contain bg-white p-2" />
                 <a href={buildUploadUrl(moderator.qr_code_image)} target="_blank" rel="noreferrer" className="text-sm text-blue-600 hover:underline inline-block">
                   Open QR image
                 </a>
@@ -194,10 +194,10 @@ export default function ModeratorDetail() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border p-5 space-y-3 lg:col-span-2">
+        <div className="bg-white border p-5 space-y-3 lg:col-span-2">
           <div className="flex items-center justify-between">
             <h4 className="text-lg font-semibold text-gray-800">Adjust Float</h4>
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${moderator.is_blocked ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+            <span className={`px-2 py-1 text-xs font-medium ${moderator.is_blocked ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
               {moderator.is_blocked ? 'Blocked' : 'Active'}
             </span>
           </div>
@@ -208,28 +208,28 @@ export default function ModeratorDetail() {
               value={adjustAmount}
               onChange={(event) => setAdjustAmount(event.target.value)}
               placeholder="+/- amount"
-              className="px-4 py-2 border rounded-lg"
+              className="px-4 py-2 border"
             />
             <input
               type="text"
               value={adjustNote}
               onChange={(event) => setAdjustNote(event.target.value)}
               placeholder="Note"
-              className="px-4 py-2 border rounded-lg"
+              className="px-4 py-2 border"
             />
           </div>
           <button
             type="button"
             disabled={saving}
             onClick={submitAdjustment}
-            className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 text-sm font-medium"
+            className="px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 text-sm font-medium"
           >
             {saving ? 'Updating...' : 'Update Float'}
           </button>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border overflow-x-auto">
+      <div className="bg-white border overflow-x-auto">
         <div className="px-4 py-4 border-b border-gray-200 flex items-center justify-between">
           <h4 className="text-lg font-semibold text-gray-800">Deposit Transactions</h4>
           <span className="text-sm text-gray-500">{deposits.length} records</span>
@@ -258,7 +258,7 @@ export default function ModeratorDetail() {
                 <td className="px-4 py-3 font-mono text-xs">{transaction.utr_number}</td>
                 <td className="px-4 py-3 text-center">
                   <div className="space-y-1">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${transaction.status === 'approved' ? 'bg-green-100 text-green-700' : transaction.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                    <span className={`px-2 py-1 text-xs font-medium ${transaction.status === 'approved' ? 'bg-green-100 text-green-700' : transaction.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
                       {transaction.status}
                     </span>
                     {transaction.large_new_user_flag ? <div className="text-[11px] text-amber-700">Large new-user flag</div> : null}
@@ -281,7 +281,7 @@ export default function ModeratorDetail() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <div className="bg-white rounded-xl border overflow-x-auto">
+        <div className="bg-white border overflow-x-auto">
           <div className="px-4 py-4 border-b border-gray-200 flex items-center justify-between">
             <h4 className="text-lg font-semibold text-gray-800">Float Transactions</h4>
             <span className="text-sm text-gray-500">{floats.length} records</span>
@@ -316,7 +316,7 @@ export default function ModeratorDetail() {
           </table>
         </div>
 
-        <div className="bg-white rounded-xl border overflow-x-auto">
+        <div className="bg-white border overflow-x-auto">
           <div className="px-4 py-4 border-b border-gray-200 flex items-center justify-between">
             <h4 className="text-lg font-semibold text-gray-800">Assigned Users</h4>
             <span className="text-sm text-gray-500">{assignedUsers.length} users</span>
@@ -340,7 +340,7 @@ export default function ModeratorDetail() {
                   <td className="px-4 py-3 text-right text-xs text-gray-700">{formatCurrency(user.balance)}</td>
                   <td className="px-4 py-3 text-right text-xs text-gray-700">{user.deposit_count}</td>
                   <td className="px-4 py-3 text-center">
-                    <Link to={`/users/${user.id}`} className="px-3 py-1 rounded bg-blue-600 text-white text-xs hover:bg-blue-700 inline-block">View</Link>
+                    <Link to={`/users/${user.id}`} className="px-3 py-1 bg-blue-600 text-white text-xs hover:bg-blue-700 inline-block">View</Link>
                   </td>
                 </tr>
               ))}
@@ -352,7 +352,7 @@ export default function ModeratorDetail() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border overflow-x-auto">
+      <div className="bg-white border overflow-x-auto">
         <div className="px-4 py-4 border-b border-gray-200 flex items-center justify-between">
           <h4 className="text-lg font-semibold text-gray-800">Scanner Change History</h4>
           <span className="text-sm text-gray-500">{scannerAuditHistory.length} entries</span>
@@ -387,17 +387,17 @@ export default function ModeratorDetail() {
         </table>
       </div>
 
-      <div className="bg-white rounded-xl border p-5 space-y-3">
+      <div className="bg-white border p-5 space-y-3">
         <div className="flex items-center justify-between">
           <h4 className="text-lg font-semibold text-gray-800">Recent Notifications</h4>
           <span className="text-sm text-gray-500">{notifications.length} items</span>
         </div>
         <div className="space-y-3">
           {notifications.map((notification) => (
-            <div key={notification.id} className="rounded-lg border border-gray-200 px-4 py-3">
+            <div key={notification.id} className=" border border-gray-200 px-4 py-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="text-sm text-gray-700">{notification.message}</div>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${notification.is_read ? 'bg-gray-100 text-gray-600' : 'bg-blue-100 text-blue-700'}`}>
+                <span className={`px-2 py-1 text-xs font-medium ${notification.is_read ? 'bg-gray-100 text-gray-600' : 'bg-blue-100 text-blue-700'}`}>
                   {notification.is_read ? 'Read' : 'Unread'}
                 </span>
               </div>

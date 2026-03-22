@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import api, { buildUploadUrl } from '../utils/api';
 
@@ -62,33 +62,33 @@ export default function UserDetail() {
           <p className="text-sm text-gray-500 mt-1">User detail with deposits, wallet ledger, withdrawals, bets, bank accounts, and notifications</p>
         </div>
         <div className="flex gap-2">
-          <Link to="/users" className="px-4 py-2 bg-white border rounded-lg hover:bg-gray-50 text-sm font-medium text-gray-700">Back</Link>
+          <Link to="/users" className="px-4 py-2 bg-white border hover:bg-gray-50 text-sm font-medium text-gray-700">Back</Link>
           {user.moderator_id ? (
-            <Link to={`/moderators/${user.moderator_id}`} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">Moderator</Link>
+            <Link to={`/moderators/${user.moderator_id}`} className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 text-sm font-medium">Moderator</Link>
           ) : null}
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl border p-5">
+        <div className="bg-white border p-5">
           <p className="text-sm text-gray-500">Wallet Balance</p>
           <p className="text-2xl font-bold text-green-700 mt-1">{formatCurrency(user.balance)}</p>
         </div>
-        <div className="bg-white rounded-xl border p-5">
+        <div className="bg-white border p-5">
           <p className="text-sm text-gray-500">Bonus Balance</p>
           <p className="text-2xl font-bold text-blue-700 mt-1">{formatCurrency(user.bonus_balance)}</p>
         </div>
-        <div className="bg-white rounded-xl border p-5">
+        <div className="bg-white border p-5">
           <p className="text-sm text-gray-500">Deposits</p>
           <p className="text-2xl font-bold text-gray-800 mt-1">{deposits.length}</p>
         </div>
-        <div className="bg-white rounded-xl border p-5">
+        <div className="bg-white border p-5">
           <p className="text-sm text-gray-500">Bets</p>
           <p className="text-2xl font-bold text-amber-700 mt-1">{bets.length}</p>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border p-5">
+      <div className="bg-white border p-5">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-600">
           <div><span className="font-medium text-gray-800">Phone:</span> {user.phone}</div>
           <div><span className="font-medium text-gray-800">Referral:</span> {user.referral_code}</div>
@@ -101,7 +101,7 @@ export default function UserDetail() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border overflow-x-auto">
+      <div className="bg-white border overflow-x-auto">
         <div className="px-4 py-4 border-b border-gray-200"><h4 className="text-lg font-semibold text-gray-800">Deposits</h4></div>
         <table className="w-full text-sm">
           <thead className="bg-gray-50">
@@ -121,7 +121,7 @@ export default function UserDetail() {
                 <td className="px-4 py-3 text-right font-semibold text-green-700">{formatCurrency(deposit.amount)}</td>
                 <td className="px-4 py-3 font-mono text-xs">{deposit.utr_number}</td>
                 <td className="px-4 py-3 text-center">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${deposit.status === 'approved' ? 'bg-green-100 text-green-700' : deposit.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                  <span className={`px-2 py-1 text-xs font-medium ${deposit.status === 'approved' ? 'bg-green-100 text-green-700' : deposit.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
                     {deposit.status}
                   </span>
                 </td>
@@ -140,7 +140,7 @@ export default function UserDetail() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <div className="bg-white rounded-xl border overflow-x-auto">
+        <div className="bg-white border overflow-x-auto">
           <div className="px-4 py-4 border-b border-gray-200"><h4 className="text-lg font-semibold text-gray-800">Wallet Transactions</h4></div>
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
@@ -170,7 +170,7 @@ export default function UserDetail() {
           </table>
         </div>
 
-        <div className="bg-white rounded-xl border overflow-x-auto">
+        <div className="bg-white border overflow-x-auto">
           <div className="px-4 py-4 border-b border-gray-200"><h4 className="text-lg font-semibold text-gray-800">Withdrawals</h4></div>
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
@@ -188,7 +188,7 @@ export default function UserDetail() {
                   <td className="px-4 py-3 text-xs text-gray-600">{new Date(withdrawal.created_at).toLocaleString()}</td>
                   <td className="px-4 py-3 text-right font-semibold text-gray-800">{formatCurrency(withdrawal.amount)}</td>
                   <td className="px-4 py-3 text-center">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${withdrawal.status === 'approved' ? 'bg-green-100 text-green-700' : withdrawal.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                    <span className={`px-2 py-1 text-xs font-medium ${withdrawal.status === 'approved' ? 'bg-green-100 text-green-700' : withdrawal.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
                       {withdrawal.status}
                     </span>
                   </td>
@@ -209,7 +209,7 @@ export default function UserDetail() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <div className="bg-white rounded-xl border overflow-x-auto">
+        <div className="bg-white border overflow-x-auto">
           <div className="px-4 py-4 border-b border-gray-200"><h4 className="text-lg font-semibold text-gray-800">Bets</h4></div>
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
@@ -240,7 +240,7 @@ export default function UserDetail() {
         </div>
 
         <div className="space-y-4">
-          <div className="bg-white rounded-xl border overflow-x-auto">
+          <div className="bg-white border overflow-x-auto">
             <div className="px-4 py-4 border-b border-gray-200"><h4 className="text-lg font-semibold text-gray-800">Bonuses</h4></div>
             <table className="w-full text-sm">
               <thead className="bg-gray-50">
@@ -265,7 +265,7 @@ export default function UserDetail() {
             </table>
           </div>
 
-          <div className="bg-white rounded-xl border overflow-x-auto">
+          <div className="bg-white border overflow-x-auto">
             <div className="px-4 py-4 border-b border-gray-200"><h4 className="text-lg font-semibold text-gray-800">Bank Accounts</h4></div>
             <table className="w-full text-sm">
               <thead className="bg-gray-50">
@@ -295,17 +295,17 @@ export default function UserDetail() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border p-5 space-y-3">
+      <div className="bg-white border p-5 space-y-3">
         <div className="flex items-center justify-between">
           <h4 className="text-lg font-semibold text-gray-800">Recent Notifications</h4>
           <span className="text-sm text-gray-500">{notifications.length} items</span>
         </div>
         <div className="space-y-3">
           {notifications.map((notification) => (
-            <div key={notification.id} className="rounded-lg border border-gray-200 px-4 py-3">
+            <div key={notification.id} className="border border-gray-200 px-4 py-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="text-sm text-gray-700">{notification.message}</div>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${notification.is_read ? 'bg-gray-100 text-gray-600' : 'bg-blue-100 text-blue-700'}`}>
+                <span className={`px-2 py-1 text-xs font-medium ${notification.is_read ? 'bg-gray-100 text-gray-600' : 'bg-blue-100 text-blue-700'}`}>
                   {notification.is_read ? 'Read' : 'Unread'}
                 </span>
               </div>

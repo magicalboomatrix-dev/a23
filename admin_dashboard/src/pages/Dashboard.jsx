@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
@@ -15,7 +15,7 @@ function StatCard({ title, value, sub, color = 'primary' }) {
   };
 
   return (
-    <div className={`rounded-xl border p-5 ${colors[color]}`}>
+    <div className={` border p-5 ${colors[color]}`}>
       <p className="text-sm font-medium opacity-75">{title}</p>
       <p className="text-2xl font-bold mt-1">{value}</p>
       {sub && <p className="text-xs mt-1 opacity-60">{sub}</p>}
@@ -92,7 +92,7 @@ export default function Dashboard() {
       </div>
 
       {user?.role === 'admin' && (
-        <div className="bg-white rounded-xl border p-6">
+        <div className="bg-white border p-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
             <div>
               <h3 className="text-lg font-semibold text-gray-800">Unassigned Users</h3>
@@ -100,7 +100,7 @@ export default function Dashboard() {
             </div>
             <Link
               to="/users"
-              className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700"
+              className="inline-flex items-center justify-center px-4 py-2 bg-primary-600 text-white text-sm font-medium hover:bg-primary-700"
             >
               Manage Assignments
             </Link>
@@ -108,7 +108,7 @@ export default function Dashboard() {
 
           <div className="space-y-3">
             {unassignedUsers.map((userRow) => (
-              <div key={userRow.id} className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div key={userRow.id} className=" border border-amber-200 bg-amber-50 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium text-gray-800">{userRow.name}</p>
                   <p className="text-xs text-gray-600 mt-1">{userRow.phone} • Joined {new Date(userRow.created_at).toLocaleDateString()}</p>
@@ -117,7 +117,7 @@ export default function Dashboard() {
               </div>
             ))}
             {unassignedUsers.length === 0 && (
-              <div className="rounded-lg border border-dashed border-gray-200 px-4 py-6 text-sm text-gray-400 text-center">
+              <div className=" border border-dashed border-gray-200 px-4 py-6 text-sm text-gray-400 text-center">
                 All current users are assigned to moderators.
               </div>
             )}
@@ -128,7 +128,7 @@ export default function Dashboard() {
       {/* Charts + notifications */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {Array.isArray(revenue?.deposits) && revenue.deposits.length > 0 && (
-          <div className="bg-white rounded-xl border p-6">
+          <div className="bg-white border p-6">
             <h3 className="text-lg font-semibold text-gray-800 mb-4">Deposits (Last 7 Days)</h3>
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={revenue.deposits}>
@@ -143,7 +143,7 @@ export default function Dashboard() {
         )}
 
         {Array.isArray(revenue?.bets) && revenue.bets.length > 0 && (
-          <div className="bg-white rounded-xl border p-6">
+          <div className="bg-white border p-6">
             <h3 className="text-lg font-semibold text-gray-800 mb-4">Bets vs Wins (Last 7 Days)</h3>
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={revenue.bets}>
@@ -158,7 +158,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        <div className="bg-white rounded-xl border p-6 lg:col-span-2">
+        <div className="bg-white border p-6 lg:col-span-2">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-800">Staff Notifications</h3>
             <span className="text-xs text-gray-500">Recent finance and system alerts</span>
@@ -167,7 +167,7 @@ export default function Dashboard() {
             {notifications.map((notification) => (
               <div
                 key={notification.id}
-                className={`rounded-lg border p-4 ${notification.is_read ? 'bg-gray-50 border-gray-200' : 'bg-amber-50 border-amber-200'}`}
+                className={` border p-4 ${notification.is_read ? 'bg-gray-50 border-gray-200' : 'bg-amber-50 border-amber-200'}`}
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -177,7 +177,7 @@ export default function Dashboard() {
                     </p>
                   </div>
                   {!notification.is_read && (
-                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                    <span className="px-2 py-1 text-xs font-medium bg-amber-100 text-amber-700">
                       New
                     </span>
                   )}
@@ -192,7 +192,7 @@ export default function Dashboard() {
       </div>
 
       {/* Recent Bets */}
-      <div className="bg-white rounded-xl border">
+      <div className="bg-white border">
         <div className="p-5 border-b">
           <h3 className="text-lg font-semibold text-gray-800">Recent Bets</h3>
         </div>
@@ -216,7 +216,7 @@ export default function Dashboard() {
                   <td className="px-5 py-3 capitalize">{bet.type}</td>
                   <td className="px-5 py-3 text-right font-medium">₹{parseFloat(bet.total_amount).toLocaleString()}</td>
                   <td className="px-5 py-3 text-center">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    <span className={`px-2 py-1 text-xs font-medium ${
                       bet.status === 'win' ? 'bg-green-100 text-green-700'
                         : bet.status === 'loss' ? 'bg-red-100 text-red-700'
                         : 'bg-yellow-100 text-yellow-700'

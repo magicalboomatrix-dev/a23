@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api, { buildUploadUrl } from '../utils/api';
 
@@ -79,19 +79,19 @@ export default function Moderators() {
         <div className="flex gap-2">
           <Link
             to="/moderator-scanners"
-            className="px-4 py-2 bg-white border rounded-lg hover:bg-gray-50 text-sm font-medium text-gray-700"
+            className="px-4 py-2 bg-white border hover:bg-gray-50 text-sm font-medium text-gray-700"
           >
             Scanner View
           </Link>
           <Link
             to="/moderator-floats"
-            className="px-4 py-2 bg-white border rounded-lg hover:bg-gray-50 text-sm font-medium text-gray-700"
+            className="px-4 py-2 bg-white border hover:bg-gray-50 text-sm font-medium text-gray-700"
           >
             Float Table
           </Link>
           <button
             onClick={() => setShowForm(!showForm)}
-            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium"
+            className="px-4 py-2 bg-primary-600 text-white hover:bg-primary-700 text-sm font-medium"
           >
             {showForm ? 'Cancel' : '+ Add Moderator'}
           </button>
@@ -102,41 +102,41 @@ export default function Moderators() {
         <button
           type="button"
           onClick={() => setActiveTab('moderators')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium ${activeTab === 'moderators' ? 'bg-primary-600 text-white' : 'bg-white border text-gray-600 hover:bg-gray-50'}`}
+          className={`px-4 py-2 text-sm font-medium ${activeTab === 'moderators' ? 'bg-primary-600 text-white' : 'bg-white border text-gray-600 hover:bg-gray-50'}`}
         >
           Moderators
         </button>
         <button
           type="button"
           onClick={() => setActiveTab('analytics')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium ${activeTab === 'analytics' ? 'bg-primary-600 text-white' : 'bg-white border text-gray-600 hover:bg-gray-50'}`}
+          className={`px-4 py-2 text-sm font-medium ${activeTab === 'analytics' ? 'bg-primary-600 text-white' : 'bg-white border text-gray-600 hover:bg-gray-50'}`}
         >
           Deposit Analytics
         </button>
       </div>
 
       {showForm && activeTab === 'moderators' && (
-        <form onSubmit={handleCreate} className="bg-white rounded-xl border p-6 space-y-4">
-          {error && <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm">{error}</div>}
+        <form onSubmit={handleCreate} className="bg-white border p-6 space-y-4">
+          {error && <div className="p-3 bg-red-50 text-red-700 text-sm">{error}</div>}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <input type="text" placeholder="Name" value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" required />
+              className="px-4 py-2 border focus:ring-2 focus:ring-primary-500 outline-none" required />
             <input type="text" placeholder="Phone" value={form.phone}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" required />
+              className="px-4 py-2 border focus:ring-2 focus:ring-primary-500 outline-none" required />
             <input type="password" placeholder="Password" value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
-              className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" required />
+              className="px-4 py-2 border focus:ring-2 focus:ring-primary-500 outline-none" required />
           </div>
-          <button type="submit" className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium">
+          <button type="submit" className="px-6 py-2 bg-green-600 text-white hover:bg-green-700 text-sm font-medium">
             Create Moderator
           </button>
         </form>
       )}
 
       {activeTab === 'moderators' && (
-      <div className="bg-white rounded-xl border overflow-x-auto">
+      <div className="bg-white border overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-gray-50">
             <tr>
@@ -158,21 +158,21 @@ export default function Moderators() {
                 <td className="px-4 py-3 font-mono text-xs">{m.referral_code}</td>
                 <td className="px-4 py-3 text-center">{m.user_count}</td>
                 <td className="px-4 py-3 text-center">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${m.is_blocked ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                  <span className={`px-2 py-1 text-xs font-medium ${m.is_blocked ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
                     {m.is_blocked ? 'Blocked' : 'Active'}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-center space-x-2">
                   <Link to={`/moderators/${m.id}`}
-                    className="px-2 py-1 rounded text-xs bg-blue-600 text-white hover:bg-blue-700 inline-block">
+                    className="px-2 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700 inline-block">
                     Details
                   </Link>
                   <button onClick={() => toggleBlock(m.id, m.is_blocked)}
-                    className={`px-2 py-1 rounded text-xs ${m.is_blocked ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                    className={`px-2 py-1 text-xs ${m.is_blocked ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
                     {m.is_blocked ? 'Unblock' : 'Block'}
                   </button>
                   <button onClick={() => handleDelete(m.id)}
-                    className="px-2 py-1 rounded text-xs bg-red-100 text-red-700 hover:bg-red-200">
+                    className="px-2 py-1 text-xs bg-red-100 text-red-700 hover:bg-red-200">
                     Delete
                   </button>
                 </td>
@@ -187,7 +187,7 @@ export default function Moderators() {
       )}
 
       {activeTab === 'analytics' && (
-        <div className="bg-white rounded-xl border overflow-x-auto">
+        <div className="bg-white border overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
               <tr>
@@ -207,7 +207,7 @@ export default function Moderators() {
                   <td className="px-4 py-3 text-xs text-gray-600">{stat.upi_id || '-'}</td>
                   <td className="px-4 py-3">
                     {stat.qr_code_image ? (
-                      <img src={buildUploadUrl(stat.qr_code_image)} alt={`${stat.moderator_name} QR`} className="h-16 w-16 rounded-lg border object-contain bg-white p-1" />
+                      <img src={buildUploadUrl(stat.qr_code_image)} alt={`${stat.moderator_name} QR`} className="h-16 w-16 border object-contain bg-white p-1" />
                     ) : (
                       <span className="text-xs text-gray-400">No QR</span>
                     )}
@@ -218,7 +218,7 @@ export default function Moderators() {
                   <td className="px-4 py-3 text-center">
                     <Link
                       to={`/moderators/${stat.moderator_id}`}
-                      className="px-3 py-1 rounded bg-blue-600 text-white text-xs hover:bg-blue-700 inline-block"
+                      className="px-3 py-1 bg-blue-600 text-white text-xs hover:bg-blue-700 inline-block"
                     >
                       View Details
                     </Link>

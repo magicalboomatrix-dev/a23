@@ -3,6 +3,19 @@ import Footer from "./components/Footer";
 import AuthGate from "./components/AuthGate";
 import { AuthProvider } from "./lib/AuthContext";
 import "./globals.css";
+import { Exo_2, Mona_Sans } from "next/font/google";
+
+const exo2 = Exo_2({
+  subsets: ["latin"],
+  variable: "--font-exo-2",
+  display: "swap",
+});
+
+const monaSans = Mona_Sans({
+  subsets: ["latin"],
+  variable: "--font-mona-sans",
+  display: "swap",
+});
 
 export const metadata = {
   title: "A23Satta",
@@ -25,8 +38,8 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className="flex min-h-screen justify-center bg-[#eef1f5] text-[#171717] antialiased" suppressHydrationWarning>
+    <html lang="en">
+      <body className={`${exo2.variable} ${monaSans.variable} flex min-h-screen justify-center bg-[#eef1f5] text-[#171717] antialiased`}>
         <AuthProvider>
           <div className="relative flex  w-full max-w-[430px] flex-col overflow-x-hidden bg-white ">
             <AuthGate>

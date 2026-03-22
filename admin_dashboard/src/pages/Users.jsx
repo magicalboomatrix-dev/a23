@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../utils/api';
 
@@ -95,12 +95,12 @@ export default function Users() {
           placeholder="Search by name or phone..."
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          className="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+          className="flex-1 px-4 py-2 border focus:ring-2 focus:ring-primary-500 outline-none"
         />
         <select
           value={moderatorFilter}
           onChange={(e) => { setModeratorFilter(e.target.value); setPage(1); }}
-          className="px-4 py-2 border rounded-lg bg-white focus:ring-2 focus:ring-primary-500 outline-none"
+          className="px-4 py-2 border bg-white focus:ring-2 focus:ring-primary-500 outline-none"
         >
           <option value="all">All Users</option>
           <option value="unassigned">Without Moderator</option>
@@ -110,12 +110,12 @@ export default function Users() {
         </select>
       </div>
 
-      <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-900">
+      <div className="bg-blue-50 border border-blue-100 p-4 text-sm text-blue-900">
         Users created with a moderator referral code are now auto-assigned to that moderator. This screen lets admin find unassigned users and assign them manually.
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl border overflow-x-auto">
+      <div className="bg-white border overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-gray-50">
             <tr>
@@ -141,7 +141,7 @@ export default function Users() {
                 <td className="px-4 py-3">{u.moderator_name || '-'}</td>
                 <td className="px-4 py-3 text-xs font-mono">{u.referral_code}</td>
                 <td className="px-4 py-3 text-center">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${u.is_blocked ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                  <span className={`px-2 py-1 text-xs font-medium ${u.is_blocked ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
                     {u.is_blocked ? 'Blocked' : 'Active'}
                   </span>
                 </td>
@@ -149,14 +149,14 @@ export default function Users() {
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
                     <Link
                       to={`/users/${u.id}`}
-                      className="px-3 py-1 rounded text-xs font-medium bg-blue-600 text-white hover:bg-blue-700"
+                      className="px-3 py-1  text-xs font-medium bg-blue-600 text-white hover:bg-blue-700"
                     >
                       Details
                     </Link>
                     <select
                       value={selectedModerators[u.id] || ''}
                       onChange={(e) => setSelectedModerators((current) => ({ ...current, [u.id]: e.target.value }))}
-                      className="min-w-36 px-2 py-1 border rounded text-xs bg-white"
+                      className="min-w-36 px-2 py-1 border  text-xs bg-white"
                     >
                       <option value="">Select Moderator</option>
                       {moderators.map((moderator) => (
@@ -166,13 +166,13 @@ export default function Users() {
                     <button
                       onClick={() => assignModerator(u.id)}
                       disabled={!selectedModerators[u.id] || assigningUserId === u.id}
-                      className="px-3 py-1 rounded text-xs font-medium bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50"
+                      className="px-3 py-1  text-xs font-medium bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50"
                     >
                       {assigningUserId === u.id ? 'Assigning...' : 'Assign'}
                     </button>
                     <button
                       onClick={() => toggleBlock(u.id, u.is_blocked)}
-                      className={`px-3 py-1 rounded text-xs font-medium ${u.is_blocked ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-red-600 text-white hover:bg-red-700'}`}
+                      className={`px-3 py-1  text-xs font-medium ${u.is_blocked ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-red-600 text-white hover:bg-red-700'}`}
                     >
                       {u.is_blocked ? 'Unblock' : 'Block'}
                     </button>
@@ -191,10 +191,10 @@ export default function Users() {
       {pagination.totalPages > 1 && (
         <div className="flex justify-center gap-2">
           <button disabled={page <= 1} onClick={() => setPage(page - 1)}
-            className="px-4 py-2 bg-white border rounded-lg text-sm disabled:opacity-50 hover:bg-gray-50">Prev</button>
+            className="px-4 py-2 bg-white border text-sm disabled:opacity-50 hover:bg-gray-50">Prev</button>
           <span className="px-4 py-2 text-sm text-gray-600">Page {page} of {pagination.totalPages}</span>
           <button disabled={page >= pagination.totalPages} onClick={() => setPage(page + 1)}
-            className="px-4 py-2 bg-white border rounded-lg text-sm disabled:opacity-50 hover:bg-gray-50">Next</button>
+            className="px-4 py-2 bg-white border text-sm disabled:opacity-50 hover:bg-gray-50">Next</button>
         </div>
       )}
     </div>

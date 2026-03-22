@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import api from '../utils/api';
 
 const SETTING_LABELS = {
@@ -59,7 +59,7 @@ export default function Settings() {
   const bonusSettings = settings.filter(s => s.setting_key.includes('bonus') || s.setting_key.includes('referral'));
 
   const renderGroup = (title, items) => (
-    <div className="bg-white rounded-xl border p-6">
+    <div className="bg-white border p-6">
       <h3 className="text-lg font-semibold text-gray-800 mb-4">{title}</h3>
       <div className="space-y-3">
         {items.map((s) => (
@@ -72,7 +72,7 @@ export default function Settings() {
               type="text"
               value={s.setting_value}
               onChange={(e) => updateValue(s.setting_key, e.target.value)}
-              className="w-full sm:w-40 px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+              className="w-full sm:w-40 px-3 py-2 border text-sm focus:ring-2 focus:ring-primary-500 outline-none"
             />
           </div>
         ))}
@@ -89,14 +89,14 @@ export default function Settings() {
 
       <div className="flex justify-end">
         <button onClick={saveSettings} disabled={saving}
-          className="px-8 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium disabled:opacity-50">
+          className="px-8 py-3 bg-primary-600 text-white hover:bg-primary-700 font-medium disabled:opacity-50">
           {saving ? 'Saving...' : 'Save All Settings'}
         </button>
       </div>
 
       {/* Flagged Accounts */}
       {flaggedAccounts.length > 0 && (
-        <div className="bg-white rounded-xl border">
+        <div className="bg-white border">
           <div className="p-5 border-b bg-red-50">
             <h3 className="text-lg font-semibold text-red-700">⚠ Flagged Bank Accounts</h3>
             <p className="text-sm text-red-600">These accounts are used by multiple users</p>

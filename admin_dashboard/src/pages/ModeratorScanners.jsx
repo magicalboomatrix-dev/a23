@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api, { buildUploadUrl } from '../utils/api';
 
@@ -502,47 +502,47 @@ export default function ModeratorScanners() {
           <p className="text-sm text-gray-500 mt-1">UPI IDs, QR uploads, scanner status, and direct drilldown to moderator details.</p>
         </div>
         <div className="flex gap-2">
-          <Link to="/moderators" className="px-4 py-2 bg-white border rounded-lg hover:bg-gray-50 text-sm font-medium text-gray-700">Moderators</Link>
-          <Link to="/moderator-floats" className="px-4 py-2 bg-white border rounded-lg hover:bg-gray-50 text-sm font-medium text-gray-700">Float Table</Link>
+          <Link to="/moderators" className="px-4 py-2 bg-white border hover:bg-gray-50 text-sm font-medium text-gray-700">Moderators</Link>
+          <Link to="/moderator-floats" className="px-4 py-2 bg-white border hover:bg-gray-50 text-sm font-medium text-gray-700">Float Table</Link>
         </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl border p-5">
+        <div className="bg-white border p-5">
           <p className="text-sm text-gray-500">Total Moderators</p>
           <p className="text-2xl font-bold text-gray-800 mt-1">{summary.total}</p>
         </div>
-        <div className="bg-white rounded-xl border p-5">
+        <div className="bg-white border p-5">
           <p className="text-sm text-gray-500">Active Scanners</p>
           <p className="text-2xl font-bold text-green-700 mt-1">{summary.active}</p>
         </div>
-        <div className="bg-white rounded-xl border p-5">
+        <div className="bg-white border p-5">
           <p className="text-sm text-gray-500">UPI Configured</p>
           <p className="text-2xl font-bold text-blue-700 mt-1">{summary.withUpi}</p>
         </div>
-        <div className="bg-white rounded-xl border p-5">
+        <div className="bg-white border p-5">
           <p className="text-sm text-gray-500">QR Uploaded</p>
           <p className="text-2xl font-bold text-amber-700 mt-1">{summary.withQr}</p>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border p-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="bg-white border p-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-medium text-gray-800">Unsaved Scanner Changes</p>
           <p className="text-xs text-gray-500">Rows with pending scanner label, UPI, status, or QR edits.</p>
         </div>
-        <div className={`px-3 py-1.5 rounded-full text-sm font-semibold ${unsavedCount > 0 ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'}`}>
+        <div className={`px-3 py-1.5 text-sm font-semibold ${unsavedCount > 0 ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'}`}>
           {unsavedCount} row{unsavedCount === 1 ? '' : 's'} pending
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border p-4">
+      <div className="bg-white border p-4">
         <input
           type="text"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search moderator, phone, referral, UPI, or scanner label"
-          className="w-full px-4 py-2 border rounded-lg"
+          className="w-full px-4 py-2 border"
         />
         <div className="flex flex-wrap gap-2 mt-3">
           {filterChips.map((chip) => {
@@ -553,7 +553,7 @@ export default function ModeratorScanners() {
                 key={chip.key}
                 type="button"
                 onClick={() => toggleFilter(chip.key)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium border ${active ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                className={`px-3 py-1.5 text-xs font-medium border ${active ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
               >
                 {chip.label} ({chip.count})
               </button>
@@ -563,7 +563,7 @@ export default function ModeratorScanners() {
             <button
               type="button"
               onClick={() => setActiveFilters([])}
-              className="px-3 py-1.5 rounded-full text-xs font-medium border bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+              className="px-3 py-1.5 text-xs font-medium border bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
             >
               Clear Filters
             </button>
@@ -571,7 +571,7 @@ export default function ModeratorScanners() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border overflow-x-auto">
+      <div className="bg-white border overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-gray-50">
             <tr>
@@ -609,19 +609,19 @@ export default function ModeratorScanners() {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2 flex-wrap">
                       <div className="font-medium text-gray-800">{moderator.name}</div>
-                      {dirty ? <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-100 text-amber-800">Unsaved</span> : null}
+                      {dirty ? <span className="px-2 py-0.5 text-[11px] font-medium bg-amber-100 text-amber-800">Unsaved</span> : null}
                     </div>
                     <div className="text-xs text-gray-500">{moderator.phone}</div>
                     <div className="text-xs text-gray-500">{moderator.referral_code}</div>
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {severityBadges.map((badge) => (
-                        <span key={badge.label} className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${badge.className}`}>
+                        <span key={badge.label} className={`px-2 py-0.5 text-[11px] font-medium ${badge.className}`}>
                           {badge.label}
                         </span>
                       ))}
                     </div>
                     <div className="mt-2">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${moderator.scanner_enabled ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      <span className={`px-2 py-1 text-xs font-medium ${moderator.scanner_enabled ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                         {moderator.scanner_enabled ? 'Enabled' : 'Disabled'}
                       </span>
                     </div>
@@ -637,7 +637,7 @@ export default function ModeratorScanners() {
                     <button
                       type="button"
                       onClick={() => copyText(moderator.id, 'UPI ID', upi.full)}
-                      className="mt-2 px-3 py-1 rounded border text-xs text-gray-700 hover:bg-gray-50"
+                      className="mt-2 px-3 py-1 border text-xs text-gray-700 hover:bg-gray-50"
                     >
                       Copy UPI
                     </button>
@@ -645,7 +645,7 @@ export default function ModeratorScanners() {
                   <td className="px-4 py-3 text-xs text-gray-600 min-w-[220px]">
                     {previewUrl ? (
                       <div className="flex items-start gap-3">
-                        <img src={previewUrl} alt={`${moderator.name} QR`} className="h-16 w-16 rounded-lg border object-contain bg-white p-1 shrink-0" />
+                        <img src={previewUrl} alt={`${moderator.name} QR`} className="h-16 w-16 border object-contain bg-white p-1 shrink-0" />
                         <div className="space-y-1">
                           <div><span className="font-medium text-gray-800">File:</span> {selectedFileName || qrFileName || '-'}</div>
                           <div className="break-all"><span className="font-medium text-gray-800">Path:</span> {selectedFileName ? 'Pending new upload' : (moderator.qr_code_image || '-')}</div>
@@ -654,7 +654,7 @@ export default function ModeratorScanners() {
                           <button
                             type="button"
                             onClick={() => copyText(moderator.id, 'QR link', qrUrl)}
-                            className="block px-3 py-1 rounded border text-xs text-gray-700 hover:bg-gray-50"
+                            className="block px-3 py-1 border text-xs text-gray-700 hover:bg-gray-50"
                           >
                             Copy QR Link
                           </button>
@@ -666,7 +666,7 @@ export default function ModeratorScanners() {
                         <button
                           type="button"
                           onClick={() => copyText(moderator.id, 'QR link', '')}
-                          className="px-3 py-1 rounded border text-xs text-gray-700 hover:bg-gray-50"
+                          className="px-3 py-1 border text-xs text-gray-700 hover:bg-gray-50"
                         >
                           Copy QR Link
                         </button>
@@ -683,7 +683,7 @@ export default function ModeratorScanners() {
                         value={draft.scanner_label}
                         onChange={(event) => setDraftField(moderator.id, 'scanner_label', event.target.value)}
                         placeholder="Scanner label"
-                        className={`w-full px-3 py-2 border rounded-lg text-xs ${labelValidation.isValid ? '' : 'border-red-300 bg-red-50'}`}
+                        className={`w-full px-3 py-2 border text-xs ${labelValidation.isValid ? '' : 'border-red-300 bg-red-50'}`}
                       />
                       {!labelValidation.isValid ? (
                         <div className="text-[11px] text-red-600">{labelValidation.message}</div>
@@ -696,7 +696,7 @@ export default function ModeratorScanners() {
                         value={draft.upi_id}
                         onChange={(event) => setDraftField(moderator.id, 'upi_id', event.target.value)}
                         placeholder="UPI ID"
-                        className={`w-full px-3 py-2 border rounded-lg text-xs ${upiValidation.isValid ? '' : 'border-red-300 bg-red-50'}`}
+                        className={`w-full px-3 py-2 border text-xs ${upiValidation.isValid ? '' : 'border-red-300 bg-red-50'}`}
                       />
                       {!upiValidation.isValid ? (
                         <div className="text-[11px] text-red-600">{upiValidation.message}</div>
@@ -735,7 +735,7 @@ export default function ModeratorScanners() {
                         type="button"
                         disabled={savingId === moderator.id || !upiValidation.isValid || !labelValidation.isValid || !qrValidation.isValid}
                         onClick={() => saveScanner(moderator.id)}
-                        className="px-3 py-1 rounded bg-emerald-600 text-white text-xs hover:bg-emerald-700 inline-block disabled:opacity-50"
+                        className="px-3 py-1 bg-emerald-600 text-white text-xs hover:bg-emerald-700 inline-block disabled:opacity-50"
                       >
                         {savingId === moderator.id ? 'Saving...' : 'Save'}
                       </button>
@@ -744,7 +744,7 @@ export default function ModeratorScanners() {
                           type="button"
                           disabled={savingId === moderator.id}
                           onClick={() => resetDraft(moderator)}
-                          className="px-3 py-1 rounded border text-gray-700 text-xs hover:bg-gray-50 disabled:opacity-50 inline-block"
+                          className="px-3 py-1 border text-gray-700 text-xs hover:bg-gray-50 disabled:opacity-50 inline-block"
                         >
                           Reset
                         </button>
@@ -752,7 +752,7 @@ export default function ModeratorScanners() {
                       <div>
                         <Link
                           to={`/moderators/${moderator.id}`}
-                          className="px-3 py-1 rounded bg-blue-600 text-white text-xs hover:bg-blue-700 inline-block"
+                          className="px-3 py-1 bg-blue-600 text-white text-xs hover:bg-blue-700 inline-block"
                         >
                           View Details
                         </Link>

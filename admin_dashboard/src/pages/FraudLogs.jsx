@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import api from '../utils/api';
 
 export default function FraudLogs() {
@@ -28,30 +28,30 @@ export default function FraudLogs() {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl border p-5">
+        <div className="bg-white border p-5">
           <p className="text-sm text-gray-500">Fraud Attempts Today</p>
           <p className="text-2xl font-bold text-red-700 mt-1">{alerts?.summary?.fraud_attempts_today || 0}</p>
         </div>
-        <div className="bg-white rounded-xl border p-5">
+        <div className="bg-white border p-5">
           <p className="text-sm text-gray-500">Reused Receipt Groups</p>
           <p className="text-2xl font-bold text-amber-700 mt-1">{alerts?.summary?.reused_receipt_groups || 0}</p>
         </div>
-        <div className="bg-white rounded-xl border p-5">
+        <div className="bg-white border p-5">
           <p className="text-sm text-gray-500">High Approver Alerts</p>
           <p className="text-2xl font-bold text-blue-700 mt-1">{alerts?.summary?.excessive_approver_count || 0}</p>
         </div>
-        <div className="bg-white rounded-xl border p-5">
+        <div className="bg-white border p-5">
           <p className="text-sm text-gray-500">Large New User Deposits</p>
           <p className="text-2xl font-bold text-purple-700 mt-1">{alerts?.summary?.large_new_user_deposit_count || 0}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <div className="bg-white rounded-xl border p-5">
+        <div className="bg-white border p-5">
           <h3 className="text-lg font-semibold text-gray-800 mb-3">Reused Receipt Alerts</h3>
           <div className="space-y-3">
             {alerts?.reused_receipts?.map((item, index) => (
-              <div key={`${item.receipt_image_hash}-${index}`} className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+              <div key={`${item.receipt_image_hash}-${index}`} className=" border border-amber-200 bg-amber-50 px-4 py-3">
                 <p className="text-sm font-medium text-gray-800">{item.duplicate_count} deposits share the same receipt hash.</p>
                 <p className="text-xs text-gray-600 mt-1">Users: {item.users}</p>
                 <p className="text-xs text-gray-500 mt-1">UTRs: {item.utrs}</p>
@@ -61,11 +61,11 @@ export default function FraudLogs() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border p-5">
+        <div className="bg-white border p-5">
           <h3 className="text-lg font-semibold text-gray-800 mb-3">Approval Velocity Alerts</h3>
           <div className="space-y-3">
             {alerts?.excessive_approvals?.map((item) => (
-              <div key={item.approver_id} className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
+              <div key={item.approver_id} className=" border border-blue-200 bg-blue-50 px-4 py-3">
                 <p className="text-sm font-medium text-gray-800">{item.approver_name} approved {item.approval_count} deposits today.</p>
                 <p className="text-xs text-gray-500 mt-1">Role: {item.approver_role}</p>
               </div>
@@ -75,11 +75,11 @@ export default function FraudLogs() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border p-5">
+      <div className="bg-white border p-5">
         <h3 className="text-lg font-semibold text-gray-800 mb-3">Large Deposits From New Users</h3>
         <div className="space-y-3">
           {alerts?.large_new_user_deposits?.map((item) => (
-            <div key={item.id} className="rounded-lg border border-purple-200 bg-purple-50 px-4 py-3">
+            <div key={item.id} className=" border border-purple-200 bg-purple-50 px-4 py-3">
               <p className="text-sm font-medium text-gray-800">{item.user_name} ({item.user_phone}) deposited ₹{Number(item.amount).toLocaleString('en-IN')}</p>
               <p className="text-xs text-gray-500 mt-1">Account age: {item.account_age_hours} hours • {new Date(item.created_at).toLocaleString()}</p>
             </div>
@@ -88,7 +88,7 @@ export default function FraudLogs() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border overflow-x-auto">
+      <div className="bg-white border overflow-x-auto">
         <div className="px-4 py-4 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-800">Duplicate UTR Logs</h3>
         </div>

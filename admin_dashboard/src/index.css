@@ -6,6 +6,21 @@
 
 body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+}
+
+/* Enterprise flat inputs - replace soft ring with solid border focus */
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid #4f46e5;
+  outline-offset: 0;
+  box-shadow: none;
+}
+
+/* Flat table styling */
+table {
+  border-collapse: collapse;
 }
 
 .results-admin-page .head-title h2 {
@@ -42,7 +57,6 @@ body {
 }
 
 .results-admin-page .table-inner {
-  border-radius: 10px;
   margin: 6px 0;
   overflow: auto;
 }

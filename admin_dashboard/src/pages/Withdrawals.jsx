@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import api from '../utils/api';
 
 export default function Withdrawals() {
@@ -49,13 +49,13 @@ export default function Withdrawals() {
       <div className="flex gap-2">
         {['pending', 'approved', 'rejected'].map((s) => (
           <button key={s} onClick={() => { setFilter(s); setPage(1); }}
-            className={`px-4 py-2 rounded-lg text-sm font-medium capitalize ${filter === s ? 'bg-primary-600 text-white' : 'bg-white border text-gray-600 hover:bg-gray-50'}`}>
+            className={`px-4 py-2 text-sm font-medium capitalize ${filter === s ? 'bg-primary-600 text-white' : 'bg-white border text-gray-600 hover:bg-gray-50'}`}>
             {s}
           </button>
         ))}
       </div>
 
-      <div className="bg-white rounded-xl border overflow-x-auto">
+      <div className="bg-white border overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-gray-50">
             <tr>
@@ -83,10 +83,10 @@ export default function Withdrawals() {
                 <td className="px-4 py-3 font-mono text-xs">{w.account_number}</td>
                 <td className="px-4 py-3 font-mono text-xs">{w.ifsc}</td>
                 <td className="px-4 py-3 text-center">
-                  {w.is_flagged ? <span className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full font-medium">⚠ Flagged</span> : '-'}
+                  {w.is_flagged ? <span className="px-2 py-1 bg-red-100 text-red-700 text-xs font-medium">⚠ Flagged</span> : '-'}
                 </td>
                 <td className="px-4 py-3 text-center">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  <span className={`px-2 py-1 text-xs font-medium ${
                     w.status === 'approved' ? 'bg-green-100 text-green-700'
                       : w.status === 'rejected' ? 'bg-red-100 text-red-700'
                       : 'bg-yellow-100 text-yellow-700'
@@ -95,8 +95,8 @@ export default function Withdrawals() {
                 <td className="px-4 py-3 text-gray-500 text-xs">{new Date(w.created_at).toLocaleString()}</td>
                 {filter === 'pending' && (
                   <td className="px-4 py-3 text-center space-x-2">
-                    <button onClick={() => approve(w.id)} className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700">Approve</button>
-                    <button onClick={() => reject(w.id)} className="px-3 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700">Reject</button>
+                    <button onClick={() => approve(w.id)} className="px-3 py-1 bg-green-600 text-white  text-xs hover:bg-green-700">Approve</button>
+                    <button onClick={() => reject(w.id)} className="px-3 py-1 bg-red-600 text-white  text-xs hover:bg-red-700">Reject</button>
                   </td>
                 )}
               </tr>
@@ -110,9 +110,9 @@ export default function Withdrawals() {
 
       {pagination.totalPages > 1 && (
         <div className="flex justify-center gap-2">
-          <button disabled={page <= 1} onClick={() => setPage(page - 1)} className="px-4 py-2 bg-white border rounded-lg text-sm disabled:opacity-50">Prev</button>
+          <button disabled={page <= 1} onClick={() => setPage(page - 1)} className="px-4 py-2 bg-white border text-sm disabled:opacity-50">Prev</button>
           <span className="px-4 py-2 text-sm text-gray-600">Page {page} of {pagination.totalPages}</span>
-          <button disabled={page >= pagination.totalPages} onClick={() => setPage(page + 1)} className="px-4 py-2 bg-white border rounded-lg text-sm disabled:opacity-50">Next</button>
+          <button disabled={page >= pagination.totalPages} onClick={() => setPage(page + 1)} className="px-4 py-2 bg-white border text-sm disabled:opacity-50">Next</button>
         </div>
       )}
     </div>

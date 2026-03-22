@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import api from '../utils/api';
 
 function getNotificationTone(notification) {
@@ -72,7 +72,7 @@ export default function Notifications() {
         </div>
         <button
           onClick={loadNotifications}
-          className="px-4 py-2 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700"
+          className="px-4 py-2 bg-primary-600 text-white text-sm font-medium hover:bg-primary-700"
         >
           Refresh
         </button>
@@ -83,7 +83,7 @@ export default function Notifications() {
           <button
             key={item}
             onClick={() => setFilter(item)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium capitalize ${filter === item ? 'bg-primary-600 text-white' : 'bg-white border text-gray-600 hover:bg-gray-50'}`}
+            className={`px-4 py-2 text-sm font-medium capitalize ${filter === item ? 'bg-primary-600 text-white' : 'bg-white border text-gray-600 hover:bg-gray-50'}`}
           >
             {item}
           </button>
@@ -92,15 +92,15 @@ export default function Notifications() {
 
       <div className="space-y-3">
         {visibleNotifications.map((notification) => (
-          <div key={notification.id} className={`rounded-xl border p-5 ${getNotificationTone(notification)}`}>
+          <div key={notification.id} className={`border p-5 ${getNotificationTone(notification)}`}>
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-white/80 border border-gray-200 uppercase tracking-wide text-gray-600">
+                  <span className="px-2 py-1 text-xs font-medium bg-white/80 border border-gray-200 uppercase tracking-wide text-gray-600">
                     {notification.type}
                   </span>
                   {!notification.is_read && (
-                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                    <span className="px-2 py-1 text-xs font-medium bg-amber-100 text-amber-700">
                       Unread
                     </span>
                   )}
@@ -112,7 +112,7 @@ export default function Notifications() {
               {!notification.is_read && (
                 <button
                   onClick={() => markRead(notification.id)}
-                  className="px-3 py-2 rounded-lg bg-white border text-sm text-gray-700 hover:bg-gray-50"
+                  className="px-3 py-2 bg-white border text-sm text-gray-700 hover:bg-gray-50"
                 >
                   Mark read
                 </button>
@@ -122,7 +122,7 @@ export default function Notifications() {
         ))}
 
         {visibleNotifications.length === 0 && (
-          <div className="bg-white rounded-xl border p-10 text-center text-gray-400">
+          <div className="bg-white border p-10 text-center text-gray-400">
             {loading ? 'Loading notifications...' : 'No notifications match this filter.'}
           </div>
         )}

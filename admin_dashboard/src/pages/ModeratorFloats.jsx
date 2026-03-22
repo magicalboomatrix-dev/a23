@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../utils/api';
 
@@ -74,21 +74,21 @@ export default function ModeratorFloats() {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl border p-5">
+        <div className="bg-white border p-5">
           <p className="text-sm text-gray-500">Total Float</p>
           <p className="text-2xl font-bold text-green-700 mt-1">{formatCurrency(summary.totalFloat)}</p>
         </div>
-        <div className="bg-white rounded-xl border p-5">
+        <div className="bg-white border p-5">
           <p className="text-sm text-gray-500">Low Float Moderators</p>
           <p className="text-2xl font-bold text-red-700 mt-1">{summary.lowFloatCount}</p>
         </div>
-        <div className="bg-white rounded-xl border p-5">
+        <div className="bg-white border p-5">
           <p className="text-sm text-gray-500">Active Scanners</p>
           <p className="text-2xl font-bold text-blue-700 mt-1">{summary.enabledCount}</p>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border overflow-x-auto">
+      <div className="bg-white border overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-gray-50">
             <tr>
@@ -109,7 +109,7 @@ export default function ModeratorFloats() {
                 <td className="px-4 py-3 font-medium text-gray-800">{moderator.moderator_name}</td>
                 <td className="px-4 py-3 text-gray-600">{moderator.phone}</td>
                 <td className="px-4 py-3 text-center">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${moderator.scanner_enabled ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                  <span className={`px-2 py-1 text-xs font-medium ${moderator.scanner_enabled ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                     {moderator.scanner_enabled ? 'Enabled' : 'Disabled'}
                   </span>
                 </td>
@@ -125,20 +125,20 @@ export default function ModeratorFloats() {
                       value={adjustments[moderator.moderator_id]?.amount || ''}
                       onChange={(event) => updateField(moderator.moderator_id, 'amount', event.target.value)}
                       placeholder="+/- amount"
-                      className="w-full px-3 py-2 border rounded-lg text-xs"
+                      className="w-full px-3 py-2 border text-xs"
                     />
                     <input
                       type="text"
                       value={adjustments[moderator.moderator_id]?.note || ''}
                       onChange={(event) => updateField(moderator.moderator_id, 'note', event.target.value)}
                       placeholder="Note"
-                      className="w-full px-3 py-2 border rounded-lg text-xs"
+                      className="w-full px-3 py-2 border text-xs"
                     />
                     <button
                       type="button"
                       disabled={savingId === moderator.moderator_id}
                       onClick={() => submitAdjustment(moderator.moderator_id)}
-                      className="px-3 py-1 rounded bg-emerald-600 text-white text-xs hover:bg-emerald-700 disabled:opacity-50"
+                      className="px-3 py-1 bg-emerald-600 text-white text-xs hover:bg-emerald-700 disabled:opacity-50"
                     >
                       {savingId === moderator.moderator_id ? 'Saving...' : 'Update Float'}
                     </button>
@@ -147,7 +147,7 @@ export default function ModeratorFloats() {
                 <td className="px-4 py-3 text-center">
                   <Link
                     to={`/moderators/${moderator.moderator_id}`}
-                    className="px-3 py-1 rounded bg-blue-600 text-white text-xs hover:bg-blue-700 inline-block"
+                    className="px-3 py-1 bg-blue-600 text-white text-xs hover:bg-blue-700 inline-block"
                   >
                     View
                   </Link>

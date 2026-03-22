@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import api, { buildUploadUrl } from '../utils/api';
 
 function normalizeText(value) {
@@ -190,21 +190,21 @@ export default function PaymentScanner() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="rounded-xl border bg-white p-5">
+        <div className="border bg-white p-5">
           <p className="text-sm text-gray-500">Float Balance</p>
           <p className="text-2xl font-bold text-green-700 mt-1">₹{Number(scanner?.float_balance || 0).toLocaleString('en-IN')}</p>
         </div>
-        <div className="rounded-xl border bg-white p-5 lg:col-span-2">
+        <div className="border bg-white p-5 lg:col-span-2">
           <p className="text-sm text-gray-500">Scanner Status</p>
           <p className="text-lg font-semibold mt-1 text-gray-800">{scanner?.scanner_enabled ? 'Enabled' : 'Disabled'}</p>
           <p className="text-xs text-gray-500 mt-1">Deposits are routed only when your scanner is active.</p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-xl border p-6 space-y-4 max-w-3xl">
+      <form onSubmit={handleSubmit} className="bg-white border p-6 space-y-4 max-w-3xl">
         <h3 className="text-lg font-semibold text-gray-800">Payment Scanner</h3>
-        {message && <div className="p-3 rounded-lg bg-green-50 text-green-700 text-sm">{message}</div>}
-        {error && <div className="p-3 rounded-lg bg-red-50 text-red-700 text-sm">{error}</div>}
+        {message && <div className="p-3 bg-green-50 text-green-700 text-sm">{message}</div>}
+        {error && <div className="p-3 bg-red-50 text-red-700 text-sm">{error}</div>}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <input
@@ -213,7 +213,7 @@ export default function PaymentScanner() {
             ref={labelInputRef}
             value={form.scanner_label}
             onChange={(e) => setForm((current) => ({ ...current, scanner_label: e.target.value }))}
-            className={`px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 outline-none ${labelValidation.isValid ? '' : 'border-red-300 bg-red-50'}`}
+            className={`px-4 py-2 border focus:ring-2 focus:ring-primary-500 outline-none ${labelValidation.isValid ? '' : 'border-red-300 bg-red-50'}`}
           />
           <input
             type="text"
@@ -221,7 +221,7 @@ export default function PaymentScanner() {
             ref={upiInputRef}
             value={form.upi_id}
             onChange={(e) => setForm((current) => ({ ...current, upi_id: e.target.value }))}
-            className={`px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 outline-none ${upiValidation.isValid ? '' : 'border-red-300 bg-red-50'}`}
+            className={`px-4 py-2 border focus:ring-2 focus:ring-primary-500 outline-none ${upiValidation.isValid ? '' : 'border-red-300 bg-red-50'}`}
           />
         </div>
 
@@ -247,10 +247,10 @@ export default function PaymentScanner() {
         />
 
         {previewUrl && (
-          <img src={previewUrl} alt="Scanner preview" className="h-48 w-48 rounded-lg border object-contain bg-white p-2" />
+          <img src={previewUrl} alt="Scanner preview" className="h-48 w-48 border object-contain bg-white p-2" />
         )}
 
-        <button type="submit" disabled={saving || !upiValidation.isValid || !labelValidation.isValid || !qrValidation.isValid} className="px-5 py-2 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 disabled:opacity-50">
+        <button type="submit" disabled={saving || !upiValidation.isValid || !labelValidation.isValid || !qrValidation.isValid} className="px-5 py-2 bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 disabled:opacity-50">
           {saving ? 'Saving...' : 'Save Scanner'}
         </button>
       </form>

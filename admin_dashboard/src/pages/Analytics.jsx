@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import api from '../utils/api';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
@@ -37,12 +37,12 @@ export default function Analytics() {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <select value={selectedGame} onChange={(e) => setSelectedGame(e.target.value)}
-          className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 outline-none">
+          className="px-4 py-2 border focus:ring-2 focus:ring-primary-500 outline-none">
           <option value="">All Games</option>
           {games.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
         </select>
         <select value={selectedType} onChange={(e) => setSelectedType(e.target.value)}
-          className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 outline-none">
+          className="px-4 py-2 border focus:ring-2 focus:ring-primary-500 outline-none">
           <option value="">All Types</option>
           <option value="jodi">Jodi</option>
           <option value="haruf_andar">Haruf Andar</option>
@@ -61,23 +61,23 @@ export default function Analytics() {
         <>
           {/* Summary Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white rounded-xl border p-5">
+            <div className="bg-white border p-5">
               <p className="text-sm text-gray-500">Numbers with Bets</p>
               <p className="text-2xl font-bold text-primary-600">{summary.total_numbers_with_bets || 0}</p>
             </div>
-            <div className="bg-white rounded-xl border p-5">
+            <div className="bg-white border p-5">
               <p className="text-sm text-gray-500">Numbers with No Bets</p>
               <p className="text-2xl font-bold text-gray-600">{noBetNumbers.length}</p>
             </div>
             {summary.highest_bet && (
-              <div className="bg-green-50 rounded-xl border border-green-200 p-5">
+              <div className="bg-green-50 border border-green-200 p-5">
                 <p className="text-sm text-green-600">Highest Bet Number</p>
                 <p className="text-2xl font-bold text-green-700">#{summary.highest_bet.number}</p>
                 <p className="text-xs text-green-500">₹{parseFloat(summary.highest_bet.total_amount || 0).toLocaleString()} ({summary.highest_bet.bet_count} bets)</p>
               </div>
             )}
             {summary.lowest_bet && (
-              <div className="bg-red-50 rounded-xl border border-red-200 p-5">
+              <div className="bg-red-50 border border-red-200 p-5">
                 <p className="text-sm text-red-600">Lowest Bet Number</p>
                 <p className="text-2xl font-bold text-red-700">#{summary.lowest_bet.number}</p>
                 <p className="text-xs text-red-500">₹{parseFloat(summary.lowest_bet.total_amount || 0).toLocaleString()} ({summary.lowest_bet.bet_count} bets)</p>
@@ -89,7 +89,7 @@ export default function Analytics() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Bar chart - top 20 numbers */}
             {items.length > 0 && (
-            <div className="bg-white rounded-xl border p-6">
+            <div className="bg-white border p-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Top 20 Numbers by Bet Amount</h3>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={items.slice(0, 20)}>
@@ -105,7 +105,7 @@ export default function Analytics() {
 
             {/* Pie chart - top 10 */}
             {items.length > 0 && (
-            <div className="bg-white rounded-xl border p-6">
+            <div className="bg-white border p-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Bet Distribution (Top 10)</h3>
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
@@ -130,7 +130,7 @@ export default function Analytics() {
           </div>
 
           {/* Full table */}
-          <div className="bg-white rounded-xl border">
+          <div className="bg-white border">
             <div className="p-5 border-b">
               <h3 className="text-lg font-semibold text-gray-800">All Numbers Breakdown</h3>
             </div>
@@ -161,11 +161,11 @@ export default function Analytics() {
 
           {/* No-bet numbers */}
           {noBetNumbers.length > 0 && (
-            <div className="bg-white rounded-xl border p-6">
+            <div className="bg-white border p-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-3">Numbers with No Bets</h3>
               <div className="flex flex-wrap gap-2">
                 {noBetNumbers.map(n => (
-                  <span key={n} className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm font-mono">{n}</span>
+                  <span key={n} className="px-3 py-1 bg-gray-100 text-gray-600 text-sm font-mono">{n}</span>
                 ))}
               </div>
             </div>
