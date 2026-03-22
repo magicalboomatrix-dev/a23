@@ -39,26 +39,41 @@ export default function WalletPage() {
     <div className="min-h-screen bg-[#f6efe2]">
       <Header />
 
-      <div className="mx-auto w-full max-w-[430px]  pb-6">
-        <section className="mb-5 overflow-hidden border border-[#1a1206] bg-[#050505] shadow-[0_18px_40px_rgba(0,0,0,0.22)]">
+      <div className="mx-auto w-full max-w-[430px]">
+        <section className="mb-1 overflow-hidden border border-[#1a1206] bg-[#050505]">
           <div className="bg-[linear-gradient(94deg,#b6842d,#ebda8d_55%,#b7862f)]  text-center text-[#111]">
             <h1 className="text-lg font-bold uppercase tracking-[0.14em]">Wallet</h1>
             <p className="mt-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#4d2f00]">Deposit and withdraw from one quick hub</p>
           </div>
+<div className="relative overflow-hidden text-white">
+  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(235,218,141,0.18),transparent_42%),radial-gradient(circle_at_bottom_left,rgba(255,0,0,0.12),transparent_34%)]" />
 
-          <div className="relative overflow-hidden  text-white">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(235,218,141,0.18),transparent_42%),radial-gradient(circle_at_bottom_left,rgba(255,0,0,0.12),transparent_34%)]" />
-            <div className="relative grid grid-cols-2 gap-3">
-              <div className="border border-white/10 bg-white/6  backdrop-blur-sm">
-                <div className="text-[10px] uppercase tracking-[0.14em] text-white/60">Main Balance</div>
-                <div className="mt-2 text-[28px] font-bold leading-none text-[#ebda8d]">{formatCurrency(wallet?.balance)}</div>
-              </div>
-              <div className="border border-white/10 bg-white/6  backdrop-blur-sm">
-                <div className="text-[10px] uppercase tracking-[0.14em] text-white/60">Bonus Wallet</div>
-                <div className="mt-2 text-[28px] font-bold leading-none text-[#7df48f]">{formatCurrency(wallet?.bonus_balance)}</div>
-              </div>
-            </div>
-          </div>
+  <div className="relative grid grid-cols-2 gap-3 text-center">
+
+    {/* Main Balance */}
+    <div className="flex flex-col items-center justify-center border border-white/10 bg-white/6 backdrop-blur-sm p-3">
+      <div className="text-[10px] uppercase tracking-[0.14em] text-white/60">
+        Main Balance
+      </div>
+
+      <div className="mt-2 text-[28px] font-bold leading-none text-[#ebda8d]">
+        {formatCurrency(wallet?.balance)}
+      </div>
+    </div>
+
+    {/* Bonus Wallet */}
+    <div className="flex flex-col items-center justify-center border border-white/10 bg-white/6 backdrop-blur-sm p-3">
+      <div className="text-[10px] uppercase tracking-[0.14em] text-white/60">
+        Bonus Wallet
+      </div>
+
+      <div className="mt-2 text-[28px] font-bold leading-none text-[#7df48f]">
+        {formatCurrency(wallet?.bonus_balance)}
+      </div>
+    </div>
+
+  </div>
+</div>
         </section>
 
         {error && (
@@ -67,39 +82,80 @@ export default function WalletPage() {
           </div>
         )}
 
-        <section className="mt-5 grid grid-cols-1 gap-5">
-          <Link href="/deposit" className="group overflow-hidden border border-[#d6b774] bg-white shadow-[0_12px_28px_rgba(79,52,10,0.08)]">
-            <div className="bg-[linear-gradient(94deg,#b6842d,#ebda8d_55%,#b7862f)] px-5 py-4 text-[#111]">
-              <div className="text-sm font-bold uppercase tracking-[0.12em]">Add Money</div>
-            </div>
-            <div className="space-y-3 px-5 py-5">
-              <div className="flex h-14 w-14 items-center justify-center bg-[#111] text-[#ebda8d]">
-                <i className="fa-solid fa-arrow-down-to-line text-xl" />
-              </div>
-              <div>
-                <h2 className="text-lg font-bold text-[#111]">Deposit</h2>
-                <p className="mt-1.5 text-sm text-[#6d6659]">Open moderator scanner details, submit UTR, and track approval status.</p>
-              </div>
-              <div className="text-sm font-semibold text-[#a32020] group-hover:text-[#7a1010]">Go to deposit</div>
-            </div>
-          </Link>
+        <section className="flex justify-center gap-2 max-w-md mx-auto">
 
-          <Link href="/withdraw" className="group overflow-hidden border border-[#d6b774] bg-white shadow-[0_12px_28px_rgba(79,52,10,0.08)]">
-            <div className="bg-[linear-gradient(94deg,#b6842d,#ebda8d_55%,#b7862f)] px-5 py-4 text-[#111]">
-              <div className="text-sm font-bold uppercase tracking-[0.12em]">Cash Out</div>
-            </div>
-            <div className="space-y-3 px-5 py-5">
-              <div className="flex h-14 w-14 items-center justify-center bg-[#111] text-[#ebda8d]">
-                <i className="fa-solid fa-arrow-up-from-line text-xl" />
-              </div>
-              <div>
-                <h2 className="text-lg font-bold text-[#111]">Withdraw</h2>
-                <p className="mt-1.5 text-sm text-[#6d6659]">Select a saved bank account, request payout, and review earlier withdrawal history.</p>
-              </div>
-              <div className="text-sm font-semibold text-[#a32020] group-hover:text-[#7a1010]">Go to withdraw</div>
-            </div>
-          </Link>
-        </section>
+  {/* Deposit */}
+  <Link
+    href="/deposit"
+    className="group w-1/2 overflow-hidden border border-[#d6b774] bg-white shadow-[0_12px_28px_rgba(79,52,10,0.08)]"
+  >
+    <div className="bg-[linear-gradient(94deg,#b6842d,#ebda8d_55%,#b7862f)] py-2 text-[#111] text-center">
+      <div className="text-xs font-bold uppercase tracking-[0.12em]">
+        Add Money
+      </div>
+    </div>
+
+    <div className="flex flex-col items-center text-center space-y-2 p-3">
+
+      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#111]">
+        <img
+          src="/images/bank-building.png"
+          alt="deposit"
+          className="h-6 w-6 object-contain"
+        />
+      </div>
+
+      <div>
+        <h2 className="text-base font-bold text-[#111]">Deposit</h2>
+        <p className="mt-1 text-xs text-[#6d6659]">
+          Submit UTR and track approval.
+        </p>
+      </div>
+
+      <div className="text-xs font-semibold text-[#a32020] group-hover:text-[#7a1010]">
+        Go to deposit
+      </div>
+
+    </div>
+  </Link>
+
+
+  {/* Withdraw */}
+  <Link
+    href="/withdraw"
+    className="group w-1/2 overflow-hidden border border-[#d6b774] bg-white shadow-[0_12px_28px_rgba(79,52,10,0.08)]"
+  >
+    <div className="bg-[linear-gradient(94deg,#b6842d,#ebda8d_55%,#b7862f)] py-2 text-[#111] text-center">
+      <div className="text-xs font-bold uppercase tracking-[0.12em]">
+        Cash Out
+      </div>
+    </div>
+
+    <div className="flex flex-col items-center text-center space-y-2 p-3">
+
+      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#111]">
+        <img
+          src="/images/withdraw.png"
+          alt="withdraw"
+          className="h-6 w-6 object-contain"
+        />
+      </div>
+
+      <div>
+        <h2 className="text-base font-bold text-[#111]">Withdraw</h2>
+        <p className="mt-1 text-xs text-[#6d6659]">
+          Request payout to saved bank.
+        </p>
+      </div>
+
+      <div className="text-xs font-semibold text-[#a32020] group-hover:text-[#7a1010]">
+        Go to withdraw
+      </div>
+
+    </div>
+  </Link>
+
+</section>
       </div>
     </div>
   );

@@ -13,7 +13,7 @@ export default function RootLayout({ children }) {
     <html lang="en" suppressHydrationWarning>
       <body className="flex min-h-screen justify-center bg-[#eef1f5] text-[#171717] antialiased" suppressHydrationWarning>
         <AuthProvider>
-          <div className="relative flex min-h-screen w-full max-w-[430px] flex-col overflow-x-hidden bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.04),0_24px_60px_rgba(15,23,42,0.12)]">
+          <div className="relative flex  w-full max-w-[430px] flex-col overflow-x-hidden bg-white ">
             {children}
             <Footer />
           </div>

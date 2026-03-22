@@ -148,49 +148,71 @@ export default function MyBetsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f6efe2]">
+    <div >
       <Header />
 
-      <div className="mx-auto w-full max-w-[430px]  pb-6">
-        <section className="mb-5 overflow-hidden border border-[#1a1206] bg-[#050505] shadow-[0_18px_40px_rgba(0,0,0,0.22)]">
+      <div className="mx-auto w-full max-w-[430px]">
+        <section className="mb-1 overflow-hidden border border-[#1a1206] bg-[#050505] shadow-[0_18px_40px_rgba(0,0,0,0.22)]">
           <div className="bg-[linear-gradient(94deg,#b6842d,#ebda8d_55%,#b7862f)]  text-center text-[#111]">
             <h1 className="text-lg font-bold uppercase tracking-[0.14em]">My Bets</h1>
             <p className="mt-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#4d2f00]">All placed bets in one themed history view</p>
           </div>
 
-          <div className="relative overflow-hidden  text-white">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(235,218,141,0.18),transparent_42%),radial-gradient(circle_at_bottom_left,rgba(255,0,0,0.12),transparent_34%)]" />
-            <div className="relative grid grid-cols-2 gap-3">
-              <div className="border border-white/10 bg-white/6  backdrop-blur-sm">
-                <div className="mb-1 text-[10px] uppercase tracking-[0.14em] text-white/60">Bets On Page</div>
-                <div className="mt-2 text-[28px] font-bold leading-none text-[#ebda8d]">{summary.totalBets}</div>
-              </div>
-              <div className="border border-white/10 bg-white/6  backdrop-blur-sm">
-                <div className="mb-1 text-[10px] uppercase tracking-[0.14em] text-white/60">Stake</div>
-                <div className="mt-2 text-[28px] font-bold leading-none text-[#ebda8d]">{formatCurrency(summary.totalStake)}</div>
-              </div>
-              <div className="border border-white/10 bg-white/6  backdrop-blur-sm">
-                <div className="mb-1 text-[10px] uppercase tracking-[0.14em] text-white/60">Win Count</div>
-                <div className="mt-2 text-[28px] font-bold leading-none text-[#7df48f]">{summary.winCount}</div>
-              </div>
-              <div className="border border-white/10 bg-white/6  backdrop-blur-sm">
-                <div className="mb-1 text-[10px] uppercase tracking-[0.14em] text-white/60">Winning Amount</div>
-                <div className="mt-2 text-[28px] font-bold leading-none text-[#7df48f]">{formatCurrency(summary.totalWin)}</div>
-              </div>
-            </div>
-          </div>
+         <div className="relative overflow-hidden text-white">
+  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(235,218,141,0.18),transparent_42%),radial-gradient(circle_at_bottom_left,rgba(255,0,0,0.12),transparent_34%)]" />
+
+  <div className="relative grid grid-cols-4 gap-2 text-center">
+
+    <div className="border border-white/10 bg-white/6 backdrop-blur-sm p-1.5 sm:p-3 rounded-md">
+      <div className="text-[8px] sm:text-[10px] uppercase tracking-[0.12em] text-white/60">
+        Bets
+      </div>
+      <div className="mt-1 text-[10px] sm:text-[16px] font-bold leading-none text-[#ebda8d]">
+        {summary.totalBets}
+      </div>
+    </div>
+
+    <div className="border border-white/10 bg-white/6 backdrop-blur-sm p-1.5 sm:p-3 rounded-md">
+      <div className="text-[8px] sm:text-[10px] uppercase tracking-[0.12em] text-white/60">
+        Stake
+      </div>
+      <div className="mt-1 text-[10px] sm:text-[16px] font-bold leading-none text-[#ebda8d]">
+        {formatCurrency(summary.totalStake)}
+      </div>
+    </div>
+
+    <div className="border border-white/10 bg-white/6 backdrop-blur-sm p-1.5 sm:p-3 rounded-md">
+      <div className="text-[8px] sm:text-[10px] uppercase tracking-[0.12em] text-white/60">
+        Wins
+      </div>
+      <div className="mt-1 text-[10px] sm:text-[16px] font-bold leading-none text-[#7df48f]">
+        {summary.winCount}
+      </div>
+    </div>
+
+    <div className="border border-white/10 bg-white/6 backdrop-blur-sm p-1.5 sm:p-3 rounded-md">
+      <div className="text-[8px] sm:text-[10px] uppercase tracking-[0.12em] text-white/60">
+        Win Amt
+      </div>
+      <div className="mt-1 text-[10px] sm:text-[16px] font-bold leading-none text-[#7df48f]">
+        {formatCurrency(summary.totalWin)}
+      </div>
+    </div>
+
+  </div>
+</div>
         </section>
 
         {/* Preset filter row */}
-        <div className="mt-5 flex flex-wrap justify-center gap-2.5">
+        <div className=" flex flex-wrap justify-center gap-2.5">
           <button type="button" onClick={() => handlePreset('today')} className="border border-[#b6842d] bg-[#fff7e0] px-4 py-2 text-xs font-bold text-[#b6842d] transition hover:bg-[#ebda8d]">Today</button>
           <button type="button" onClick={() => handlePreset('last7')} className="border border-[#b6842d] bg-[#fff7e0] px-4 py-2 text-xs font-bold text-[#b6842d] transition hover:bg-[#ebda8d]">Last 7 Days</button>
           <button type="button" onClick={() => handlePreset('win')} className="border border-[#7df48f] bg-[#eafff0] px-4 py-2 text-xs font-bold text-[#1a7f3c] transition hover:bg-[#b6f7c7]">Wins</button>
           <button type="button" onClick={() => handlePreset('loss')} className="border border-[#f87171] bg-[#fff0f0] px-4 py-2 text-xs font-bold text-[#b91c1c] transition hover:bg-[#fca5a5]">Losses</button>
         </div>
 
-        <section className="mt-5 border border-[#d6b774] bg-white p-4 shadow-[0_12px_28px_rgba(79,52,10,0.08)]">
-          <div className="mb-3 flex items-center justify-between gap-3">
+        <section className="mt-1 border border-[#d6b774] bg-white p-2">
+          <div className="mb-1 flex items-center justify-between gap-3">
             <div>
               <h2 className="mb-1 text-sm font-bold text-[#141414]">Filters</h2>
               <p className="text-xs text-[#6d6659]">Filter by game, status, keyword, and date range.</p>
@@ -198,53 +220,60 @@ export default function MyBetsPage() {
             <div className="bg-[#111] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ebda8d]">{pagination.total} Total</div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4">
-            <select
-              className="border border-[#d8d1c4] bg-[#faf7f0] px-4 py-3 text-sm font-medium text-[#111] outline-none transition focus:border-[#b6842d] focus:ring-2 focus:ring-[#ebda8d]"
-              value={filters.game_id}
-              onChange={(event) => handleFilterChange('game_id', event.target.value)}
-            >
-              <option value="">All Games</option>
-              {games.map((game) => (
-                <option key={game.id} value={game.id}>{game.name}</option>
-              ))}
-            </select>
+          <div className="grid grid-cols-2 gap-4">
 
-            <select
-              className="border border-[#d8d1c4] bg-[#faf7f0] px-4 py-3 text-sm font-medium text-[#111] outline-none transition focus:border-[#b6842d] focus:ring-2 focus:ring-[#ebda8d]"
-              value={filters.status}
-              onChange={(event) => handleFilterChange('status', event.target.value)}
-            >
-              {STATUS_OPTIONS.map((option) => (
-                <option key={option.value || 'all'} value={option.value}>{option.label}</option>
-              ))}
-            </select>
+  {/* Row 1 */}
+  <select
+    className="border border-[#d8d1c4] bg-[#faf7f0] px-4  text-sm font-medium text-[#111] outline-none transition focus:border-[#b6842d] focus:ring-2 focus:ring-[#ebda8d]"
+    value={filters.game_id}
+    onChange={(event) => handleFilterChange('game_id', event.target.value)}
+  >
+    <option value="">All Games</option>
+    {games.map((game) => (
+      <option key={game.id} value={game.id}>{game.name}</option>
+    ))}
+  </select>
 
-            <input
-              type="text"
-              placeholder="Search game, type, or number"
-              className="border border-[#d8d1c4] bg-[#faf7f0] px-4 py-3 text-sm font-medium text-[#111] outline-none transition focus:border-[#b6842d] focus:ring-2 focus:ring-[#ebda8d]"
-              value={filters.search}
-              onChange={(event) => handleFilterChange('search', event.target.value)}
-            />
+  <select
+    className="border border-[#d8d1c4] bg-[#faf7f0] px-4 py-1 text-sm font-medium text-[#111] outline-none transition focus:border-[#b6842d] focus:ring-2 focus:ring-[#ebda8d]"
+    value={filters.status}
+    onChange={(event) => handleFilterChange('status', event.target.value)}
+  >
+    {STATUS_OPTIONS.map((option) => (
+      <option key={option.value || 'all'} value={option.value}>
+        {option.label}
+      </option>
+    ))}
+  </select>
 
-            <input
-              type="date"
-              className="border border-[#d8d1c4] bg-[#faf7f0] px-4 py-3 text-sm font-medium text-[#111] outline-none transition focus:border-[#b6842d] focus:ring-2 focus:ring-[#ebda8d]"
-              value={filters.from_date}
-              onChange={(event) => handleFilterChange('from_date', event.target.value)}
-            />
+  {/* Row 2 (full width) */}
+  <input
+    type="text"
+    placeholder="Search game, type, or number"
+    className="col-span-2 border border-[#d8d1c4] bg-[#faf7f0] px-4 py-1 text-sm font-medium text-[#111] outline-none transition focus:border-[#b6842d] focus:ring-2 focus:ring-[#ebda8d]"
+    value={filters.search}
+    onChange={(event) => handleFilterChange('search', event.target.value)}
+  />
 
-            <input
-              type="date"
-              className="border border-[#d8d1c4] bg-[#faf7f0] px-4 py-3 text-sm font-medium text-[#111] outline-none transition focus:border-[#b6842d] focus:ring-2 focus:ring-[#ebda8d]"
-              value={filters.to_date}
-              onChange={(event) => handleFilterChange('to_date', event.target.value)}
-            />
-          </div>
+  {/* Row 3 */}
+  <input
+    type="date"
+    className="border border-[#d8d1c4] bg-[#faf7f0] px-4 py-1 text-sm font-medium text-[#111] outline-none transition focus:border-[#b6842d] focus:ring-2 focus:ring-[#ebda8d]"
+    value={filters.from_date}
+    onChange={(event) => handleFilterChange('from_date', event.target.value)}
+  />
+
+  <input
+    type="date"
+    className="border border-[#d8d1c4] bg-[#faf7f0] px-4 py-1 text-sm font-medium text-[#111] outline-none transition focus:border-[#b6842d] focus:ring-2 focus:ring-[#ebda8d]"
+    value={filters.to_date}
+    onChange={(event) => handleFilterChange('to_date', event.target.value)}
+  />
+
+</div>
         </section>
 
-        <section className="mt-6 space-y-5">
+        <section>
           {loading && (
             <div className="border border-[#d6b774] bg-white px-5 py-8 text-center text-sm font-medium text-[#6d6659] shadow-[0_12px_28px_rgba(79,52,10,0.08)]">
               Loading your bets...

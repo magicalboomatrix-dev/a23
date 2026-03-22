@@ -315,7 +315,7 @@ const LoginAccountPage = () => {
   const messageClass = 'mb-3 bg-[#fdecea] px-3 py-2 text-[13px] text-[#d32f2f]';
 
   return (
-    <div className="mx-auto min-h-screen w-full max-w-[430px] bg-[#f6f7fa]">
+    <div className="mx-auto min-h-screen w-full max-w-[430px] mt-6">
       <main className="flex min-h-screen justify-center ">
         <div className="w-full max-w-105">
           <div className="back-btn mb-4">
@@ -326,7 +326,7 @@ const LoginAccountPage = () => {
             )}
           </div>
 
-          <section className="bg-white px-5 py-6 shadow-[0_18px_40px_rgba(0,0,0,0.08)]">
+          <section className="bg-white px-5 py-6 ">
             <h3 className="text-[24px] font-black text-[#111]"><b>{getTitle()}</b></h3>
             <h4 className="pb-2 pt-1 text-sm font-normal text-[#696969]">
               {getSubtitle()}

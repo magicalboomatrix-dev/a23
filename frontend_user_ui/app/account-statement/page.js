@@ -83,17 +83,17 @@ const AccountStatement = () => {
         <div className="bg-[linear-gradient(94deg,#b6842d,#ebda8d_55%,#b7862f)] px-4 py-2.5 text-center text-[#111]"><h2 className="text-sm font-semibold uppercase tracking-[0.08em]"><b>Account Statement</b></h2></div>
         <section className='border border-t-0 border-[#d6b774] bg-white  shadow-[0_12px_28px_rgba(79,52,10,0.08)]'>
                     
-            <div className="grid grid-cols-1 gap-3">
+            <div className="grid grid-cols-2 gap-2 m-2">
               <div>
-              <label className="mb-1 block text-sm font-medium text-[#111]">From Date</label>
-              <input className="h-11 w-full border border-[#d8d1c4] bg-[#faf7f0] px-4 text-sm" type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} />
+              <label className=" block text-sm font-medium text-[#111]">From Date</label>
+              <input className="h-9 w-full border border-[#d8d1c4] bg-[#faf7f0] px-4 text-sm" type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} />
                         </div>
               <div>
-              <label className="mb-1 block text-sm font-medium text-[#111]">To Date</label>
-              <input className="h-11 w-full border border-[#d8d1c4] bg-[#faf7f0] px-4 text-sm" type="date" value={toDate} onChange={e => setToDate(e.target.value)} />
+              <label className=" block text-sm font-medium text-[#111]">To Date</label>
+              <input className="h-9 w-full border border-[#d8d1c4] bg-[#faf7f0] px-4 text-sm" type="date" value={toDate} onChange={e => setToDate(e.target.value)} />
                         </div>
                     </div>
-            <button className="mt-4 h-11 w-full bg-[#111] text-sm font-semibold text-[#ebda8d]" onClick={fetchData} disabled={loading}>{loading ? 'Loading...' : 'APPLY'}</button>
+            <button className="mt-2 h-9 w-full bg-[#111] text-sm font-semibold text-[#ebda8d]" onClick={fetchData} disabled={loading}>{loading ? 'Loading...' : 'APPLY'}</button>
                    
              <div className='mt-4 overflow-x-auto border border-[#ead8ab]'>
             <table className="w-full border-collapse text-left text-xs text-[#111]">

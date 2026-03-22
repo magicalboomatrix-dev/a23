@@ -20,7 +20,7 @@ const Setting = () => {
 
   return (
         <div className="mx-auto min-h-screen w-full max-w-[430px] bg-[#f6f7fa] px-4 pb-6 pt-4">
-            <header className="mx-auto flex w-full max-w-[420px] items-center justify-between">
+            <header className="mx-auto flex w-full max-w-[420px] items-center justify-between ">
                 <div className="back-btn">
                     <Link href="/home">
                         <img alt="back" src="/images/back-btn.png" className="h-5 w-5" />
@@ -30,7 +30,7 @@ const Setting = () => {
                 <div className="h-5 w-5"></div>
             </header>
 
-            <main className="mx-auto mt-4 flex min-h-[calc(100vh-5rem)] w-full max-w-[420px] flex-col justify-between">
+            <main className="mx-auto flex min-h-[calc(100vh-8rem)] w-full max-w-[420px] flex-col justify-between">
                 <section className="space-y-3">
                     <Link href="/" className="flex items-center justify-between border border-[#ebe3d2] bg-white px-4 py-3 shadow-[0_10px_22px_rgba(15,23,42,0.05)]">
                         <div className="flex items-center gap-3 text-sm font-semibold text-[#111]">
@@ -65,7 +65,7 @@ const Setting = () => {
                     </Link>
                 </section>
 
-                <div className="pt-8">
+                <div>
                     <button className="w-full bg-[#111] px-4 py-3 text-sm font-black uppercase tracking-[0.14em] text-white" onClick={handleLogout}>Logout</button>
                 </div>
 

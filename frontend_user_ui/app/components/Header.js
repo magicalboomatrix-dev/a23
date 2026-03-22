@@ -100,7 +100,7 @@ const Header = () => {
         </aside>
 
         <div className={`fixed inset-0 z-40 bg-black/40 transition ${usopen ? 'visible opacity-100' : 'invisible opacity-0'}`} onClick={() => setusOpen(false)} />
-        <div className={`absolute right-4 top-full z-50 mt-3 w-55 bg-[rgba(255,255,255,0.95)] p-3 text-black shadow-[0_16px_32px_rgba(0,0,0,0.25)] transition ${usopen ? 'visible translate-y-0 opacity-100' : 'invisible -translate-y-2 opacity-0'}`}>
+        <div className={`absolute right-0 top-10 z-50  w-55 bg-[rgba(255,255,255,0.95)] p-3 text-black shadow-[0_16px_32px_rgba(0,0,0,0.25)] transition ${usopen ? 'visible translate-y-0 opacity-100' : 'invisible -translate-y-2 opacity-0'}`}>
           <div className="border border-[#b88831] bg-[#f1f1f1] px-3 py-2">
             <div className="mb-3 flex items-start justify-between gap-3 text-[13px] leading-4">
               <span>Wallet Amount <br/><small>(Inclusive bonus)</small></span>

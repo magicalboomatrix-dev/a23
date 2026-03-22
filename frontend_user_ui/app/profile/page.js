@@ -33,13 +33,13 @@ const Profile = () => {
     const tickerItems = notifications.length > 0
         ? notifications.map((item) => item.message || item.title || 'Notification')
         : ['No recent notifications'];
-    const menuItemClass = 'flex items-center justify-between border border-[#ebe3d2] bg-white px-4 py-3 shadow-[0_10px_22px_rgba(15,23,42,0.05)]';
+    const menuItemClass = 'flex items-center justify-between border border-[#ebe3d2] bg-white px-4 py-3 ';
 
   
   return (    
-        <div className="mx-auto min-h-screen w-full max-w-[430px] bg-[#f6f7fa] px-4 pb-6 pt-4">
+        <div className="mx-auto min-h-screen w-full max-w-[430px] bg-[#ffffff] pt-2">
             <main className="mx-auto w-full max-w-[420px]">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between px-2 py-1 ">
                     <div className="back-btn">
                         <Link href="/home">
                             <img src="/images/back-btn.png" alt="Back" className="h-5 w-5" />
@@ -55,23 +55,23 @@ const Profile = () => {
                     </div>
                 </div>
 
-                <section className="mt-4 space-y-4">
-                    <div className="bg-white px-5 py-5 text-center shadow-[0_18px_42px_rgba(15,23,42,0.08)]">
-                        <div className="mx-auto flex h-20 w-20 items-center justify-center overflow-hidden border-4 border-[#f1e5c6] bg-[#fff8e7]">
+                <section className="mt-4">
+                    <div className="bg-white  py-2 text-center">
+                        <div className="mx-auto flex h-20 w-20 items-center justify-center overflow-hidden">
                             <img src="/images/user-pic.png" alt="User" className="h-full w-full object-cover" />
                         </div>
                         <h3 className="mt-3 text-base font-black text-[#111]">{maskedPhone}</h3>
                         {profile?.name && <p className="mt-1 text-sm text-[#333]">{profile.name}</p>}
                     </div>
 
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-3 gap-3">
+                    
+                        <div className="grid grid-cols-3 bg-[#ffffff]">
                             {[
                                 { href: '/deposit', icon: '/images/card.png', label: 'Deposit' },
                                 { href: '/withdraw', icon: '/images/trans-money.png', label: 'Withdraw' },
                                 { href: '/', icon: '/images/envlope.png', label: 'Invite' },
                             ].map((item) => (
-                                <Link key={item.label} href={item.href} className="bg-white px-3 py-3.5 text-center shadow-[0_14px_30px_rgba(15,23,42,0.06)]">
+                                <Link key={item.label} href={item.href} className="bg-white px-3 py-3.5 text-center ">
                                     <div className="mx-auto flex h-11 w-11 items-center justify-center bg-[#fff4d6]">
                                         <img src={item.icon} alt={item.label} className="h-5 w-5 object-contain" />
                                     </div>
@@ -80,7 +80,7 @@ const Profile = () => {
                             ))}
                         </div>
 
-                        <div className="flex items-center justify-between gap-3 bg-[#111] px-4 py-3 text-white shadow-[0_16px_32px_rgba(0,0,0,0.18)]">
+                        <div className="flex items-center justify-between gap-3 bg-[#111] px-4 py-3 text-white ">
                             <div className="flex min-w-0 items-center gap-3">
                                 <div className="flex h-9 w-9 items-center justify-center bg-[#1f1f1f]">
                                     <img src="/images/notify.png" alt="Notice" className="h-4.5 w-4.5 object-contain" />
@@ -92,9 +92,9 @@ const Profile = () => {
                             </div>
                             <img src="/images/right-arw.png" alt="Open" className="h-4 w-4 object-contain" />
                         </div>
-                    </div>
+                    
 
-                    <div className="space-y-3">
+                    <div >
                         <Link href="/account-statement" className={menuItemClass}>
                             <div className="flex items-center gap-3 text-sm font-semibold text-[#111]">
                                 <img src="/images/ref-icon1.png" alt="Account Statement" className="h-9 w-9 object-cover" />
