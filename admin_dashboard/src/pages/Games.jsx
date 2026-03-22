@@ -1,12 +1,19 @@
 import { useState, useEffect } from 'react';
 import api from '../utils/api';
 
+function getLocalDateInputValue(referenceDate = new Date()) {
+  const year = referenceDate.getFullYear();
+  const month = String(referenceDate.getMonth() + 1).padStart(2, '0');
+  const day = String(referenceDate.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export default function Games() {
   const [games, setGames] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [showResult, setShowResult] = useState(null);
   const [form, setForm] = useState({ name: '', open_time: '', close_time: '' });
-  const [resultForm, setResultForm] = useState({ result_number: '', result_date: new Date().toLocaleDateString('en-CA') });
+  const [resultForm, setResultForm] = useState({ result_number: '', result_date: getLocalDateInputValue() });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -55,7 +62,7 @@ export default function Games() {
     try {
       await api.post(`/games/${showResult}/result`, resultForm);
       setShowResult(null);
-      setResultForm({ result_number: '', result_date: new Date().toLocaleDateString('en-CA') });
+      setResultForm({ result_number: '', result_date: getLocalDateInputValue() });
       loadGames();
       alert('Result declared and bets settled!');
     } catch (err) {

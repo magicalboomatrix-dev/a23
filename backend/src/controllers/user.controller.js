@@ -198,3 +198,56 @@ exports.getProfitLoss = async (req, res, next) => {
     next(error);
   }
 };
+
+exports.getUiConfig = async (req, res, next) => {
+  try {
+    const [settings] = await pool.query(
+      `SELECT setting_key, setting_value
+       FROM settings
+       WHERE setting_key IN (
+         'min_deposit',
+         'min_withdraw',
+         'max_withdraw_time_minutes',
+         'first_deposit_bonus_percent',
+         'referral_bonus'
+       )`
+    );
+
+    const settingsMap = settings.reduce((accumulator, item) => {
+      accumulator[item.setting_key] = item.setting_value;
+      return accumulator;
+    }, {});
+
+    const minDeposit = Number(settingsMap.min_deposit || 100);
+    const minWithdraw = Number(settingsMap.min_withdraw || 200);
+    const maxWithdrawTimeMinutes = Number(settingsMap.max_withdraw_time_minutes || 45);
+    const firstDepositBonusPercent = Number(settingsMap.first_deposit_bonus_percent || 0);
+    const referralBonus = Number(settingsMap.referral_bonus || 0);
+
+    res.json({
+      settings: {
+        min_deposit: minDeposit,
+        min_withdraw: minWithdraw,
+        max_withdraw_time_minutes: maxWithdrawTimeMinutes,
+        first_deposit_bonus_percent: firstDepositBonusPercent,
+        referral_bonus: referralBonus,
+      },
+      deposit_guidelines: [
+        `Minimum deposit amount is Rs ${minDeposit}.`,
+        'Enter the exact deposited amount and UTR number.',
+        'Pay only to the assigned moderator scanner shown above.',
+        'Upload payment screenshot for faster verification.',
+        'Deposits are credited after moderator or admin approval.',
+      ],
+      withdraw_guidelines: [
+        `Minimum withdrawal amount is Rs ${minWithdraw}.`,
+        'Withdrawals are processed from the main wallet only.',
+        'Bonus wallet balance cannot be withdrawn directly.',
+        'Use only your own verified bank account to avoid account review.',
+        `Expected withdrawal processing time is up to ${maxWithdrawTimeMinutes} minutes.`,
+      ],
+    });
+  } catch (error) {
+    next(error);
+  }
+};

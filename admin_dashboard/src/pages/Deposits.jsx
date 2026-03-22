@@ -1,7 +1,19 @@
 import { useState, useEffect } from 'react';
 import api, { buildUploadUrl } from '../utils/api';
+import { useAuth } from '../context/AuthContext';
+
+function getReviewLabel(deposit) {
+  if (!deposit?.approved_by_role || !deposit?.approved_by_name) {
+    return '-';
+  }
+
+  const roleLabel = deposit.approved_by_role.charAt(0).toUpperCase() + deposit.approved_by_role.slice(1);
+  const prefix = deposit.status === 'rejected' ? 'Rejected by' : 'Approved by';
+  return `${prefix}: ${roleLabel} ${deposit.approved_by_name}`;
+}
 
 export default function Deposits() {
+  const { user } = useAuth();
   const [deposits, setDeposits] = useState([]);
   const [pagination, setPagination] = useState({});
   const [filter, setFilter] = useState('pending');
@@ -72,8 +84,12 @@ export default function Deposits() {
               <th className="text-left px-4 py-3 font-medium text-gray-600">UTR</th>
               <th className="text-center px-4 py-3 font-medium text-gray-600">Screenshot</th>
               <th className="text-center px-4 py-3 font-medium text-gray-600">Status</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">Moderator</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">Approved/Rejected By</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">Reviewed At</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">Reject Reason</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Date</th>
-              {filter === 'pending' && <th className="text-center px-4 py-3 font-medium text-gray-600">Actions</th>}
+              <th className="text-center px-4 py-3 font-medium text-gray-600">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -85,7 +101,7 @@ export default function Deposits() {
                 <td className="px-4 py-3 text-right font-semibold text-green-700">₹{parseFloat(d.amount).toLocaleString()}</td>
                 <td className="px-4 py-3 font-mono text-xs">{d.utr_number}</td>
                 <td className="px-4 py-3 text-center">
-                  {d.screenshot ? (
+                  {(d.receipt_image || d.screenshot) ? (
                     <button
                       type="button"
                       onClick={() => setPreviewDeposit(d)}
@@ -102,17 +118,24 @@ export default function Deposits() {
                       : 'bg-yellow-100 text-yellow-700'
                   }`}>{d.status}</span>
                 </td>
+                <td className="px-4 py-3 text-xs text-gray-600">{d.moderator_name || '-'}</td>
+                <td className="px-4 py-3 text-xs text-gray-600">{getReviewLabel(d)}</td>
+                <td className="px-4 py-3 text-gray-500 text-xs">{d.approved_at ? new Date(d.approved_at).toLocaleString() : '-'}</td>
+                <td className="px-4 py-3 text-xs text-gray-600">{d.reject_reason || '-'}</td>
                 <td className="px-4 py-3 text-gray-500 text-xs">{new Date(d.created_at).toLocaleString()}</td>
-                {filter === 'pending' && (
-                  <td className="px-4 py-3 text-center space-x-2">
+                <td className="px-4 py-3 text-center space-x-2">
+                  {(d.status === 'pending' || (user?.role === 'admin' && d.status === 'rejected')) && (
                     <button onClick={() => approve(d.id)} className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700">Approve</button>
+                  )}
+                  {d.status === 'pending' && (
                     <button onClick={() => reject(d.id)} className="px-3 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700">Reject</button>
-                  </td>
-                )}
+                  )}
+                  {d.status !== 'pending' && !(user?.role === 'admin' && d.status === 'rejected') && '-'}
+                </td>
               </tr>
             ))}
             {deposits.length === 0 && (
-              <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-400">{loading ? 'Loading...' : 'No deposits'}</td></tr>
+              <tr><td colSpan={13} className="px-4 py-8 text-center text-gray-400">{loading ? 'Loading...' : 'No deposits'}</td></tr>
             )}
           </tbody>
         </table>
@@ -126,7 +149,7 @@ export default function Deposits() {
         </div>
       )}
 
-      {previewDeposit?.screenshot && (
+      {(previewDeposit?.receipt_image || previewDeposit?.screenshot) && (
         <div
           className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
           onClick={closePreview}
@@ -153,7 +176,7 @@ export default function Deposits() {
 
             <div className="bg-gray-100 p-4 flex items-center justify-center max-h-[calc(90vh-88px)] overflow-auto">
               <img
-                src={buildUploadUrl(previewDeposit.screenshot)}
+                src={buildUploadUrl(previewDeposit.receipt_image || previewDeposit.screenshot)}
                 alt={`Deposit screenshot for ${previewDeposit.user_name}`}
                 className="max-w-full h-auto rounded-lg shadow"
               />

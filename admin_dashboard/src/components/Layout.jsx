@@ -6,11 +6,16 @@ const navItems = [
   { path: '/', label: 'Dashboard', icon: '📊' },
   { path: '/users', label: 'Users', icon: '👥' },
   { path: '/moderators', label: 'Moderators', icon: '🛡️' },
+  { path: '/moderator-scanners', label: 'Moderator Scanners', icon: '📷' },
+  { path: '/moderator-floats', label: 'Moderator Floats', icon: '🏦' },
+  { path: '/payment-scanner', label: 'Payment Scanner', icon: '📱' },
   { path: '/deposits', label: 'Deposits', icon: '💰' },
   { path: '/withdrawals', label: 'Withdrawals', icon: '🏧' },
   { path: '/games', label: 'Games', icon: '🎮' },
+  { path: '/results', label: 'Results', icon: '🧾' },
   { path: '/analytics', label: 'Analytics', icon: '📈' },
   { path: '/notifications', label: 'Notifications', icon: '🔔' },
+  { path: '/fraud-alerts', label: 'Fraud Alerts', icon: '🚨' },
   { path: '/settings', label: 'Settings', icon: '⚙️' },
 ];
 
@@ -36,10 +41,13 @@ export default function Layout() {
         <nav className="mt-4 px-3 pb-4 flex-1 overflow-y-auto min-h-0">
           {navItems.map((item) => {
             // Filter moderator-only visible items
-            if (user?.role === 'moderator' && ['Moderators', 'Games', 'Settings'].includes(item.label)) {
+            if (user?.role === 'moderator' && ['Moderators', 'Moderator Scanners', 'Moderator Floats', 'Games', 'Results', 'Settings', 'Fraud Alerts'].includes(item.label)) {
               return null;
             }
-            const isActive = location.pathname === item.path;
+            if (user?.role !== 'moderator' && item.label === 'Payment Scanner') {
+              return null;
+            }
+            const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(`${item.path}/`));
             return (
               <Link
                 key={item.path}
@@ -85,7 +93,8 @@ export default function Layout() {
           </button>
 
           <h2 className="text-lg font-semibold text-gray-800">
-            {navItems.find(i => i.path === location.pathname)?.label || 'Dashboard'}
+            {navItems.find((item) => location.pathname === item.path)
+              ?.label || navItems.find((item) => item.path !== '/' && location.pathname.startsWith(`${item.path}/`))?.label || 'Dashboard'}
           </h2>
 
           <div className="text-sm text-gray-500">

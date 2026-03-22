@@ -26,6 +26,7 @@ function StatCard({ title, value, sub, color = 'primary' }) {
 export default function Dashboard() {
   const { user } = useAuth();
   const [stats, setStats] = useState(null);
+  const [adminStats, setAdminStats] = useState(null);
   const [recentBets, setRecentBets] = useState([]);
   const [revenue, setRevenue] = useState(null);
   const [notifications, setNotifications] = useState([]);
@@ -46,14 +47,16 @@ export default function Dashboard() {
       if (user?.role === 'admin') {
         requests.push(api.get('/analytics/revenue?period=7d'));
         requests.push(api.get('/admin/users', { params: { role: 'user', moderator_id: 'unassigned', page: 1, limit: 6 } }));
+        requests.push(api.get('/admin/dashboard-stats'));
       }
 
-      const [dashRes, notificationsRes, revRes, unassignedRes] = await Promise.all(requests);
+      const [dashRes, notificationsRes, revRes, unassignedRes, adminStatsRes] = await Promise.all(requests);
       setStats(dashRes.data.stats || null);
       setRecentBets(Array.isArray(dashRes.data.recent_bets) ? dashRes.data.recent_bets : []);
       setNotifications(Array.isArray(notificationsRes.data.notifications) ? notificationsRes.data.notifications.slice(0, 6) : []);
       setRevenue(revRes?.data || null);
       setUnassignedUsers(Array.isArray(unassignedRes?.data?.users) ? unassignedRes.data.users : []);
+      setAdminStats(adminStatsRes?.data || null);
     } catch (err) {
       console.error('Failed to load dashboard:', err);
     } finally {
@@ -72,6 +75,15 @@ export default function Dashboard() {
         <StatCard title="Withdrawals Today" value={`₹${stats?.withdrawals_today?.total?.toLocaleString() || 0}`} sub={`${stats?.withdrawals_today?.count || 0} transactions`} color="red" />
         <StatCard title="Bets Today" value={`₹${stats?.bets_today?.total?.toLocaleString() || 0}`} sub={`${stats?.bets_today?.count || 0} bets`} color="primary" />
       </div>
+
+      {user?.role === 'admin' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard title="Approved Deposits Today" value={adminStats?.total_deposits_today || 0} color="green" />
+          <StatCard title="Approved Amount Today" value={`₹${Number(adminStats?.total_amount_today || 0).toLocaleString('en-IN')}`} color="blue" />
+          <StatCard title="Fraud Attempts Today" value={adminStats?.fraud_attempts_today || 0} color="red" />
+          <StatCard title="Active Moderators" value={adminStats?.active_moderators || 0} color="purple" />
+        </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard title="Pending Deposits" value={stats?.pending_deposits || 0} color="yellow" />

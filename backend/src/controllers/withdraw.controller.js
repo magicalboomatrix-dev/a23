@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const { recordWalletTransaction } = require('../utils/wallet-ledger');
 
 exports.requestWithdraw = async (req, res, next) => {
   const conn = await pool.getConnection();
@@ -52,21 +53,21 @@ exports.requestWithdraw = async (req, res, next) => {
       });
     }
 
-    // Deduct from wallet immediately (hold)
-    const newBalance = balance - parsedAmount;
-    await conn.query('UPDATE wallets SET balance = ? WHERE user_id = ?', [newBalance, req.user.id]);
-
     // Create withdraw request
     const [result] = await conn.query(
       'INSERT INTO withdraw_requests (user_id, bank_id, amount) VALUES (?, ?, ?)',
       [req.user.id, bank_id, parsedAmount]
     );
 
-    // Record transaction
-    await conn.query(
-      'INSERT INTO wallet_transactions (user_id, type, amount, balance_after, status, reference_id, remark) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [req.user.id, 'withdraw', -parsedAmount, newBalance, 'pending', `withdraw_${result.insertId}`, 'Withdrawal request']
-    );
+    const newBalance = await recordWalletTransaction(conn, {
+      userId: req.user.id,
+      type: 'withdraw',
+      amount: -parsedAmount,
+      status: 'pending',
+      referenceType: 'withdraw',
+      referenceId: `withdraw_${result.insertId}`,
+      remark: 'Withdrawal request',
+    });
 
     await conn.commit();
 
@@ -190,10 +191,6 @@ exports.rejectWithdraw = async (req, res, next) => {
     }
 
     // Refund to wallet
-    const [wallets] = await conn.query('SELECT balance FROM wallets WHERE user_id = ? FOR UPDATE', [requests[0].user_id]);
-    const newBalance = parseFloat(wallets[0].balance) + parseFloat(requests[0].amount);
-    await conn.query('UPDATE wallets SET balance = ? WHERE user_id = ?', [newBalance, requests[0].user_id]);
-
     await conn.query('UPDATE withdraw_requests SET status = ?, reject_reason = ?, approved_by = ? WHERE id = ?',
       ['rejected', reason || 'Rejected', req.user.id, id]);
 
@@ -202,10 +199,14 @@ exports.rejectWithdraw = async (req, res, next) => {
       [`withdraw_${id}`]);
 
     // Refund transaction
-    await conn.query(
-      'INSERT INTO wallet_transactions (user_id, type, amount, balance_after, reference_id, remark) VALUES (?, ?, ?, ?, ?, ?)',
-      [requests[0].user_id, 'refund', requests[0].amount, newBalance, `withdraw_refund_${id}`, `Withdrawal rejected: ${reason || 'N/A'}`]
-    );
+    const newBalance = await recordWalletTransaction(conn, {
+      userId: requests[0].user_id,
+      type: 'adjustment',
+      amount: parseFloat(requests[0].amount),
+      referenceType: 'withdraw',
+      referenceId: `withdraw_refund_${id}`,
+      remark: `Withdrawal rejected: ${reason || 'N/A'}`,
+    });
 
     // Notification
     await conn.query('INSERT INTO notifications (user_id, type, message) VALUES (?, ?, ?)',

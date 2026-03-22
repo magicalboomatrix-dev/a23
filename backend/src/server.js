@@ -16,6 +16,7 @@ const bonusRoutes = require('./routes/bonus.routes');
 const resultRoutes = require('./routes/result.routes');
 const analyticsRoutes = require('./routes/analytics.routes');
 const moderatorRoutes = require('./routes/moderator.routes');
+const moderatorSelfRoutes = require('./routes/moderator-self.routes');
 const adminRoutes = require('./routes/admin.routes');
 const notificationRoutes = require('./routes/notification.routes');
 
@@ -101,11 +102,13 @@ app.use('/api/wallet', walletRoutes);
 app.use('/api/games', gameRoutes);
 app.use('/api/bets', betRoutes);
 app.use('/api/deposits', depositRoutes);
+app.use('/api/deposit', depositRoutes);
 app.use('/api/withdraw', withdrawRoutes);
 app.use('/api/bonus', bonusRoutes);
 app.use('/api/results', resultRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/moderators', moderatorRoutes);
+app.use('/api/moderator', moderatorSelfRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', notificationRoutes);
 

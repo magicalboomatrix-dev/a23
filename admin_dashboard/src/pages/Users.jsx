@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../utils/api';
 
 export default function Users() {
@@ -146,6 +147,12 @@ export default function Users() {
                 </td>
                 <td className="px-4 py-3 text-center">
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
+                    <Link
+                      to={`/users/${u.id}`}
+                      className="px-3 py-1 rounded text-xs font-medium bg-blue-600 text-white hover:bg-blue-700"
+                    >
+                      Details
+                    </Link>
                     <select
                       value={selectedModerators[u.id] || ''}
                       onChange={(e) => setSelectedModerators((current) => ({ ...current, [u.id]: e.target.value }))}

@@ -5,6 +5,7 @@ const { authenticate, authorize } = require('../middleware/auth.middleware');
 const upload = require('../middleware/upload.middleware');
 
 // User routes
+router.get('/scanner', authenticate, depositController.getDepositScanner);
 router.post('/request', authenticate, upload.single('screenshot'), depositController.requestDeposit);
 router.get('/history', authenticate, depositController.getDepositHistory);
 

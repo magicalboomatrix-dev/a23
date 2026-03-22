@@ -53,9 +53,38 @@ async function seed() {
 
   for (const [name, openTime, closeTime] of games) {
     await connection.query(`
-      INSERT IGNORE INTO games (name, open_time, close_time)
-      VALUES (?, ?, ?)
-    `, [name, openTime, closeTime]);
+      INSERT IGNORE INTO games (name, open_time, close_time, result_time)
+      VALUES (?, ?, ?, ?)
+    `, [name, openTime, closeTime, closeTime]);
+  }
+
+  const [gameRows] = await connection.query('SELECT id, name, close_time, result_time FROM games WHERE is_active = 1 ORDER BY id');
+  const today = new Date();
+  const startOfYear = new Date(today.getFullYear(), 0, 1);
+
+  const formatDate = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const buildResultNumber = (gameId, date) => {
+    const dayOfYear = Math.floor((date - new Date(date.getFullYear(), 0, 0)) / 86400000);
+    return String((gameId * 17 + dayOfYear * 13) % 100).padStart(2, '0');
+  };
+
+  for (const game of gameRows) {
+    const declaredTime = game.result_time || game.close_time || '12:00:00';
+
+    for (let cursor = new Date(startOfYear); cursor <= today; cursor.setDate(cursor.getDate() + 1)) {
+      const resultDate = formatDate(cursor);
+      const resultNumber = buildResultNumber(game.id, cursor);
+      await connection.query(`
+        INSERT IGNORE INTO game_results (game_id, result_number, result_date, declared_at)
+        VALUES (?, ?, ?, ?)
+      `, [game.id, resultNumber, resultDate, `${resultDate} ${declaredTime}`]);
+    }
   }
 
   // Seed default settings

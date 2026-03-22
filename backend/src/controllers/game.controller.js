@@ -1,18 +1,33 @@
 const pool = require('../config/database');
+const { recordWalletTransaction } = require('../utils/wallet-ledger');
 
 exports.listGames = async (req, res, next) => {
   try {
     const [games] = await pool.query(`
-      SELECT g.*, gr.result_number, gr.result_date
+      SELECT g.*, gr.result_number, gr.result_date,
+             gry.result_number AS yesterday_result_number,
+             gry.result_date AS yesterday_result_date,
+             CASE
+               WHEN gr.id IS NOT NULL AND COALESCE(g.result_time, g.close_time) <= CURTIME() THEN 1
+               ELSE 0
+             END AS result_visible
       FROM games g
       LEFT JOIN game_results gr ON gr.id = (
         SELECT gr2.id
         FROM game_results gr2
         WHERE gr2.game_id = g.id
           AND gr2.declared_at IS NOT NULL
-          AND gr2.declared_at >= CURDATE()
-          AND gr2.declared_at < CURDATE() + INTERVAL 1 DAY
-        ORDER BY gr2.declared_at DESC
+          AND gr2.result_date = CURDATE()
+        ORDER BY gr2.result_date DESC, gr2.declared_at DESC
+        LIMIT 1
+      )
+      LEFT JOIN game_results gry ON gry.id = (
+        SELECT gr3.id
+        FROM game_results gr3
+        WHERE gr3.game_id = g.id
+          AND gr3.declared_at IS NOT NULL
+          AND gr3.result_date = CURDATE() - INTERVAL 1 DAY
+        ORDER BY gr3.result_date DESC, gr3.declared_at DESC
         LIMIT 1
       )
       WHERE g.is_active = 1
@@ -56,8 +71,8 @@ exports.createGame = async (req, res, next) => {
     }
 
     const [result] = await pool.query(
-      'INSERT INTO games (name, open_time, close_time) VALUES (?, ?, ?)',
-      [name, open_time, close_time]
+      'INSERT INTO games (name, open_time, close_time, result_time) VALUES (?, ?, ?, ?)',
+      [name, open_time, close_time, close_time]
     );
 
     res.status(201).json({ message: 'Game created.', id: result.insertId });
@@ -79,7 +94,12 @@ exports.updateGame = async (req, res, next) => {
 
     if (name !== undefined) { fields.push('name = ?'); values.push(name); }
     if (open_time !== undefined) { fields.push('open_time = ?'); values.push(open_time); }
-    if (close_time !== undefined) { fields.push('close_time = ?'); values.push(close_time); }
+    if (close_time !== undefined) {
+      fields.push('close_time = ?');
+      values.push(close_time);
+      fields.push('result_time = ?');
+      values.push(close_time);
+    }
     if (is_active !== undefined) { fields.push('is_active = ?'); values.push(is_active); }
 
     if (fields.length === 0) {
@@ -192,16 +212,14 @@ exports.declareResult = async (req, res, next) => {
       );
 
       if (totalWin > 0) {
-        // Add winnings to wallet
-        const [wallet] = await conn.query('SELECT balance FROM wallets WHERE user_id = ? FOR UPDATE', [bet.user_id]);
-        const newBalance = parseFloat(wallet[0].balance) + totalWin;
-
-        await conn.query('UPDATE wallets SET balance = ? WHERE user_id = ?', [newBalance, bet.user_id]);
-
-        await conn.query(
-          'INSERT INTO wallet_transactions (user_id, type, amount, balance_after, reference_id, remark) VALUES (?, ?, ?, ?, ?, ?)',
-          [bet.user_id, 'win', totalWin, newBalance, `bet_${betId}`, `Won on ${bet.type} bet`]
-        );
+        await recordWalletTransaction(conn, {
+          userId: bet.user_id,
+          type: 'win',
+          amount: totalWin,
+          referenceType: 'bet',
+          referenceId: `bet_${betId}`,
+          remark: `Won on ${bet.type} bet`,
+        });
 
         // Create notification
         await conn.query(

@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const { recordWalletTransaction } = require('../utils/wallet-ledger');
 
 // Helper to parse MySQL TIME string (handles "HH:MM:SS" or "HH:MM")
 function parseTimeString(timeVal) {
@@ -172,10 +173,6 @@ exports.placeBet = async (req, res, next) => {
       return res.status(400).json({ error: 'Insufficient balance.' });
     }
 
-    // Deduct from wallet
-    const newBalance = currentBalance - totalAmount;
-    await conn.query('UPDATE wallets SET balance = ? WHERE user_id = ?', [newBalance, req.user.id]);
-
     // Create bet
     const [betResult] = await conn.query(
       'INSERT INTO bets (user_id, game_id, type, total_amount) VALUES (?, ?, ?, ?)',
@@ -192,11 +189,14 @@ exports.placeBet = async (req, res, next) => {
       );
     }
 
-    // Record wallet transaction
-    await conn.query(
-      'INSERT INTO wallet_transactions (user_id, type, amount, balance_after, reference_id, remark) VALUES (?, ?, ?, ?, ?, ?)',
-      [req.user.id, 'bet', -totalAmount, newBalance, `bet_${betId}`, `${type} bet on ${game.name}`]
-    );
+    const newBalance = await recordWalletTransaction(conn, {
+      userId: req.user.id,
+      type: 'bet',
+      amount: -totalAmount,
+      referenceType: 'bet',
+      referenceId: `bet_${betId}`,
+      remark: `${type} bet on ${game.name}`,
+    });
 
     await conn.commit();
 
@@ -215,7 +215,7 @@ exports.placeBet = async (req, res, next) => {
 
 exports.getUserBets = async (req, res, next) => {
   try {
-    const { game_id, status, page = 1, limit = 20 } = req.query;
+    const { game_id, status, search, from_date, to_date, page = 1, limit = 20 } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
     let query = `
@@ -233,6 +233,29 @@ exports.getUserBets = async (req, res, next) => {
     if (status) {
       query += ' AND b.status = ?';
       params.push(status);
+    }
+    if (from_date) {
+      query += ' AND DATE(b.created_at) >= ?';
+      params.push(from_date);
+    }
+    if (to_date) {
+      query += ' AND DATE(b.created_at) <= ?';
+      params.push(to_date);
+    }
+    if (search) {
+      query += `
+        AND (
+          g.name LIKE ?
+          OR b.type LIKE ?
+          OR EXISTS (
+            SELECT 1
+            FROM bet_numbers bn_search
+            WHERE bn_search.bet_id = b.id
+              AND bn_search.number LIKE ?
+          )
+        )
+      `;
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
     }
 
     const countQuery = `SELECT COUNT(*) as total FROM (${query}) as countTable`;

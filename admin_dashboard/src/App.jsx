@@ -11,6 +11,13 @@ import Games from './pages/Games';
 import Settings from './pages/Settings';
 import Analytics from './pages/Analytics';
 import Notifications from './pages/Notifications';
+import FraudLogs from './pages/FraudLogs';
+import PaymentScanner from './pages/PaymentScanner';
+import ModeratorDetail from './pages/ModeratorDetail';
+import UserDetail from './pages/UserDetail';
+import ModeratorFloats from './pages/ModeratorFloats';
+import ModeratorScanners from './pages/ModeratorScanners';
+import Results from './pages/Results';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -28,13 +35,21 @@ function AppRoutes() {
       <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index element={<Dashboard />} />
         <Route path="users" element={<Users />} />
+        <Route path="users/:id" element={<UserDetail />} />
         <Route path="moderators" element={<Moderators />} />
+        <Route path="moderators/:id" element={<ModeratorDetail />} />
+        <Route path="moderator-scanners" element={<ModeratorScanners />} />
+        <Route path="moderator-floats" element={<ModeratorFloats />} />
         <Route path="deposits" element={<Deposits />} />
         <Route path="withdrawals" element={<Withdrawals />} />
         <Route path="games" element={<Games />} />
+        <Route path="results" element={<Results />} />
         <Route path="settings" element={<Settings />} />
         <Route path="analytics" element={<Analytics />} />
         <Route path="notifications" element={<Notifications />} />
+        <Route path="payment-scanner" element={<PaymentScanner />} />
+        <Route path="fraud-alerts" element={<FraudLogs />} />
+        <Route path="fraud-logs" element={<FraudLogs />} />
       </Route>
     </Routes>
   );
