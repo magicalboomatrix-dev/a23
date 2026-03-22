@@ -1,0 +1,401 @@
+PROJECT NAME: Betting Management System (Educational Purpose)
+
+GOAL:
+Build a complete full-stack application including:
+
+1. Backend API (Node.js + Express + MySQL)
+2. Admin Dashboard (React + Tailwind CSS)
+3. Role-based system (Admin, Moderator, User)
+4. Game logic (Jodi, Haruf, Crossing)
+5. Wallet system with exposure handling
+6. Deposit & Withdraw system with approval flow
+7. Fraud detection (UTR + bank account)
+8. Bonus & referral system
+9. Analytics dashboard
+
+IMPORTANT:
+
+* User UI is already built (do NOT rebuild it)
+* Only build backend APIs and Admin Dashboard
+* System must be production-grade structured
+* Use clean architecture and modular code
+
+---
+
+## TECH STACK
+
+BACKEND:
+
+* Node.js (Express.js)
+* MySQL (mysql2/promise)
+* JWT authentication
+* MVC or modular architecture
+
+FRONTEND (ADMIN PANEL):
+
+* React (Vite or Next.js)
+* Tailwind CSS
+* Axios for API calls
+* React Query (optional but preferred)
+* Chart.js or Recharts for analytics
+
+---
+
+## ROLES & ACCESS CONTROL
+
+1. ADMIN:
+
+* Full access
+* Create/update/delete moderators
+* Assign users to moderators
+* View ALL users, bets, deposits, withdrawals
+* Configure system settings:
+
+  * payout ratios
+  * betting limits
+  * bonus rules
+  * timing rules
+
+2. MODERATOR:
+
+* Has unique referral code
+* Can view/manage only their users
+* Approve deposits
+* Approve withdrawals (optional with admin override)
+
+3. USER:
+
+* Plays game (UI already built)
+* Has wallet
+* Can deposit, bet, withdraw
+
+---
+
+## DATABASE DESIGN (IMPORTANT)
+
+Tables required:
+
+users
+
+* id
+* name
+* email
+* password
+* role (admin/moderator/user)
+* moderator_id (nullable)
+* referral_code
+* created_at
+
+wallets
+
+* id
+* user_id
+* balance
+* bonus_balance
+
+wallet_transactions
+
+* id
+* user_id
+* type (deposit, bet, win, withdraw, bonus)
+* amount
+* status
+* reference_id
+* created_at
+
+bets
+
+* id
+* user_id
+* game_id
+* type (jodi, haruf, crossing)
+* total_amount
+* status (pending, win, loss)
+* created_at
+
+bet_numbers
+
+* id
+* bet_id
+* number
+* amount
+
+games
+
+* id
+* name (e.g., DISAWAR)
+* open_time
+* close_time
+* result
+
+deposits
+
+* id
+* user_id
+* amount
+* utr_number (unique)
+* screenshot
+* status (pending, approved, rejected)
+
+withdraw_requests
+
+* id
+* user_id
+* bank_id
+* amount
+* status
+* created_at
+
+bank_accounts
+
+* id
+* user_id
+* account_number
+* ifsc
+* bank_name
+* account_holder
+
+bonuses
+
+* id
+* user_id
+* type
+* amount
+* created_at
+
+referrals
+
+* id
+* referrer_id
+* referred_user_id
+* bonus_amount
+
+---
+
+## WALLET LOGIC
+
+Wallet has:
+
+1. balance (real money)
+2. bonus_balance
+3. exposure (calculated, not stored)
+
+Exposure = sum of all active bets
+
+Available Withdrawal = balance - exposure
+
+RULES:
+
+* Bet deducts from balance immediately
+* Exposure increases
+* On result:
+
+  * Win → add winnings to balance
+  * Loss → nothing added
+* Bonus cannot be withdrawn
+
+---
+
+## GAME LOGIC
+
+1. JODI:
+
+* Numbers: 00–99
+* User can select multiple numbers
+* Each number has its own amount
+
+2. HARUF:
+
+* Numbers: 0–9
+* Two modes:
+
+  * Andar
+  * Bahar
+
+3. CROSSING:
+
+* User inputs 1–7 digits
+* Generate combinations:
+
+WITH JODI:
+
+* n × n combinations
+
+WITHOUT JODI:
+
+* n × (n - 1) combinations
+
+Exclude same digits when without jodi:
+
+* 11, 22, etc.
+
+---
+
+## BETTING RULES
+
+* Admin sets payout ratios:
+
+  * jodi
+  * haruf
+  * crossing
+
+* Admin sets time-based max bet:
+  Example:
+
+  * 1 hour before → max ₹100
+  * 30 min before → max ₹50
+
+System must validate before placing bet.
+
+---
+
+## DEPOSIT SYSTEM
+
+* User submits:
+
+  * amount
+  * UTR number
+  * screenshot
+
+RULES:
+
+* UTR must be unique
+* Duplicate UTR:
+
+  * reject
+  * notify admin & moderator
+
+Moderator/Admin:
+
+* approve or reject deposit
+
+On approval:
+
+* add amount to wallet
+
+---
+
+## WITHDRAW SYSTEM
+
+* User submits withdraw request with bank account
+
+VALIDATIONS:
+
+* amount <= available withdrawal
+* bonus not included
+
+Approval:
+
+* moderator or admin
+
+On approval:
+
+* deduct from wallet
+
+Fraud Rule:
+
+* same bank account used by multiple users → flag/block
+
+---
+
+## BONUS SYSTEM
+
+Admin can configure:
+
+* First deposit bonus
+* Slab-based bonus:
+
+  * 2500 → 100
+  * 5000 → 250
+
+Referral bonus system:
+
+* user invites user
+* bonus given
+* track history
+
+---
+
+## ADMIN DASHBOARD FEATURES
+
+1. User Management
+
+2. Moderator Management
+
+3. Deposit Approval Panel
+
+4. Withdraw Approval Panel
+
+5. Game Settings Panel
+
+6. Bonus Settings Panel
+
+7. Analytics Dashboard:
+
+* total bets per number
+* highest bet number
+* lowest bet number
+* numbers with no bets
+* filter by game/type/date
+
+---
+
+## UI REQUIREMENTS (IMPORTANT)
+
+Admin panel must be:
+
+* Professional
+* Minimalistic
+* Premium look
+* Use Tailwind CSS
+* Dark + light support (optional)
+
+Pages:
+
+* Login
+* Dashboard (charts)
+* Users
+* Moderators
+* Deposits
+* Withdrawals
+* Settings
+
+---
+
+## API STRUCTURE
+
+* /auth
+* /users
+* /moderators
+* /wallet
+* /bets
+* /games
+* /deposits
+* /withdraw
+* /bonus
+* /analytics
+
+---
+
+## EXTRA REQUIREMENTS
+
+* Use transactions for wallet operations
+* Prevent race conditions
+* Validate everything on backend
+* Use clean code and modular structure
+* Add comments where needed
+
+---
+
+## FINAL GOAL
+
+Generate a fully working backend + admin dashboard system.
+
+The system must:
+
+* Be complete
+* Be scalable
+* Have no missing core logic
+* Be ready to connect with existing user UI
+
+END OF CONTEXT
