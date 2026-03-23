@@ -20,7 +20,7 @@ const Footer = () => {
     <>
       <div aria-hidden="true" className="mt-10 mb-6 shrink-0" />
       <div className="pointer-events-none fixed bottom-0 left-1/2 z-50 flex w-full max-w-[430px] -translate-x-1/2 justify-center">
-        <div className="pointer-events-auto relative w-full rounded-t-[26px] bg-black px-3  pt-3 shadow-[0_-8px_24px_rgba(0,0,0,0.3)] pb-3 ">
+        <div className="pointer-events-auto relative w-full rounded-t-[26px] bg-black px-3  pt-3 shadow-[0_-8px_24px_rgba(0,0,0,0.3)] ">
           <div className="grid grid-cols-5 items-end">
             <Link href="/my-bets" className={itemClass('/my-bets')}>
               <img src="/images/football.png" alt="My Bets" className="h-4.5 w-4.5 object-contain" />
