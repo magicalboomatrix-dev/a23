@@ -20,7 +20,7 @@ const LoginPage = () => {
             <section>
               <div className="text-center">
                 <img
-                  src="/images/login-img.png"
+                  src="/images/loginimg.png"
                   className="mx-auto w-4/5"
                   alt="Login Illustration"
                 />
