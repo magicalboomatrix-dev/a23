@@ -54,7 +54,7 @@ const ChartPage = () => {
       <div className='mx-auto w-full max-w-[430px] '>
         <div className="bg-[linear-gradient(94deg,#b6842d,#ebda8d_55%,#b7862f)] px-4 py-2.5 text-center text-[#111]"><h2 className="text-sm font-semibold uppercase tracking-[0.08em]"><b>Satta Record Chart {selectedYear}</b></h2></div>
 
-        <div className="border border-t-0 border-[#d6b774] bg-white  shadow-[0_12px_28px_rgba(79,52,10,0.08)]">
+        <div className="border border-t-0 border-[#d6b774] bg-white  shadow-[0_12px_28px_rgba(79,52,10,0.08)] p-3">
          <div className="flex gap-1">
   <select
     className="h-9 flex-1 border border-[#d8d1c4] bg-[#faf7f0] px-2 text-sm font-medium text-[#111] outline-none"
