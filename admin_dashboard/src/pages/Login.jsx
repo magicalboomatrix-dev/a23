@@ -69,10 +69,6 @@ export default function Login() {
           >
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
-
-          <p className="text-xs text-gray-400 mt-4 text-center">
-            Admin: 9999999999 / admin123 &bull; Mod: 8888888888 / mod123
-          </p>
         </form>
       </div>
     </div>
