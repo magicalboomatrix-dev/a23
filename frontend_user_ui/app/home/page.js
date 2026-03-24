@@ -322,15 +322,13 @@ const HomePage = () => {
                   </p>
                 ) : (
                   <div className="mt-2 text-4xl">
-                    <LockBadge size="text-3xl" />
+                    <img src="/images/d.gif" alt="Locked" />
                   </div>
                 )}
 
                 {/* Time */}
                 <p className="mt-2 text-sm font-semibold text-gray-300">
-                  {formatGameTime(
-                    resultItem.result_time || resultItem.close_time,
-                  )}
+                  {formatGameTime(resultItem.close_time)}
                 </p>
               </div>
             ))}
@@ -434,7 +432,9 @@ const HomePage = () => {
                                 <i className="fa fa-gamepad mr-1 text-[#b88422]"></i>
                                 {game.name}
                               </h2>
-                              <span className={`h-2.5 w-2.5 rounded-full ${availability.canPlay ? "bg-[#2bc26b]" : "bg-[#b91c1c]"}`}></span>
+                              <span
+                                className={`h-2.5 w-2.5 rounded-full ${availability.canPlay ? "bg-[#2bc26b]" : "bg-[#b91c1c]"}`}
+                              ></span>
                             </div>
                             <div className="mt-2 text-[11px] font-semibold leading-5 text-[#6b5a3a]">
                               Bet Opening{" "}
@@ -451,13 +451,15 @@ const HomePage = () => {
                         </div>
 
                         <div className="mt-2 grid grid-cols-[1fr_1fr_1.2fr] gap-2">
-                          <div className="bg-[#e6f3ff] px-3 text-center text-sm font-black text-[#11446b]">
+                          <div className="bg-[#e6f3ff] p-2 text-center text-sm font-black text-[#11446b]">
                             {game.yesterday_result_number || "-"}
                           </div>
-                          <div className="bg-[#ffe8ef] px-3 text-center text-sm font-black text-[#8f1841]">
+                          <div className="bg-[#ffe8ef] p-2 text-center text-sm font-black text-[#8f1841]">
                             {getResultForGame(game.name)}
                           </div>
-                          <div className={`flex items-center justify-center px-2 text-center text-[11px] font-black uppercase tracking-widest text-white ${availability.canPlay ? "bg-green-700" : "bg-[#b91c1c]"}`}>
+                          <div
+                            className={`flex items-center justify-center px-2 text-center text-[11px] font-black uppercase tracking-widest text-white ${availability.canPlay ? "bg-green-700" : "bg-[#b91c1c]"}`}
+                          >
                             {availability.canPlay ? (
                               <Link
                                 href={`/game-page?id=${game.id}&name=${encodeURIComponent(game.name)}`}
@@ -498,23 +500,19 @@ const HomePage = () => {
 
       <section className="">
         <div className="overflow-hidden border border-[#e9dcc0] bg-white shadow-[0_18px_34px_rgba(15,23,42,0.08)]">
-            <div className="relative mt-2 mb-2 flex justify-center px-3">
+          <div className="relative mt-2 mb-2 flex justify-center px-3">
+            <h2 className="relative w-full max-w-95 bg-[linear-gradient(94deg,#b6842d,#ebda8d_55%,#b7862f)] px-[clamp(52px,16vw,112px)] py-2 text-center text-xs font-bold text-black sm:text-sm">
+              {/* left angled side */}
+              <span className="absolute top-0 -left-1.5 h-full w-[clamp(20px,6vw,40px)] bg-[linear-gradient(94deg,#b6842d,#ebda8d_55%,#b7862f)] skew-x-[-25deg] sm:-left-2.5"></span>
 
-          <h2 className="relative w-full max-w-95 bg-[linear-gradient(94deg,#b6842d,#ebda8d_55%,#b7862f)] px-[clamp(52px,16vw,112px)] py-2 text-center text-xs font-bold text-black sm:text-sm">
+              {/* right angled side */}
+              <span className="absolute top-0 -right-1.5 h-full w-[clamp(20px,6vw,40px)] bg-[linear-gradient(94deg,#b6842d,#ebda8d_55%,#b7862f)] skew-x-25 sm:-right-2.5"></span>
 
-    {/* left angled side */}
-    <span className="absolute top-0 -left-1.5 h-full w-[clamp(20px,6vw,40px)] bg-[linear-gradient(94deg,#b6842d,#ebda8d_55%,#b7862f)] skew-x-[-25deg] sm:-left-2.5"></span>
-
-    {/* right angled side */}
-    <span className="absolute top-0 -right-1.5 h-full w-[clamp(20px,6vw,40px)] bg-[linear-gradient(94deg,#b6842d,#ebda8d_55%,#b7862f)] skew-x-25 sm:-right-2.5"></span>
-
-    <p className="relative z-10 whitespace-nowrap tracking-wide">
-      SATTA KING RECORD CHART
-    </p>
-
-  </h2>
-
-</div>
+              <p className="relative z-10 whitespace-nowrap tracking-wide">
+                SATTA KING RECORD CHART
+              </p>
+            </h2>
+          </div>
 
           <div className="flex justify-center items-center gap-1">
             <select

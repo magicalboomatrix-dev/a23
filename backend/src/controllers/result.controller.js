@@ -194,39 +194,122 @@ exports.getAdminYearlyResults = async (req, res, next) => {
   }
 };
 
+/**
+ * GET /results/live
+ *
+ * Homepage live-result scheduling logic.
+ * Always returns exactly 2 result slots.
+ *
+ * ── Visibility rules per game ──
+ *
+ *   waiting_start   = close_time − 30 min
+ *   minimum_end     = close_time + 30 min
+ *   extended_end    = next_game.close_time − 30 min   (if next game exists)
+ *   visible_end     = max(minimum_end, extended_end)
+ *
+ *   A game is "visible" when:
+ *     now >= waiting_start  AND  now <= visible_end
+ *
+ * ── Status rules ──
+ *
+ *   status = "waiting"  →  now < close_time   (lock animation)
+ *   status = "result"   →  now >= close_time
+ *
+ *   result_visible = true  only when status == "result" AND result_number exists
+ *
+ * ── Slot selection ──
+ *
+ *   From all currently-visible games pick the first 2 ordered by close_time ASC.
+ *   If fewer than 2 are visible, pad with the nearest upcoming games (waiting).
+ *   If still fewer than 2, pad with the most recently ended games.
+ */
 exports.getLiveResults = async (req, res, next) => {
   try {
-    const [results] = await pool.query(`
-      SELECT g.id AS game_id,
+    // 1. Fetch every active game with today's declared result (if any),
+    //    ordered by close_time so we can compute "next game" windows.
+    const [rows] = await pool.query(`
+      SELECT g.id        AS game_id,
              g.name,
-             g.result_time,
              g.close_time,
-             gr.result_number,
-             gr.result_date,
-             gr.declared_at,
-             CASE
-               WHEN gr.id IS NOT NULL AND COALESCE(g.result_time, g.close_time) <= CURTIME() THEN 1
-               ELSE 0
-             END AS result_visible
+             gr.result_number
       FROM games g
-      LEFT JOIN game_results gr ON gr.id = (
-        SELECT gr2.id
-        FROM game_results gr2
-        WHERE gr2.game_id = g.id
-          AND gr2.declared_at IS NOT NULL
-          AND gr2.result_date = CURDATE()
-        ORDER BY gr2.result_date DESC, gr2.declared_at DESC
-        LIMIT 1
-      )
+      LEFT JOIN game_results gr
+        ON gr.game_id = g.id
+       AND gr.result_date = CURDATE()
+       AND gr.declared_at IS NOT NULL
       WHERE g.is_active = 1
-        AND TIMESTAMP(CURDATE(), COALESCE(g.result_time, g.close_time)) >= NOW() - INTERVAL 30 MINUTE
-        AND (
-          gr.id IS NULL
-          OR gr.declared_at >= NOW() - INTERVAL 30 MINUTE
-        )
-      ORDER BY COALESCE(g.result_time, g.close_time) ASC
-      LIMIT 2
+      ORDER BY g.close_time ASC
     `);
+
+    if (rows.length === 0) {
+      return res.json({ results: [] });
+    }
+
+    // 2. Convert close_time strings into today's Date objects for arithmetic.
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+    const games = rows.map((row) => {
+      const closeDate = new Date(`${todayStr}T${row.close_time}`);
+      return { ...row, closeDate };
+    });
+
+    // 3. Compute visibility window for each game.
+    const THIRTY_MIN = 30 * 60 * 1000;
+
+    const windows = games.map((game, i) => {
+      const waitingStart = new Date(game.closeDate.getTime() - THIRTY_MIN);
+      const minimumEnd   = new Date(game.closeDate.getTime() + THIRTY_MIN);
+
+      // Extended end: stay visible until next game's waiting window starts.
+      let extendedEnd = minimumEnd;
+      if (i + 1 < games.length) {
+        const nextWaitingStart = new Date(games[i + 1].closeDate.getTime() - THIRTY_MIN);
+        if (nextWaitingStart > minimumEnd) {
+          extendedEnd = nextWaitingStart;
+        }
+      }
+      const visibleEnd = new Date(Math.max(minimumEnd.getTime(), extendedEnd.getTime()));
+
+      const isVisible  = now >= waitingStart && now <= visibleEnd;
+      const isWaiting  = now < game.closeDate;
+
+      return {
+        game_id:        game.game_id,
+        name:           game.name,
+        close_time:     game.close_time,
+        result_number:  game.result_number || null,
+        status:         isWaiting ? 'waiting' : 'result',
+        result_visible: !isWaiting && !!game.result_number,
+        isVisible,
+        waitingStart,
+        visibleEnd,
+      };
+    });
+
+    // 4. Pick visible games first (max 2).
+    let selected = windows.filter((w) => w.isVisible).slice(0, 2);
+
+    // 5. If fewer than 2, pad with the nearest upcoming (not yet in window).
+    if (selected.length < 2) {
+      const upcoming = windows
+        .filter((w) => !w.isVisible && w.waitingStart > now)
+        .slice(0, 2 - selected.length);
+      selected = selected.concat(upcoming);
+    }
+
+    // 6. If still fewer than 2, pad with the most recently ended games.
+    if (selected.length < 2) {
+      const past = windows
+        .filter((w) => !w.isVisible && w.visibleEnd < now)
+        .reverse()
+        .slice(0, 2 - selected.length);
+      selected = selected.concat(past);
+    }
+
+    // 7. Strip internal fields before responding.
+    const results = selected.map(({ isVisible, waitingStart, visibleEnd, ...rest }) => rest);
+
     res.json({ results });
   } catch (error) {
     next(error);
