@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Header from "../components/Header";
 import HomeHeroBanner from "../components/HomeHeroBanner";
 import HomeNewLaunch from "../components/HomeNewLaunch";
@@ -19,9 +19,7 @@ function parseTimeParts(timeValue) {
 }
 
 function formatGameTime(timeValue) {
-  if (!timeValue) {
-    return "--:--";
-  }
+  if (!timeValue) return "--:--";
   const { hours, minutes } = parseTimeParts(timeValue);
   const date = new Date();
   date.setHours(hours, minutes, 0, 0);
@@ -98,92 +96,151 @@ function LockBadge({ size = "text-base" }) {
   );
 }
 
+const monthOptions = [
+  { value: "1", label: "January" },
+  { value: "2", label: "February" },
+  { value: "3", label: "March" },
+  { value: "4", label: "April" },
+  { value: "5", label: "May" },
+  { value: "6", label: "June" },
+  { value: "7", label: "July" },
+  { value: "8", label: "August" },
+  { value: "9", label: "September" },
+  { value: "10", label: "October" },
+  { value: "11", label: "November" },
+  { value: "12", label: "December" },
+];
+
+const titleBarClass =
+  "flex items-center justify-between bg-[linear-gradient(94deg,#b6842d,#ebda8d_55%,#b7862f)] px-4 py-1 text-[#1b1403] shadow-[0_8px_18px_rgba(184,132,34,0.18)]";
+const selectClass =
+  "min-w-[132px] border border-[#d8c28f] bg-white px-4 py-2 text-xs font-semibold text-[#312200] outline-none transition focus:border-[#b88422]";
+
 const HomePage = () => {
   const currentYear = new Date().getFullYear();
+  // State
   const [games, setGames] = useState([]);
+  const [gamesLoading, setGamesLoading] = useState(true);
+
   const [liveResults, setLiveResults] = useState([]);
-  const [clock, setClock] = useState("");
+  const [resultsLoading, setResultsLoading] = useState(true);
+
   const [monthlyData, setMonthlyData] = useState(null);
+  const [chartLoading, setChartLoading] = useState(true);
+
   const [selectedMonth, setSelectedMonth] = useState(
     (new Date().getMonth() + 1).toString(),
   );
   const [selectedYear, setSelectedYear] = useState(
     new Date().getFullYear().toString(),
   );
-  const [gamesLoading, setGamesLoading] = useState(true);
-  const [liveLoading, setLiveLoading] = useState(true);
-  const [winnersLoading, setWinnersLoading] = useState(true);
-  const [recentWinners, setRecentWinners] = useState([]);
-  const [toast, setToast] = useState({ message: "", type: "info" });
 
-  const loadGames = async () => {
+  const [recentWinners, setRecentWinners] = useState([]);
+  const [winnersLoading, setWinnersLoading] = useState(true);
+
+  const [toast, setToast] = useState({ message: "", type: "info" });
+  const [clock, setClock] = useState("");
+
+  // For winner carousel
+  const [winnerIndex, setWinnerIndex] = useState(0);
+
+  // Interval refs
+  const resultsIntervalRef = useRef(null);
+  const winnersIntervalRef = useRef(null);
+  const clockIntervalRef = useRef(null);
+
+  // Unmount flag
+  const isMounted = useRef(true);
+
+  // Games: load once
+  const loadGames = useCallback(async () => {
     setGamesLoading(true);
     try {
       const data = await gameAPI.list();
-      setGames(data.games || []);
+      if (!isMounted.current) return;
+      setGames(Array.isArray(data?.games) ? data.games : []);
     } catch (error) {
+      if (!isMounted.current) return;
       setToast({
-        message: error.message || "Failed to load games.",
+        message: error?.message || "Failed to load games.",
         type: "error",
       });
+      setGames([]);
     } finally {
-      setGamesLoading(false);
+      if (isMounted.current) setGamesLoading(false);
     }
-  };
+  }, []);
 
-  const loadLiveResults = async () => {
-    setLiveLoading(true);
+  // Live results: refresh every 30s
+  const loadLiveResults = useCallback(async () => {
+    setResultsLoading(true);
     try {
       const data = await resultAPI.live();
-      setLiveResults(data.results || []);
+      if (!isMounted.current) return;
+      setLiveResults(Array.isArray(data?.results) ? data.results : []);
     } catch (error) {
+      if (!isMounted.current) return;
       setToast({
-        message: error.message || "Failed to load live results.",
+        message: error?.message || "Failed to load live results.",
         type: "error",
       });
       setLiveResults([]);
     } finally {
-      setLiveLoading(false);
+      if (isMounted.current) setResultsLoading(false);
     }
-  };
+  }, []);
 
-  const loadMonthlyChart = async (
-    year = selectedYear,
-    month = selectedMonth,
-  ) => {
-    try {
-      const response = await resultAPI.monthly({ year, month });
-      setMonthlyData(response);
-    } catch (error) {
-      setToast({
-        message: error.message || "Failed to load monthly chart.",
-        type: "error",
-      });
-    }
-  };
+  // Monthly chart: load on month/year change
+  const loadMonthlyChart = useCallback(
+    async (year = selectedYear, month = selectedMonth) => {
+      setChartLoading(true);
+      try {
+        const response = await resultAPI.monthly({ year, month });
+        if (!isMounted.current) return;
+        setMonthlyData(response || {});
+      } catch (error) {
+        if (!isMounted.current) return;
+        setToast({
+          message: error?.message || "Failed to load monthly chart.",
+          type: "error",
+        });
+        setMonthlyData({});
+      } finally {
+        if (isMounted.current) setChartLoading(false);
+      }
+    },
+    [selectedMonth, selectedYear],
+  );
 
-  const loadRecentWinners = async () => {
+  // Winners: refresh every 30s
+  const loadRecentWinners = useCallback(async () => {
     setWinnersLoading(true);
     try {
       const data = await betAPI.recentWinners({ limit: 5 });
-      setRecentWinners(data.winners || []);
+      if (!isMounted.current) return;
+      setRecentWinners(Array.isArray(data?.winners) ? data.winners : []);
     } catch (error) {
+      if (!isMounted.current) return;
       setRecentWinners([]);
       setToast({
-        message: error.message || "Failed to load recent winners.",
+        message: error?.message || "Failed to load recent winners.",
         type: "error",
       });
     } finally {
-      setWinnersLoading(false);
+      if (isMounted.current) setWinnersLoading(false);
     }
-  };
+  }, []);
 
+  // Initial load: games, chart, results, winners
   useEffect(() => {
+    isMounted.current = true;
     loadGames();
     loadLiveResults();
+    loadMonthlyChart(selectedYear, selectedMonth);
     loadRecentWinners();
 
-    const interval = setInterval(() => {
+    // Clock interval
+    clockIntervalRef.current = setInterval(() => {
       setClock(
         new Date().toLocaleString("en-US", {
           year: "numeric",
@@ -197,10 +254,13 @@ const HomePage = () => {
       );
     }, 1000);
 
-    const resultRefreshInterval = setInterval(() => {
-      loadGames();
+    // Results interval
+    resultsIntervalRef.current = setInterval(() => {
       loadLiveResults();
-      loadMonthlyChart();
+    }, 30000);
+
+    // Winners interval
+    winnersIntervalRef.current = setInterval(() => {
       loadRecentWinners();
     }, 30000);
 
@@ -217,65 +277,46 @@ const HomePage = () => {
     );
 
     return () => {
-      clearInterval(interval);
-      clearInterval(resultRefreshInterval);
+      isMounted.current = false;
+      clearInterval(clockIntervalRef.current);
+      clearInterval(resultsIntervalRef.current);
+      clearInterval(winnersIntervalRef.current);
     };
+    // eslint-disable-next-line
   }, []);
 
+  // Chart reload on month/year change
   useEffect(() => {
     loadMonthlyChart(selectedYear, selectedMonth);
-  }, [selectedMonth, selectedYear]);
+  }, [selectedMonth, selectedYear, loadMonthlyChart]);
 
-  const getResultForGame = (gameName) => {
-    const result = liveResults.find((item) => item.name === gameName);
-    if (!result || !result.result_visible || !result.result_number) {
-      return <LockBadge size="text-sm" />;
-    }
-    return result.result_number;
-  };
-
-  const fetchMonthlyChart = async () => {
-    await loadMonthlyChart(selectedYear, selectedMonth);
-  };
-
-  const monthOptions = [
-    { value: "1", label: "January" },
-    { value: "2", label: "February" },
-    { value: "3", label: "March" },
-    { value: "4", label: "April" },
-    { value: "5", label: "May" },
-    { value: "6", label: "June" },
-    { value: "7", label: "July" },
-    { value: "8", label: "August" },
-    { value: "9", label: "September" },
-    { value: "10", label: "October" },
-    { value: "11", label: "November" },
-    { value: "12", label: "December" },
-  ];
-  const yearOptions = Array.from({ length: 3 }, (_, index) =>
-    String(currentYear - 2 + index),
-  );
-  const titleBarClass =
-    "flex items-center justify-between bg-[linear-gradient(94deg,#b6842d,#ebda8d_55%,#b7862f)] px-4 py-1 text-[#1b1403] shadow-[0_8px_18px_rgba(184,132,34,0.18)]";
-  const selectClass =
-    "min-w-[132px] border border-[#d8c28f] bg-white px-4 py-2 text-xs font-semibold text-[#312200] outline-none transition focus:border-[#b88422]";
-
-  const [index, setIndex] = useState(0);
-
+  // Winner carousel
   useEffect(() => {
     if (!recentWinners?.length) return;
-
     const interval = setInterval(() => {
-      setIndex((prev) => (prev + 1) % recentWinners.length);
+      setWinnerIndex((prev) => (prev + 1) % recentWinners.length);
     }, 3000);
-
     return () => clearInterval(interval);
   }, [recentWinners]);
 
-  const winner = recentWinners[index];
+  // Memoized helpers
+  const getResultForGame = useCallback(
+    (gameName) => {
+      const result = liveResults.find((item) => item.name === gameName);
+      if (!result || !result.result_visible || !result.result_number) {
+        return <LockBadge size="text-sm" />;
+      }
+      return result.result_number;
+    },
+    [liveResults],
+  );
 
-  if (!winner) return null;
+  const yearOptions = useMemo(
+    () => Array.from({ length: 3 }, (_, index) => String(currentYear - 2 + index)),
+    [currentYear],
+  );
 
+  // UI always renders
   return (
     <div className="mx-auto w-full max-w-107.5 bg-[#f6f7fa]">
       <Toast
@@ -283,12 +324,10 @@ const HomePage = () => {
         type={toast.type}
         onClose={() => setToast({ message: "", type: "info" })}
       />
-      <Header></Header>
-
-      <DepositWithdrawBtns></DepositWithdrawBtns>
-
-      <HomeHeroBanner></HomeHeroBanner>
-      <HomeNewLaunch></HomeNewLaunch>
+      <Header />
+      <DepositWithdrawBtns />
+      <HomeHeroBanner />
+      <HomeNewLaunch />
 
       <section className="bg-black text-white text-center py-4">
         {/* Clock */}
@@ -297,25 +336,22 @@ const HomePage = () => {
             {clock}
           </span>
         </div>
-
         {/* Hindi text */}
         <p className="mt-2 text-lg font-semibold text-white">
           हा भाई यही आती हे सबसे पहले खबर रूको और देखो
         </p>
-
         {/* Results */}
         <div className="mt-6 space-y-8">
-          {!liveLoading &&
-            liveResults.map((resultItem, index) => (
+          {!resultsLoading &&
+            (liveResults ?? []).map((resultItem, idx) => (
               <div
-                key={`${resultItem.game_id || resultItem.name}-${index}`}
+                key={`${resultItem.game_id || resultItem.name}-${idx}`}
                 className="flex flex-col items-center"
               >
                 {/* Game Name */}
                 <p className="text-3xl font-bold tracking-wide">
                   {resultItem.name}
                 </p>
-
                 {/* Result */}
                 {resultItem.result_visible && resultItem.result_number ? (
                   <p className="mt-2 text-5xl font-extrabold text-gray-200">
@@ -326,7 +362,6 @@ const HomePage = () => {
                     <img src="/images/d.gif" alt="Locked" />
                   </div>
                 )}
-
                 {/* Time */}
                 <p className="mt-2 text-sm font-semibold text-gray-300">
                   {formatGameTime(resultItem.close_time)}
@@ -338,13 +373,12 @@ const HomePage = () => {
 
       <CustomAds />
 
-      {/* 
+      {/* Winners Section */}
       <section className="border border-[#e9dcc0] bg-white shadow-[0_18px_34px_rgba(15,23,42,0.08)] p-3">
         <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.14em] text-[#1f1500]">
           <span>🏆</span>
           <span>Recent Winners</span>
         </div>
-
         {winnersLoading && (
           <div className="mt-2 space-y-2">
             {[1, 2, 3].map((item) => (
@@ -352,30 +386,28 @@ const HomePage = () => {
             ))}
           </div>
         )}
-
         {!winnersLoading && recentWinners.length > 0 && (
           <div className="mt-2 space-y-2">
             <div
-              key={`${winner.bet_id}-${winner.created_at}`}
+              key={`${recentWinners[winnerIndex]?.bet_id}-${recentWinners[winnerIndex]?.created_at}`}
               className="flex items-center justify-between border border-[#ead8ab] bg-[#fff8e7] px-3 py-2 text-xs"
             >
               <span className="font-semibold text-[#2f2410]">
-                {winner.user_name} won
+                {recentWinners[winnerIndex]?.user_name} won
               </span>
-
               <span className="font-black text-[#b88422]">
-                ₹{Number(winner.win_amount || 0).toLocaleString("en-IN")}
+                ₹{Number(recentWinners[winnerIndex]?.win_amount || 0).toLocaleString("en-IN")}
               </span>
             </div>
           </div>
         )}
-
         {!winnersLoading && recentWinners.length === 0 && (
           <p className="mt-2 text-xs text-[#6b5a3a]">No winners yet.</p>
         )}
-      </section> */}
+      </section>
 
-      <section className="">
+      {/* In Play Section */}
+      <section>
         <div className="overflow-hidden border border-[#e9dcc0] bg-white shadow-[0_18px_34px_rgba(15,23,42,0.08)]">
           <div className={titleBarClass}>
             <div className="flex items-center gap-2 text-sm text-white font-bold uppercase tracking-[0.16em]">
@@ -387,8 +419,7 @@ const HomePage = () => {
               Live
             </span>
           </div>
-
-          <div className="">
+          <div>
             <div className="grid grid-cols-3 gap-2 bg-[#fff8e7] text-[10px] font-black uppercase tracking-widest text-[#674600]">
               <div className="px-3 py-2 text-center">Yesterday</div>
               <div className="bg-[#111] px-3 py-2 text-center text-[#ffd26a]">
@@ -396,7 +427,6 @@ const HomePage = () => {
               </div>
               <div className="px-3 py-2 text-center">Play Now</div>
             </div>
-
             <div>
               {gamesLoading && (
                 <div className="p-2 space-y-2">
@@ -412,87 +442,82 @@ const HomePage = () => {
                   ))}
                 </div>
               )}
-
               {!gamesLoading &&
-                games.map((game) =>
-                  (() => {
-                    const availability = getGameAvailability(game, new Date());
-                    return (
-                      <div
-                        className="border border-[#efe1c6] bg-[#fffdfa] p-2"
-                        key={game.id}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="flex h-12 w-12 items-center justify-center overflow-hidden border border-[#ead2a1] bg-[#fff2cd]">
-                            <img
-                              alt="icon"
-                              src="/images/dic.jpg"
-                              className="h-full w-full object-cover"
-                            />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <h2 className="text-sm font-black uppercase tracking-[0.06em] text-[#181818]">
-                                <i className="fa fa-gamepad mr-1 text-[#b88422]"></i>
-                                {game.name}
-                              </h2>
-                              <span
-                                className={`h-2.5 w-2.5 rounded-full ${availability.canPlay ? "bg-green-700 animate-pulse" : "bg-[#b91c1c]"}`}
-                              ></span>
-                            </div>
-                            <div className="mt-2 text-[11px] font-semibold leading-5 text-[#6b5a3a]">
-                              Bet Opening{" "}
-                              <span className="bg-[#fff2cd] px-2 py-1 text-[#2f2410]">
-                                {game.open_time?.substring(0, 5)}
-                              </span>
-                              <span className="mx-1"></span>
-                              Bet Closing{" "}
-                              <span className="bg-[#ffe4e4] px-2 py-1 text-[#6d1f1f]">
-                                {game.close_time?.substring(0, 5)}
-                              </span>
-                            </div>
-                          </div>
+                (games ?? []).map((game) => {
+                  const availability = getGameAvailability(game, new Date());
+                  return (
+                    <div
+                      className="border border-[#efe1c6] bg-[#fffdfa] p-2"
+                      key={game.id}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-12 w-12 items-center justify-center overflow-hidden border border-[#ead2a1] bg-[#fff2cd]">
+                          <img
+                            alt="icon"
+                            src="/images/dic.jpg"
+                            className="h-full w-full object-cover"
+                          />
                         </div>
-
-                        <div className="mt-2 grid grid-cols-[1fr_1fr_1.2fr] gap-2">
-                          <div className="bg-[#e6f3ff] p-2 text-center text-sm font-black text-[#11446b]">
-                            {game.yesterday_result_number || "-"}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <h2 className="text-sm font-black uppercase tracking-[0.06em] text-[#181818]">
+                              <i className="fa fa-gamepad mr-1 text-[#b88422]"></i>
+                              {game.name}
+                            </h2>
+                            <span
+                              className={`h-2.5 w-2.5 rounded-full ${availability.canPlay ? "bg-green-700 animate-pulse" : "bg-[#b91c1c]"}`}
+                            ></span>
                           </div>
-                          <div className="bg-[#ffe8ef] bg-black/40 backdrop-blur-[1px] p-2 text-center text-sm font-black text-[#8f1841]">
-                            {getResultForGame(game.name)}
-                          </div>
-                          <div
-                            className={`flex items-center justify-center px-2 text-center text-[11px] font-black uppercase tracking-widest text-white ${availability.canPlay ? "bg-green-700" : "bg-[#b91c1c]"}`}
-                          >
-                            {availability.canPlay ? (
-                              <Link
-                                href={`/game-page?id=${game.id}&name=${encodeURIComponent(game.name)}`}
-                                className="inline-flex w-full items-center justify-center gap-2 text-[#ffd26a]"
-                              >
-                                <span>Play Now</span>
-                                <img
-                                  src="/images/play-btn.png"
-                                  className="h-4 w-4 object-contain"
-                                  alt="Play"
-                                />
-                              </Link>
-                            ) : (
-                              <div className="inline-flex min-w-full items-center justify-center opacity-70 gap-1">
-                                <i
-                                  className="fa fa-lock"
-                                  aria-hidden="true"
-                                ></i>
-                                <span>{availability.label}</span>
-                              </div>
-                            )}
+                          <div className="mt-2 text-[11px] font-semibold leading-5 text-[#6b5a3a]">
+                            Bet Opening{" "}
+                            <span className="bg-[#fff2cd] px-2 py-1 text-[#2f2410]">
+                              {game.open_time?.substring(0, 5)}
+                            </span>
+                            <span className="mx-1"></span>
+                            Bet Closing{" "}
+                            <span className="bg-[#ffe4e4] px-2 py-1 text-[#6d1f1f]">
+                              {game.close_time?.substring(0, 5)}
+                            </span>
                           </div>
                         </div>
                       </div>
-                    );
-                  })(),
-                )}
-
-              {!gamesLoading && games.length === 0 && (
+                      <div className="mt-2 grid grid-cols-[1fr_1fr_1.2fr] gap-2">
+                        <div className="bg-[#e6f3ff] p-2 text-center text-sm font-black text-[#11446b]">
+                          {game.yesterday_result_number || "-"}
+                        </div>
+                        <div className="bg-[#ffe8ef] bg-black/40 backdrop-blur-[1px] p-2 text-center text-sm font-black text-[#8f1841]">
+                          {getResultForGame(game.name)}
+                        </div>
+                        <div
+                          className={`flex items-center justify-center px-2 text-center text-[11px] font-black uppercase tracking-widest text-white ${availability.canPlay ? "bg-green-700" : "bg-[#b91c1c]"}`}
+                        >
+                          {availability.canPlay ? (
+                            <Link
+                              href={`/game-page?id=${game.id}&name=${encodeURIComponent(game.name)}`}
+                              className="inline-flex w-full items-center justify-center gap-2 text-[#ffd26a]"
+                            >
+                              <span>Play Now</span>
+                              <img
+                                src="/images/play-btn.png"
+                                className="h-4 w-4 object-contain"
+                                alt="Play"
+                              />
+                            </Link>
+                          ) : (
+                            <div className="inline-flex min-w-full items-center justify-center opacity-70 gap-1">
+                              <i
+                                className="fa fa-lock"
+                                aria-hidden="true"
+                              ></i>
+                              <span>{availability.label}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              {!gamesLoading && (games ?? []).length === 0 && (
                 <p className="py-5 text-center text-sm font-medium text-[#666]">
                   No games available.
                 </p>
@@ -502,22 +527,20 @@ const HomePage = () => {
         </div>
       </section>
 
-      <section className="">
+      {/* Chart Section */}
+      <section>
         <div className="overflow-hidden border border-[#e9dcc0] bg-white shadow-[0_18px_34px_rgba(15,23,42,0.08)]">
           <div className="relative mt-2 mb-2 flex justify-center px-3">
             <h2 className="relative w-full max-w-95 bg-[linear-gradient(94deg,#b6842d,#ebda8d_55%,#b7862f)] px-[clamp(52px,16vw,112px)] py-2 text-center text-xs font-bold text-black sm:text-sm">
               {/* left angled side */}
               <span className="absolute top-0 -left-1.5 h-full w-[clamp(20px,6vw,40px)] bg-[linear-gradient(94deg,#b6842d,#ebda8d_55%,#b7862f)] skew-x-[-25deg] sm:-left-2.5"></span>
-
               {/* right angled side */}
               <span className="absolute top-0 -right-1.5 h-full w-[clamp(20px,6vw,40px)] bg-[linear-gradient(94deg,#b6842d,#ebda8d_55%,#b7862f)] skew-x-25 sm:-right-2.5"></span>
-
               <p className="relative z-10 whitespace-nowrap tracking-wide">
                 SATTA KING RECORD CHART
               </p>
             </h2>
           </div>
-
           <div className="flex justify-center items-center gap-1">
             <select
               className={selectClass}
@@ -544,14 +567,14 @@ const HomePage = () => {
             <button
               className="bg-[#111] px-5 py-2 text-xs font-black uppercase tracking-[0.12em] text-[#ffd26a] transition hover:opacity-90"
               type="button"
-              onClick={fetchMonthlyChart}
+              onClick={() => loadMonthlyChart(selectedYear, selectedMonth)}
+              disabled={chartLoading}
             >
               Check <span className="arw">→</span>
             </button>
           </div>
-
           {(() => {
-            const allNames = games.map((g) => g.name);
+            const allNames = (games ?? []).map((g) => g.name);
             const half = Math.ceil(allNames.length / 2);
             const firstHalf = allNames.slice(0, half);
             const secondHalf = allNames.slice(half);
