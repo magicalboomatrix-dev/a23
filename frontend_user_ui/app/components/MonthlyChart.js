@@ -145,7 +145,7 @@ const MonthlyChart = ({ data, gameNames: providedGameNames = [] }) => {
                   {gameNames.map((g) => (
                     <td
                       key={g}
-                      className="border border-[#d6b774] px-3 py-2 text-gray-400 w-32"
+                      className="border border-[#d6b774] px-3 py-2 text-black w-32"
                     >
                       {renderChartCell(dateMap[date]?.[g])}
                     </td>

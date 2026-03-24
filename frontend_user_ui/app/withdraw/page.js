@@ -198,7 +198,7 @@ const WithDrawPage = () => {
             )}
 
             <div className="mt-3 flex gap-2">
-              <Link className="inline-flex flex-1 items-center justify-center gap-2 bg-[#111] px-4 py-3 text-sm font-semibold text-white" href="/bind-bank-card">
+              <Link className="inline-flex flex-1 border border-[#d8d1c4] items-center justify-center gap-2 bg-[#ffffff] px-4 py-3 text-sm font-semibold text-[#111]" href="/bind-bank-card">
                 <img alt="Add Bank" className="h-4 w-4" src="/images/addicon.png" /> Add Bank Account
               </Link>
               <Link className="inline-flex flex-1 items-center justify-center border border-[#d8d1c4] bg-white px-4 py-3 text-sm font-semibold text-[#111]" href="/bank-accounts">

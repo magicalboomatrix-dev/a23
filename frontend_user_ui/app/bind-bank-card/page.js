@@ -67,7 +67,7 @@ const BindBankCard = () => {
               <label className="mb-1 block text-sm font-medium text-[#111]" htmlFor="bank-name">Bank Name</label>
               <input className="h-11 w-full border border-[#d8d1c4] bg-[#faf7f0] px-4 text-sm" id="bank-name" placeholder="Please enter Bank Name (e.g., HDFC, SBI)" type="text" value={bankName} onChange={e => setBankName(e.target.value)} />
                     </div>
-            <button className="h-11 w-full bg-[#111] text-sm font-semibold text-white" type="submit" disabled={loading}>{loading ? 'Saving...' : 'Commit'}</button>
+            <button className="h-11 w-full bg-[#111] text-sm font-semibold text-white" type="submit" disabled={loading}>{loading ? 'Saving...' : 'Save'}</button>
                 </form>
             <p className="mt-4 text-sm leading-relaxed text-[#6d6659]">
                     Please check the information carefully before submission. If transfer issues

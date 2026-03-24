@@ -132,7 +132,7 @@ const YearlyChart = ({ data, year, selectedGameName = "" }) => {
                   {months.map((_, monthIndex) => (
                     <td
                       key={monthIndex}
-                      className="border border-[#d6b774] px-3 py-2 text-gray-400 w-20"
+                      className="border border-[#d6b774] px-3 py-2 text-black w-20"
                     >
                       {renderYearlyCell(
                         lookup[`${day}-${monthIndex + 1}`]

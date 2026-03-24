@@ -124,7 +124,7 @@ export default function BankAccountsPage() {
       </header>
 
       <div className="px-4 pt-4">
-        <Link href="/bind-bank-card" className="inline-flex w-full items-center justify-center gap-2 bg-[#111] px-4 py-3 text-sm font-semibold text-white">
+        <Link href="/bind-bank-card" className="inline-flex w-full items-center border border-[#d8d1c4] justify-center gap-2 bg-[#fff] px-4 py-3 text-sm font-semibold text-[#111]">
           <img alt="Add Bank" className="h-4 w-4" src="/images/addicon.png" /> Add Bank Account
         </Link>
 
@@ -144,7 +144,7 @@ export default function BankAccountsPage() {
         )}
 
         {!loading && hasAccounts && (
-          <div className="mt-4 overflow-hidden border border-[#ead8ab] bg-white shadow-[0_12px_28px_rgba(79,52,10,0.08)]">
+          <div className="mt-4 overflow-hidden border border-[#ead8ab] bg-white">
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-left text-xs text-[#111]">
                 <thead>
@@ -153,22 +153,22 @@ export default function BankAccountsPage() {
                     <th className="border-b border-r border-[#ead8ab] bg-[#f7f0e3] px-3 py-2">Account Holder</th>
                     <th className="border-b border-r border-[#ead8ab] bg-[#f7f0e3] px-3 py-2">Account Number</th>
                     <th className="border-b border-r border-[#ead8ab] bg-[#f7f0e3] px-3 py-2">IFSC</th>
-                    <th className="border-b bg-[#f7f0e3] px-3 py-2">Actions</th>
+                    <th className="border-b border-[#ead8ab] bg-[#f7f0e3] px-3 py-2">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {accounts.map((account) => (
                     <tr key={account.id}>
-                      <td className="border-b border-r border-[#f0e3c6] px-3 py-2">
+                      <td className="border-r border-[#f0e3c6] px-3 py-2">
                         <div className="flex items-center gap-2">
                           <span>{account.bank_name}</span>
                           {Number(account.is_default) === 1 && <span className="text-[#b88422]">★</span>}
                         </div>
                       </td>
-                      <td className="border-b border-r border-[#f0e3c6] px-3 py-2">{account.account_holder}</td>
-                      <td className="border-b border-r border-[#f0e3c6] px-3 py-2">{account.account_number}</td>
-                      <td className="border-b border-r border-[#f0e3c6] px-3 py-2">{account.ifsc}</td>
-                      <td className="border-b px-3 py-2">
+                      <td className="border-r border-[#f0e3c6] px-3 py-2">{account.account_holder}</td>
+                      <td className="border-r border-[#f0e3c6] px-3 py-2">{account.account_number}</td>
+                      <td className="border-r border-[#f0e3c6] px-3 py-2">{account.ifsc}</td>
+                      <td className="px-3 py-2">
                         <div className="flex gap-2">
                           <button type="button" className="bg-[#111] px-3 py-1 text-[11px] font-semibold text-white" onClick={() => startEdit(account)}>Edit</button>
                           <button type="button" className="bg-[#b88422] px-3 py-1 text-[11px] font-semibold text-white" onClick={() => setDefaultAccount(account)}>Set Default</button>
