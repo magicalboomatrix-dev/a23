@@ -57,3 +57,40 @@ select:-webkit-autofill:focus {
   box-shadow: 0 0 0px 1000px #ffffff inset;
   transition: background-color 9999s ease-in-out 0s;
 }
+
+.notice-marquee {
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.notice-marquee-track {
+  display: inline-flex;
+  align-items: center;
+  width: max-content;
+  animation: notice-marquee-scroll 24s linear infinite;
+}
+
+.notice-marquee-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 1rem;
+  flex: none;
+  white-space: nowrap;
+  padding-right: 3rem;
+}
+
+.notice-marquee-text {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+@keyframes notice-marquee-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+

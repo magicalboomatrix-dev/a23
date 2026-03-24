@@ -2,7 +2,7 @@ const pool = require('../config/database');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { sendOtpSms } = require('../utils/sms');
-const { normalizePhone } = require('../utils/phone');
+const { getPhoneCandidates, toE164Phone } = require('../utils/phone');
 
 const MAX_MPIN_ATTEMPTS = 5;
 const MPIN_BLOCK_MINUTES = 30;
@@ -18,14 +18,14 @@ function generateOTP() {
 // Check if a user exists and whether MPIN is set
 exports.checkUser = async (req, res, next) => {
   try {
-    const phone = normalizePhone(req.body.phone);
-    if (!phone) {
-      return res.status(400).json({ error: 'Valid phone number with country code required.' });
+    const phoneCandidates = getPhoneCandidates(req.body.phone);
+    if (phoneCandidates.length === 0) {
+      return res.status(400).json({ error: 'Enter a valid phone number.' });
     }
 
     const [users] = await pool.query(
-      'SELECT id, mpin_enabled, is_blocked FROM users WHERE phone = ? AND role = ?',
-      [phone, 'user']
+      'SELECT id, mpin_enabled, is_blocked FROM users WHERE phone IN (?) AND role = ? LIMIT 1',
+      [phoneCandidates, 'user']
     );
 
     if (users.length === 0) {
@@ -45,10 +45,11 @@ exports.checkUser = async (req, res, next) => {
 // Send OTP — only for new registration or MPIN reset
 exports.sendOTP = async (req, res, next) => {
   try {
-    const phone = normalizePhone(req.body.phone);
+    const phoneCandidates = getPhoneCandidates(req.body.phone);
+    const e164Phone = toE164Phone(req.body.phone);
     const { purpose } = req.body;
-    if (!phone) {
-      return res.status(400).json({ error: 'Valid phone number with country code required.' });
+    if (phoneCandidates.length === 0) {
+      return res.status(400).json({ error: 'Enter a valid phone number.' });
     }
 
     // Validate purpose
@@ -58,25 +59,27 @@ exports.sendOTP = async (req, res, next) => {
 
     // For registration, ensure user doesn't already exist
     if (purpose === 'register') {
-      const [existing] = await pool.query('SELECT id FROM users WHERE phone = ?', [phone]);
+      const [existing] = await pool.query('SELECT id FROM users WHERE phone IN (?) LIMIT 1', [phoneCandidates]);
       if (existing.length > 0) {
         return res.status(400).json({ error: 'User already exists. Please login with MPIN.' });
       }
     }
 
     // For reset_mpin, ensure user exists
+    let otpPhone = e164Phone || phoneCandidates[0];
     if (purpose === 'reset_mpin') {
-      const [existing] = await pool.query('SELECT id, is_blocked FROM users WHERE phone = ?', [phone]);
+      const [existing] = await pool.query('SELECT id, phone, is_blocked FROM users WHERE phone IN (?) LIMIT 1', [phoneCandidates]);
       if (existing.length === 0) {
         return res.status(400).json({ error: 'User not found.' });
       }
       if (existing[0].is_blocked) {
         return res.status(403).json({ error: 'Your account has been blocked. Contact support.' });
       }
+      otpPhone = existing[0].phone;
     }
 
     // Invalidate previous OTPs
-    await pool.query('UPDATE otps SET is_used = 1 WHERE phone = ? AND is_used = 0', [phone]);
+    await pool.query('UPDATE otps SET is_used = 1 WHERE phone IN (?) AND is_used = 0', [phoneCandidates]);
 
     const otp = generateOTP();
     const otpExpiryMinutes = parseInt(process.env.OTP_EXPIRY_MINUTES) || 5;
@@ -84,11 +87,11 @@ exports.sendOTP = async (req, res, next) => {
 
     const [insertResult] = await pool.query(
       'INSERT INTO otps (phone, purpose, otp, expires_at) VALUES (?, ?, ?, ?)',
-      [phone, purpose, otp, expiresAt]
+      [otpPhone, purpose, otp, expiresAt]
     );
 
     try {
-      await sendOtpSms({ phone, otp, purpose, expiryMinutes: otpExpiryMinutes });
+      await sendOtpSms({ phone: e164Phone || otpPhone, otp, purpose, expiryMinutes: otpExpiryMinutes });
     } catch (smsError) {
       await pool.query('UPDATE otps SET is_used = 1 WHERE id = ?', [insertResult.insertId]);
       throw smsError;
@@ -103,9 +106,9 @@ exports.sendOTP = async (req, res, next) => {
 // Verify OTP — for new user registration or MPIN reset
 exports.verifyOTP = async (req, res, next) => {
   try {
-    const phone = normalizePhone(req.body.phone);
+    const phoneCandidates = getPhoneCandidates(req.body.phone);
     const { otp, purpose } = req.body;
-    if (!phone || !otp) {
+    if (phoneCandidates.length === 0 || !otp) {
       return res.status(400).json({ error: 'Phone and OTP are required.' });
     }
     if (!['register', 'reset_mpin'].includes(purpose)) {
@@ -113,8 +116,8 @@ exports.verifyOTP = async (req, res, next) => {
     }
 
     const [otpRecords] = await pool.query(
-      'SELECT * FROM otps WHERE phone = ? AND purpose = ? AND otp = ? AND is_used = 0 AND expires_at > NOW() ORDER BY id DESC LIMIT 1',
-      [phone, purpose, otp]
+      'SELECT * FROM otps WHERE phone IN (?) AND purpose = ? AND otp = ? AND is_used = 0 AND expires_at > NOW() ORDER BY id DESC LIMIT 1',
+      [phoneCandidates, purpose, otp]
     );
 
     if (otpRecords.length === 0) {
@@ -126,12 +129,13 @@ exports.verifyOTP = async (req, res, next) => {
 
     if (purpose === 'register') {
       // New user — return temp token for profile completion + MPIN setup
-      const [existing] = await pool.query('SELECT id FROM users WHERE phone = ?', [phone]);
+      const verifiedPhone = otpRecords[0].phone;
+      const [existing] = await pool.query('SELECT id FROM users WHERE phone = ?', [verifiedPhone]);
       if (existing.length > 0) {
         return res.status(400).json({ error: 'User already exists.' });
       }
 
-      const tempToken = jwt.sign({ phone, purpose: 'profile_completion' }, process.env.JWT_SECRET, {
+      const tempToken = jwt.sign({ phone: verifiedPhone, purpose: 'profile_completion' }, process.env.JWT_SECRET, {
         expiresIn: '15m'
       });
       return res.json({ message: 'OTP verified. Complete your profile.', tempToken, isNewUser: true });
@@ -139,7 +143,8 @@ exports.verifyOTP = async (req, res, next) => {
 
     if (purpose === 'reset_mpin') {
       // Existing user — return temp token for MPIN reset
-      const [users] = await pool.query('SELECT id, is_blocked FROM users WHERE phone = ?', [phone]);
+      const verifiedPhone = otpRecords[0].phone;
+      const [users] = await pool.query('SELECT id, is_blocked FROM users WHERE phone = ?', [verifiedPhone]);
       if (users.length === 0) {
         return res.status(400).json({ error: 'User not found.' });
       }
@@ -323,19 +328,19 @@ exports.resetMpin = async (req, res, next) => {
 // Login with MPIN — primary login for existing users
 exports.loginMpin = async (req, res, next) => {
   try {
-    const phone = normalizePhone(req.body.phone);
+    const phoneCandidates = getPhoneCandidates(req.body.phone);
     const { mpin } = req.body;
 
-    if (!phone) {
-      return res.status(400).json({ error: 'Valid phone number with country code required.' });
+    if (phoneCandidates.length === 0) {
+      return res.status(400).json({ error: 'Enter a valid phone number.' });
     }
     if (!mpin || !/^\d{4}$/.test(mpin)) {
       return res.status(400).json({ error: 'MPIN must be exactly 4 digits.' });
     }
 
     const [users] = await pool.query(
-      'SELECT id, name, phone, role, mpin_hash, mpin_enabled, mpin_attempts, mpin_blocked_until, is_blocked FROM users WHERE phone = ? AND role = ?',
-      [phone, 'user']
+      'SELECT id, name, phone, role, mpin_hash, mpin_enabled, mpin_attempts, mpin_blocked_until, is_blocked FROM users WHERE phone IN (?) AND role = ? LIMIT 1',
+      [phoneCandidates, 'user']
     );
 
     if (users.length === 0) {
@@ -405,13 +410,17 @@ exports.loginMpin = async (req, res, next) => {
 exports.adminLogin = async (req, res, next) => {
   try {
     const { phone, password } = req.body;
+    const phoneCandidates = getPhoneCandidates(phone);
     if (!phone || !password) {
       return res.status(400).json({ error: 'Phone and password are required.' });
     }
+    if (phoneCandidates.length === 0) {
+      return res.status(400).json({ error: 'Enter a valid phone number.' });
+    }
 
     const [users] = await pool.query(
-      'SELECT id, name, phone, password, role FROM users WHERE phone = ? AND role IN (?, ?)',
-      [phone, 'admin', 'moderator']
+      'SELECT id, name, phone, password, role FROM users WHERE phone IN (?) AND role IN (?, ?) LIMIT 1',
+      [phoneCandidates, 'admin', 'moderator']
     );
 
     if (users.length === 0) {

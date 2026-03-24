@@ -44,11 +44,25 @@ const HomeNewLaunch = () => {
 
   return (
     <div className="mx-auto w-full max-w-[430px] ">
-      <div className="overflow-hidden border border-[#d6b774] bg-white shadow-[0_12px_28px_rgba(79,52,10,0.08)]">
-        <div className="">
-          <div className="bg-[linear-gradient(94deg,#b6842d,#ebda8d_55%,#b7862f)] px-4 py-2.5 text-center text-[#111]">
-            <h2 className="text-sm font-semibold uppercase tracking-[0.08em]"><b>New Launch</b></h2>
-          </div>
+      <div className="overflow-hidden bg-white ">
+        <div>
+          <div className="relative mt-1 flex justify-center px-3">
+
+        <h2 className="relative w-full max-w-[380px] bg-[linear-gradient(94deg,#b6842d,#ebda8d_55%,#b7862f)] px-[clamp(52px,16vw,112px)] py-2 text-center text-xs font-bold text-black sm:text-sm">
+
+    {/* left angled side */}
+    <span className="absolute top-0 -left-[6px] h-full w-[clamp(20px,6vw,40px)] bg-[linear-gradient(94deg,#b6842d,#ebda8d_55%,#b7862f)] skew-x-[-25deg] sm:-left-[10px]"></span>
+
+    {/* right angled side */}
+    <span className="absolute top-0 -right-[6px] h-full w-[clamp(20px,6vw,40px)] bg-[linear-gradient(94deg,#b6842d,#ebda8d_55%,#b7862f)] skew-x-[25deg] sm:-right-[10px]"></span>
+
+    <p className="relative z-10 whitespace-nowrap tracking-wide">
+      NEW LAUNCH
+    </p>
+
+  </h2>
+
+</div>
           <div className="relative flex items-center">
             <div className="flex w-full">
               {visibleSlides.map((slide, idx) => (

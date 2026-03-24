@@ -5,5 +5,8 @@ const { authenticate } = require('../middleware/auth.middleware');
 
 router.post('/place', authenticate, betController.placeBet);
 router.get('/my-bets', authenticate, betController.getUserBets);
+router.get('/history', authenticate, betController.getUserBets);
+router.get('/number-stats/:gameId', authenticate, betController.getNumberStats);
+router.get('/recent-winners', authenticate, betController.getRecentWinners);
 
 module.exports = router;

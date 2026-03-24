@@ -5,7 +5,12 @@ exports.requestWithdraw = async (req, res, next) => {
   const conn = await pool.getConnection();
   try {
     const { bank_id, bank_account_id, amount } = req.body;
-    const resolvedBankId = bank_id || bank_account_id;
+    let resolvedBankId = bank_id || bank_account_id;
+
+    if (!resolvedBankId) {
+      const [users] = await conn.query('SELECT default_bank_account_id FROM users WHERE id = ? LIMIT 1', [req.user.id]);
+      resolvedBankId = users[0]?.default_bank_account_id || null;
+    }
 
     if (!resolvedBankId || !amount) {
       return res.status(400).json({ error: 'Bank account and amount are required.' });

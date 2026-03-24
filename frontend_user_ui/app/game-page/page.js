@@ -1,10 +1,53 @@
 'use client'
-import React, { useState, useCallback, Suspense } from 'react'
+import React, { useState, useCallback, Suspense, useEffect, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useRouter } from 'next/navigation'
 import Header from '../components/Header'
-import { betAPI } from '../lib/api'
+import SkeletonBlock from '../components/SkeletonBlock'
+import { betAPI, gameAPI } from '../lib/api'
 import { formatBetType } from '../lib/formatters'
+
+function parseTimeString(timeValue) {
+  const parts = String(timeValue || '').split(':').map(Number)
+  return { hours: parts[0] || 0, minutes: parts[1] || 0 }
+}
+
+function resolveGameWindow(openTimeValue, closeTimeValue, referenceDate = new Date()) {
+  const openParsed = parseTimeString(openTimeValue)
+  const closeParsed = parseTimeString(closeTimeValue)
+  const isOvernight = closeParsed.hours < openParsed.hours ||
+    (closeParsed.hours === openParsed.hours && closeParsed.minutes < openParsed.minutes)
+
+  const openTime = new Date(referenceDate)
+  openTime.setHours(openParsed.hours, openParsed.minutes, 0, 0)
+
+  const closeTime = new Date(referenceDate)
+  closeTime.setHours(closeParsed.hours, closeParsed.minutes, 0, 0)
+
+  if (isOvernight) {
+    if (referenceDate.getHours() > closeParsed.hours ||
+        (referenceDate.getHours() === closeParsed.hours && referenceDate.getMinutes() >= closeParsed.minutes)) {
+      openTime.setDate(openTime.getDate() - 1)
+    } else {
+      closeTime.setDate(closeTime.getDate() + 1)
+    }
+  }
+
+  return { openTime, closeTime }
+}
+
+function formatRemainingTime(totalMs) {
+  if (totalMs <= 0) return '00:00'
+  const seconds = Math.floor(totalMs / 1000)
+  const minutes = Math.floor(seconds / 60)
+  const remSeconds = seconds % 60
+  const hours = Math.floor(minutes / 60)
+  const remMinutes = minutes % 60
+  if (hours > 0) {
+    return `${String(hours).padStart(2, '0')}:${String(remMinutes).padStart(2, '0')}:${String(remSeconds).padStart(2, '0')}`
+  }
+  return `${String(remMinutes).padStart(2, '0')}:${String(remSeconds).padStart(2, '0')}`
+}
 
 function GamePageInner() {
   const router = useRouter();
@@ -33,6 +76,103 @@ function GamePageInner() {
   const [crossAmount, setCrossAmount] = useState('');
   const [crossIncludeJodi, setCrossIncludeJodi] = useState(true); 
   const [crossCombos, setCrossCombos] = useState([]);
+  const [gameInfo, setGameInfo] = useState(null)
+  const [countdown, setCountdown] = useState('00:00')
+  const [bettingClosed, setBettingClosed] = useState(false)
+  const [serverOffsetMs, setServerOffsetMs] = useState(0)
+  const [statsLoading, setStatsLoading] = useState(true)
+  const [numberStats, setNumberStats] = useState([])
+  const [favorites, setFavorites] = useState([])
+
+  const favoritesStorageKey = useMemo(() => `favoriteNumbers_${gameId || 'global'}`, [gameId])
+
+  useEffect(() => {
+    if (!gameId) return
+
+    let cancelled = false
+
+    const loadGameInfo = async () => {
+      try {
+        const response = await gameAPI.getInfo(gameId)
+        if (cancelled) return
+        setGameInfo(response.game || null)
+        if (response.server_now) {
+          setServerOffsetMs(new Date(response.server_now).getTime() - Date.now())
+        }
+      } catch {
+        if (!cancelled) {
+          setGameInfo(null)
+        }
+      }
+    }
+
+    const loadNumberStats = async () => {
+      setStatsLoading(true)
+      try {
+        const response = await betAPI.numberStats(gameId, {})
+        if (cancelled) return
+        const sorted = (response.stats || []).sort((a, b) => Number(b.percentage || 0) - Number(a.percentage || 0)).slice(0, 10)
+        setNumberStats(sorted)
+      } catch {
+        if (!cancelled) {
+          setNumberStats([])
+        }
+      } finally {
+        if (!cancelled) setStatsLoading(false)
+      }
+    }
+
+    loadGameInfo()
+    loadNumberStats()
+    const refreshInterval = window.setInterval(loadNumberStats, 30000)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(refreshInterval)
+    }
+  }, [gameId])
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(favoritesStorageKey)
+      const parsed = raw ? JSON.parse(raw) : []
+      setFavorites(Array.isArray(parsed) ? parsed.map((value) => String(value).padStart(2, '0')) : [])
+    } catch {
+      setFavorites([])
+    }
+  }, [favoritesStorageKey])
+
+  useEffect(() => {
+    if (!gameInfo?.open_time || !gameInfo?.close_time) {
+      setCountdown('00:00')
+      setBettingClosed(false)
+      return
+    }
+
+    const tick = () => {
+      const serverNow = new Date(Date.now() + serverOffsetMs)
+      const { closeTime } = resolveGameWindow(gameInfo.open_time, gameInfo.close_time, serverNow)
+      const remainingMs = closeTime.getTime() - serverNow.getTime()
+      setCountdown(formatRemainingTime(remainingMs))
+      setBettingClosed(remainingMs <= 0)
+    }
+
+    tick()
+    const timer = window.setInterval(tick, 1000)
+    return () => window.clearInterval(timer)
+  }, [gameInfo, serverOffsetMs])
+
+  const toggleFavorite = (numberValue) => {
+    const normalized = String(numberValue).padStart(2, '0')
+    setFavorites((current) => {
+      const next = current.includes(normalized)
+        ? current.filter((value) => value !== normalized)
+        : [...current, normalized]
+
+      localStorage.setItem(favoritesStorageKey, JSON.stringify(next))
+      return next
+    })
+  }
 
   const jodiNumbers = Array.from({length: 100}, (_, i) => String(i).padStart(2, '0'));
   const harufDigits = ['0','1','2','3','4','5','6','7','8','9'];
@@ -44,6 +184,7 @@ function GamePageInner() {
 
   // --- Jodi Logic ---
   const openPopup = (num) => {
+    if (bettingClosed) return
     setActiveSlot(num);
     setAmount(savedAmounts[num] || "");
     setShowPopup(true);
@@ -67,6 +208,7 @@ function GamePageInner() {
 
   // --- Haruf Logic ---
   const openHarufPopup = (digit, type) => {
+    if (bettingClosed) return
     setHarufSlot(digit);
     setHarufType(type);
     const existing = type === 'andar' ? harufAndar[digit] : harufBahar[digit];
@@ -96,6 +238,7 @@ function GamePageInner() {
 
   // --- Crossing Logic ---
   const generateCrossCombos = () => {
+    if (bettingClosed) return
     const raw = crossDigits.replace(/\D/g, '').slice(0, 7); 
     const amt = parseInt(crossAmount);
     if (!raw || raw.length < 2 || !amt) return;
@@ -125,6 +268,10 @@ function GamePageInner() {
 
   const placeBet = async () => {
     if (!gameId) return;
+    if (bettingClosed) {
+      setError('Betting Closed');
+      return;
+    }
     setError('');
     setSuccess('');
     const totalAmount = getTotal();
@@ -187,7 +334,7 @@ function GamePageInner() {
   const cardBoxClass = (isActive) => `cursor-pointer border px-2 py-3 text-center transition ${isActive ? 'border-[#b88422] bg-[#fff5d9] shadow-[0_8px_18px_rgba(184,132,34,0.18)]' : 'border-[#ddd] bg-white hover:border-[#d5b163]'}`;
 
   return (
-    <div className="relative mx-auto w-full max-w-[430px] bg-[#f6f7fa] pb-28">
+    <div className="relative mx-auto w-full max-w-107.5 bg-[#f6f7fa] pb-28">
       <Header />
       <section className="">
         <div className="bg-[linear-gradient(94deg,#b6842d,#ebda8d_55%,#b7862f)] px-4 py-3 text-center shadow-[0_12px_24px_rgba(184,132,34,0.22)]">
@@ -195,6 +342,52 @@ function GamePageInner() {
         </div>
         {error && <div className="mt-2 text-center text-sm font-semibold text-[#b91c1c]">{error}</div>}
         {success && <div className="mt-2 text-center text-sm font-semibold text-[#15803d]">{success}</div>}
+
+        <div className="mt-2 border border-[#eadcc0] bg-white p-3 text-center shadow-[0_10px_20px_rgba(15,23,42,0.08)]">
+          <div className="text-[11px] font-black uppercase tracking-[0.14em] text-[#6b5a3a]">Game closes in</div>
+          <div className={`mt-1 text-xl font-black ${bettingClosed ? 'text-[#b91c1c]' : 'text-[#111]'}`}>
+            {bettingClosed ? 'Betting Closed' : countdown}
+          </div>
+        </div>
+
+        <div className="mt-2 border border-[#eadcc0] bg-white p-3 shadow-[0_10px_20px_rgba(15,23,42,0.08)]">
+          <div className="text-[11px] font-black uppercase tracking-[0.14em] text-[#6b5a3a]">Last Results</div>
+          <div className="mt-2 flex gap-2 overflow-x-auto">
+            {(gameInfo?.results || []).slice(0, 10).map((resultItem, index) => (
+              <span key={`${resultItem.result_number}-${index}`} className="shrink-0 border border-[#ead2a1] bg-[#fff2cd] px-3 py-1 text-sm font-black text-[#2f2410]">
+                {String(resultItem.result_number || '--').padStart(2, '0')}
+              </span>
+            ))}
+            {(gameInfo?.results || []).length === 0 && <span className="text-xs text-[#6b5a3a]">No recent results.</span>}
+          </div>
+        </div>
+
+        <div className="mt-2 border border-[#eadcc0] bg-white p-3 shadow-[0_10px_20px_rgba(15,23,42,0.08)]">
+          <div className="text-[11px] font-black uppercase tracking-[0.14em] text-[#6b5a3a]">Live Betting Statistics</div>
+          {statsLoading && (
+            <div className="mt-2 space-y-2">
+              {[1, 2, 3].map((item) => (
+                <SkeletonBlock key={item} className="h-5 w-full" />
+              ))}
+            </div>
+          )}
+          {!statsLoading && numberStats.length > 0 && (
+            <div className="mt-2 space-y-2">
+              {numberStats.map((stat) => (
+                <div key={stat.number}>
+                  <div className="mb-1 flex items-center justify-between text-xs font-semibold text-[#2f2410]">
+                    <span>{stat.number}</span>
+                    <span>{stat.percentage}%</span>
+                  </div>
+                  <div className="h-2 bg-[#f5e3bc]">
+                    <div className="h-2 bg-[#b88422]" style={{ width: `${Math.min(100, Number(stat.percentage || 0))}%` }}></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {!statsLoading && numberStats.length === 0 && <div className="mt-2 text-xs text-[#6b5a3a]">No live stats available yet.</div>}
+        </div>
 
         <div className="mt-4 overflow-hidden border border-[#eadcc0] bg-white shadow-[0_18px_34px_rgba(15,23,42,0.08)]">
           <div className="flex gap-2 border-b border-[#f1e7d3] bg-[#fff8e7] p-2">
@@ -204,10 +397,40 @@ function GamePageInner() {
           </div>
 
           <div className={activeTab === 'tab-1' ? 'block' : 'hidden'}>
+            {favorites.length > 0 && (
+              <div className="px-4 pt-4">
+                <div className="mb-2 text-xs font-black uppercase tracking-[0.14em] text-[#6b5a3a]">Favorite Numbers</div>
+                <div className="flex flex-wrap gap-2">
+                  {favorites.map((numberValue) => (
+                    <button
+                      type="button"
+                      key={numberValue}
+                      className="border border-[#b88422] bg-[#fff5d9] px-3 py-1 text-xs font-bold text-[#2f2410]"
+                      onClick={() => !bettingClosed && openPopup(numberValue)}
+                    >
+                      ★ {numberValue}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-5 gap-2 p-4">
                 {jodiNumbers.map((num) => (
-                  <div key={num} className={cardBoxClass(Boolean(savedAmounts[num]))} onClick={() => openPopup(num)}>
-                    <div className="text-sm font-semibold text-[#111]">{num}</div>
+                  <div key={num} className={`${cardBoxClass(Boolean(savedAmounts[num]))} ${bettingClosed ? 'opacity-60 cursor-not-allowed' : ''}`} onClick={() => openPopup(num)}>
+                    <div className="flex items-center justify-between gap-1">
+                      <div className="text-sm font-semibold text-[#111]">{num}</div>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          toggleFavorite(num)
+                        }}
+                        className={`text-xs ${favorites.includes(num) ? 'text-[#b88422]' : 'text-[#9ca3af]'}`}
+                        aria-label={`Toggle favorite for ${num}`}
+                      >
+                        <i className={`fa ${favorites.includes(num) ? 'fa-star' : 'fa-star-o'}`}></i>
+                      </button>
+                    </div>
                     {savedAmounts[num] && <div className="mt-1 text-[10px] font-bold text-[#d62828]">₹{savedAmounts[num]}</div>}
                   </div>
                 ))}
@@ -258,10 +481,10 @@ function GamePageInner() {
                 
                 <div className="mb-3 mt-3 flex items-center gap-2">
                   <input type="checkbox" id="cj" checked={crossIncludeJodi} onChange={() => setCrossIncludeJodi(!crossIncludeJodi)} />
-                  <label htmlFor="cj" className="font-bold text-[#000]">with jodi</label>
+                  <label htmlFor="cj" className="font-bold text-black">with jodi</label>
                 </div>
 
-                <button type="button" onClick={generateCrossCombos} className={primaryButtonClass}>Generate Crossing</button>
+                <button type="button" onClick={generateCrossCombos} className={primaryButtonClass} disabled={bettingClosed}>Generate Crossing</button>
 
                 {crossCombos.length > 0 && (
                   <div className="mt-5 overflow-hidden bg-black">
@@ -269,7 +492,7 @@ function GamePageInner() {
                       <span>No.</span>
                       <span>Value</span>
                     </div>
-                    <div className="max-h-[350px] overflow-y-auto">
+                    <div className="max-h-87.5 overflow-y-auto">
                       {crossCombos.map((item, index) => (
                         <div key={index} className="flex justify-between border-b border-[#333] px-5 py-3 font-bold text-white">
                           <span>{item.number}</span>
@@ -286,11 +509,11 @@ function GamePageInner() {
 
       {/* RESTORED POPUP DESIGN (JODI) */}
       {showPopup && (
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm" onClick={() => setShowPopup(false)}>
+        <div className="fixed inset-0 z-99999 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm" onClick={() => setShowPopup(false)}>
           <div className="w-full max-w-[320px] bg-white p-6 shadow-[0_20px_40px_rgba(0,0,0,0.2)]" onClick={(e) => e.stopPropagation()}>
             <div className="mb-4 text-center">
                <span className="text-[14px] uppercase tracking-[0.12em] text-[#666]">Set Price for</span>
-               <h2 className="mt-1 text-[28px] font-bold text-[#000]">Number {activeSlot}</h2>
+               <h2 className="mt-1 text-[28px] font-bold text-black">Number {activeSlot}</h2>
             </div>
             <form onSubmit={saveAmount}>
               <input autoFocus type="text" inputMode="numeric" value={amount} onChange={(e) => handleNumericInput(e.target.value, setAmount)} placeholder="0" className={inputClass} />
@@ -306,11 +529,11 @@ function GamePageInner() {
 
       {/* RESTORED POPUP DESIGN (HARUF) */}
       {harufPopup && (
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm" onClick={() => setHarufPopup(false)}>
+        <div className="fixed inset-0 z-99999 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm" onClick={() => setHarufPopup(false)}>
           <div className="w-full max-w-[320px] bg-white p-6 shadow-[0_20px_40px_rgba(0,0,0,0.2)]" onClick={(e) => e.stopPropagation()}>
             <div className="mb-4 text-center">
                <span className="text-[14px] uppercase tracking-[0.12em] text-[#666]">{harufType} Side</span>
-               <h2 className="mt-1 text-[28px] font-bold text-[#000]">Digit {harufSlot}</h2>
+               <h2 className="mt-1 text-[28px] font-bold text-black">Digit {harufSlot}</h2>
             </div>
             <form onSubmit={saveHaruf}>
               <input autoFocus type="text" inputMode="numeric" value={amount} onChange={(e) => handleNumericInput(e.target.value, setAmount)} placeholder="0" className={inputClass} />
@@ -324,9 +547,9 @@ function GamePageInner() {
         </div>
       )}
 
-      <div className="fixed bottom-0 left-1/2 z-30 flex w-full max-w-[430px] -translate-x-1/2 items-center justify-between border-t border-[#eee] bg-white  shadow-[0_-10px_24px_rgba(15,23,42,0.08)]">
+        <div className="fixed bottom-0 left-1/2 z-30 flex w-full max-w-107.5 -translate-x-1/2 items-center justify-between border-t border-[#eee] bg-white  shadow-[0_-10px_24px_rgba(15,23,42,0.08)]">
           <div className="bg-black px-5 py-3 font-bold text-white">Total: ₹{getTotal()}</div>
-          <button onClick={placeBet} disabled={loading} className="bg-black px-7 py-3 font-bold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60">{loading ? '...' : 'PLAY'}</button>
+          <button onClick={placeBet} disabled={loading || bettingClosed} className="bg-black px-7 py-3 font-bold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60">{bettingClosed ? 'Betting Closed' : (loading ? '...' : 'PLAY')}</button>
       </div>
     </div>
   )

@@ -41,6 +41,13 @@ function generateCrossingNumbers(digit1, digit2) {
   return nums;
 }
 
+function maskWinnerName(name) {
+  const safe = String(name || '').trim();
+  if (!safe) return 'User****';
+  if (safe.length <= 2) return `${safe.charAt(0)}****`;
+  return `${safe.slice(0, Math.min(4, safe.length))}****`;
+}
+
 exports.placeBet = async (req, res, next) => {
   const conn = await pool.getConnection();
   try {
@@ -281,6 +288,90 @@ exports.getUserBets = async (req, res, next) => {
         totalPages: Math.ceil(countResult[0].total / parseInt(limit)),
       }
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getNumberStats = async (req, res, next) => {
+  try {
+    const gameId = parseInt(req.params.gameId, 10);
+    const targetDate = req.query.date || new Date().toISOString().slice(0, 10);
+
+    if (!gameId) {
+      return res.status(400).json({ error: 'Valid game id is required.' });
+    }
+
+    const [statsRows] = await pool.query(
+      `SELECT bn.number,
+              COUNT(*) AS total_bets,
+              COUNT(DISTINCT b.user_id) AS total_users,
+              COALESCE(SUM(bn.amount), 0) AS total_staked
+       FROM bet_numbers bn
+       JOIN bets b ON b.id = bn.bet_id
+       WHERE b.game_id = ?
+         AND DATE(b.created_at) = ?
+       GROUP BY bn.number
+       ORDER BY bn.number ASC`,
+      [gameId, targetDate]
+    );
+
+    const totalStaked = statsRows.reduce((sum, row) => sum + parseFloat(row.total_staked || 0), 0);
+    const stats = statsRows.map((row) => {
+      const stake = parseFloat(row.total_staked || 0);
+      const percentage = totalStaked > 0 ? Number(((stake / totalStaked) * 100).toFixed(2)) : 0;
+      return {
+        number: String(row.number).padStart(2, '0'),
+        total_bets: Number(row.total_bets || 0),
+        total_users: Number(row.total_users || 0),
+        total_staked: stake,
+        percentage,
+      };
+    });
+
+    res.json({
+      game_id: gameId,
+      date: targetDate,
+      total_staked: totalStaked,
+      stats,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getRecentWinners = async (req, res, next) => {
+  try {
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 5, 1), 20);
+    const [rows] = await pool.query(
+      `SELECT b.id,
+              b.user_id,
+              u.name,
+              g.name AS game_name,
+              b.win_amount,
+              b.type,
+              b.created_at
+       FROM bets b
+       JOIN users u ON u.id = b.user_id
+       JOIN games g ON g.id = b.game_id
+       WHERE b.status = 'win'
+         AND b.win_amount > 0
+       ORDER BY b.updated_at DESC, b.id DESC
+       LIMIT ?`,
+      [limit]
+    );
+
+    const winners = rows.map((row) => ({
+      bet_id: row.id,
+      user_id: row.user_id,
+      user_name: maskWinnerName(row.name),
+      game_name: row.game_name,
+      type: row.type,
+      win_amount: parseFloat(row.win_amount || 0),
+      created_at: row.created_at,
+    }));
+
+    res.json({ winners });
   } catch (error) {
     next(error);
   }

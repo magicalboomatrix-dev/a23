@@ -102,6 +102,16 @@ export default function BankAccountsPage() {
     }
   }
 
+  const setDefaultAccount = async (account) => {
+    try {
+      await bankAccountAPI.setDefault(account.id)
+      setAccounts((current) => current.map((item) => ({ ...item, is_default: Number(item.id) === Number(account.id) ? 1 : 0 })))
+      setToast({ message: 'Default bank account updated.', type: 'success' })
+    } catch (error) {
+      setToast({ message: error.message || 'Failed to set default bank account.', type: 'error' })
+    }
+  }
+
   return (
     <div className="mx-auto min-h-screen w-full max-w-107.5 bg-white pb-6">
       <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: 'info' })} />
@@ -149,13 +159,19 @@ export default function BankAccountsPage() {
                 <tbody>
                   {accounts.map((account) => (
                     <tr key={account.id}>
-                      <td className="border-b border-r border-[#f0e3c6] px-3 py-2">{account.bank_name}</td>
+                      <td className="border-b border-r border-[#f0e3c6] px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <span>{account.bank_name}</span>
+                          {Number(account.is_default) === 1 && <span className="text-[#b88422]">★</span>}
+                        </div>
+                      </td>
                       <td className="border-b border-r border-[#f0e3c6] px-3 py-2">{account.account_holder}</td>
                       <td className="border-b border-r border-[#f0e3c6] px-3 py-2">{account.account_number}</td>
                       <td className="border-b border-r border-[#f0e3c6] px-3 py-2">{account.ifsc}</td>
                       <td className="border-b px-3 py-2">
                         <div className="flex gap-2">
                           <button type="button" className="bg-[#111] px-3 py-1 text-[11px] font-semibold text-white" onClick={() => startEdit(account)}>Edit</button>
+                          <button type="button" className="bg-[#b88422] px-3 py-1 text-[11px] font-semibold text-white" onClick={() => setDefaultAccount(account)}>Set Default</button>
                           <button type="button" className="bg-[#b91c1c] px-3 py-1 text-[11px] font-semibold text-white" onClick={() => removeAccount(account)}>Delete</button>
                         </div>
                       </td>

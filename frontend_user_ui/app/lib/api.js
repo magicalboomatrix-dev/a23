@@ -65,6 +65,7 @@ export const userAPI = {
   getBankAccounts: () => request('/users/bank-accounts'),
   addBankAccount: (data) => request('/users/bank-accounts', { method: 'POST', body: JSON.stringify(data) }),
   updateBankAccount: (id, data) => request(`/users/bank-accounts/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  setDefaultBankAccount: (id) => request(`/users/bank-accounts/${id}/default`, { method: 'PUT' }),
   deleteBankAccount: (id) => request(`/users/bank-accounts/${id}`, { method: 'DELETE' }),
   getAccountStatement: (params) => request(`/users/account-statement?${new URLSearchParams(params)}`),
   getProfitLoss: (params) => request(`/users/profit-loss?${new URLSearchParams(params)}`),
@@ -75,6 +76,7 @@ export const bankAccountAPI = {
   list: () => request('/bank-accounts'),
   create: (data) => request('/bank-accounts', { method: 'POST', body: JSON.stringify(data) }),
   update: (id, data) => request(`/bank-accounts/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  setDefault: (id) => request(`/bank-accounts/${id}/default`, { method: 'PUT' }),
   remove: (id) => request(`/bank-accounts/${id}`, { method: 'DELETE' }),
 };
 
@@ -93,6 +95,9 @@ export const gameAPI = {
 export const betAPI = {
   place: (data) => request('/bets/place', { method: 'POST', body: JSON.stringify(data) }),
   myBets: (params) => request(`/bets/my-bets?${new URLSearchParams(params)}`),
+  history: (params) => request(`/bets/history?${new URLSearchParams(params)}`),
+  numberStats: (gameId, params = {}) => request(`/bets/number-stats/${gameId}?${new URLSearchParams(params)}`),
+  recentWinners: (params = {}) => request(`/bets/recent-winners?${new URLSearchParams(params)}`),
 };
 
 // Deposits

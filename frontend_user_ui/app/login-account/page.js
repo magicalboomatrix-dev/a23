@@ -29,7 +29,7 @@ function sanitizePhoneInput(rawValue) {
 }
 
 function isValidPhone(phoneValue) {
-  return /^\+[1-9]\d{7,14}$/.test(phoneValue);
+  return /^\+[1-9]\d{7,14}$/.test(phoneValue) || /^\d{10}$/.test(phoneValue) || /^91\d{10}$/.test(phoneValue);
 }
 
 function PinInput({ length, value, onChange, autoFocus }) {
@@ -115,7 +115,7 @@ const LoginAccountPage = () => {
   // Step 1: Check user after phone entry
   const handleCheckUser = async () => {
     if (!isValidPhone(phone)) {
-      setError('Enter a valid phone number with country code');
+      setError('Enter a valid phone number');
       return;
     }
     setError('');
@@ -316,7 +316,7 @@ const LoginAccountPage = () => {
 
   const getSubtitle = () => {
     switch (step) {
-      case STEPS.PHONE: return 'Enter your phone number with country code to continue.';
+      case STEPS.PHONE: return 'Enter your phone number to continue.';
       case STEPS.OTP:
         return authFlow === 'firstMpinSetup'
           ? `Verify ${phone} once to create your MPIN.`
@@ -386,7 +386,7 @@ const LoginAccountPage = () => {
                     <label className={labelClass}>Mobile Number</label>
                     <input
                       className={inputClass}
-                      placeholder="Enter phone number, e.g. +919876543210"
+                      placeholder="Enter phone number, e.g. 9876543210 or +919876543210"
                       type="tel"
                       inputMode="tel"
                       maxLength={16}

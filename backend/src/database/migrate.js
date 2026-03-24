@@ -34,6 +34,7 @@ async function migrate() {
       qr_code_image VARCHAR(255),
       scanner_label VARCHAR(100),
       scanner_enabled TINYINT(1) DEFAULT 1,
+      default_bank_account_id INT DEFAULT NULL,
       is_blocked TINYINT(1) DEFAULT 0,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -66,6 +67,12 @@ async function migrate() {
   try {
     await connection.query(`ALTER TABLE users ADD COLUMN scanner_enabled TINYINT(1) DEFAULT 1 AFTER scanner_label`);
   } catch (e) { /* column already exists */ }
+  try {
+    await connection.query(`ALTER TABLE users ADD COLUMN default_bank_account_id INT DEFAULT NULL AFTER scanner_enabled`);
+  } catch (e) { /* column already exists */ }
+  try {
+    await connection.query('CREATE INDEX idx_default_bank_account ON users (default_bank_account_id)');
+  } catch (e) { /* index already exists */ }
   try {
     await connection.query(`ALTER TABLE users MODIFY COLUMN phone VARCHAR(20) NOT NULL`);
   } catch (e) { /* column already updated */ }
@@ -151,6 +158,44 @@ async function migrate() {
     END
     WHERE reference_type IS NULL
   `);
+
+  const [[walletTxBackfillProbe]] = await connection.query(
+    `SELECT COUNT(*) AS invalid_count
+     FROM wallet_transactions
+     WHERE amount <> 0 AND balance_after = 0`
+  );
+
+  if (Number(walletTxBackfillProbe?.invalid_count || 0) > 0) {
+    const [usersWithWalletTx] = await connection.query(
+      `SELECT DISTINCT wt.user_id, COALESCE(w.balance, 0) AS current_balance
+       FROM wallet_transactions wt
+       LEFT JOIN wallets w ON w.user_id = wt.user_id`
+    );
+
+    for (const userWallet of usersWithWalletTx) {
+      const userId = Number(userWallet.user_id);
+      let runningBalance = parseFloat(userWallet.current_balance || 0);
+
+      const [userTransactions] = await connection.query(
+        `SELECT id, amount
+         FROM wallet_transactions
+         WHERE user_id = ?
+         ORDER BY created_at DESC, id DESC`,
+        [userId]
+      );
+
+      for (const walletTransaction of userTransactions) {
+        const transactionAmount = parseFloat(walletTransaction.amount || 0);
+        await connection.query(
+          'UPDATE wallet_transactions SET balance_after = ? WHERE id = ?',
+          [runningBalance, walletTransaction.id]
+        );
+        runningBalance -= transactionAmount;
+      }
+    }
+
+    console.log('Repaired historical wallet_transactions.balance_after values.');
+  }
 
   await connection.query(`
     CREATE TABLE IF NOT EXISTS moderator_wallet (
@@ -260,6 +305,10 @@ async function migrate() {
       INDEX idx_status (status)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
+
+  try {
+    await connection.query(`ALTER TABLE bets ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER created_at`);
+  } catch (e) { /* column already exists */ }
 
   // Bet numbers table
   await connection.query(`

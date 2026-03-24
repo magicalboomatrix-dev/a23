@@ -57,7 +57,7 @@ exports.getGameInfo = async (req, res, next) => {
       LIMIT 10
     `, [id]);
 
-    res.json({ game: games[0], results });
+    res.json({ game: games[0], results, server_now: new Date().toISOString() });
   } catch (error) {
     next(error);
   }

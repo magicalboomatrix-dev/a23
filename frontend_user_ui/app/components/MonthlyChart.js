@@ -1,100 +1,163 @@
-import React from 'react'
+import React from "react";
 
 function renderWaitIcon() {
-  return <img src="/images/d.gif" alt="wait icon" height={24} width={24} className="inline-block" />;
+  return (
+    <img
+      src="/images/d.gif"
+      alt="wait icon"
+      height={24}
+      width={24}
+      className="inline-block"
+    />
+  );
 }
 
 function renderChartCell(cell) {
   if (!cell) {
-    return '-';
+    return "-";
   }
 
-  if (typeof cell === 'object' && !Array.isArray(cell)) {
+  if (typeof cell === "object" && !Array.isArray(cell)) {
     if (cell.has_result && !cell.result_visible) {
       return renderWaitIcon();
     }
 
-    return cell.result_number || '-';
+    return cell.result_number || "-";
   }
 
-  return cell || '-';
+  return cell || "-";
 }
 
 const MonthlyChart = ({ data, gameNames: providedGameNames = [] }) => {
-  // data can be: { chart: { day: { gameName: result } } } or { results: [...] } or []
   let gameNames = [];
   const dateMap = {};
 
-  if (data?.chart && typeof data.chart === 'object' && !Array.isArray(data.chart)) {
-    // API returns { chart: { 1: { DISAWAR: '05', ... }, 2: { ... } } }
+  if (
+    data?.chart &&
+    typeof data.chart === "object" &&
+    !Array.isArray(data.chart)
+  ) {
     const chart = data.chart;
     const nameSet = new Set();
+
     Object.entries(chart).forEach(([day, games]) => {
-      if (games && typeof games === 'object') {
-        Object.keys(games).forEach(g => nameSet.add(g));
+      if (games && typeof games === "object") {
+        Object.keys(games).forEach((g) => nameSet.add(g));
         dateMap[day] = games;
       }
     });
+
     gameNames = [...nameSet];
   } else {
-    // Fallback: array of results
-    const results = Array.isArray(data?.results) ? data.results : (Array.isArray(data) ? data : []);
-    gameNames = [...new Set(results.map(r => r.game_name).filter(Boolean))];
-    results.forEach(r => {
+    const results = Array.isArray(data?.results)
+      ? data.results
+      : Array.isArray(data)
+        ? data
+        : [];
+
+    gameNames = [...new Set(results.map((r) => r.game_name).filter(Boolean))];
+
+    results.forEach((r) => {
       const d = r.result_date || r.date;
-      const dateStr = d ? new Date(d).toLocaleDateString('en-GB', {day:'2-digit', month:'2-digit'}) : '-';
+      const dateStr = d
+        ? new Date(d).toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "2-digit",
+          })
+        : "-";
+
       if (!dateMap[dateStr]) dateMap[dateStr] = {};
       dateMap[dateStr][r.game_name] = r.result_number;
     });
   }
-  if (gameNames.length === 0 && providedGameNames.length > 0) {
-    gameNames = providedGameNames;
+
+  if (providedGameNames.length > 0) {
+    const filtered = gameNames.filter((n) => providedGameNames.includes(n));
+    gameNames = filtered.length > 0 ? filtered : providedGameNames;
   }
 
   const year = Number(data?.year) || new Date().getFullYear();
-  const month = Number(data?.month) || (new Date().getMonth() + 1);
+  const month = Number(data?.month) || new Date().getMonth() + 1;
+
   const now = new Date();
-  const isCurrentMonth = year === now.getFullYear() && month === (now.getMonth() + 1);
+
+  const isCurrentMonth =
+    year === now.getFullYear() && month === now.getMonth() + 1;
+
   const lastDayOfMonth = new Date(year, month, 0).getDate();
+
   const maxDay = isCurrentMonth ? now.getDate() : lastDayOfMonth;
+
   const dates = Array.from({ length: maxDay }, (_, index) => String(index + 1));
+
   const todayDay = isCurrentMonth ? String(now.getDate()) : null;
 
   const formatDateLabel = (day) => {
-    const safeDay = String(day).padStart(2, '0');
-    return `${safeDay}/${String(month).padStart(2, '0')}`;
+    const safeDay = String(day).padStart(2, "0");
+    return `${safeDay}-${String(month).padStart(2, "0")}`;
   };
 
   return (
-    <div className=" w-full max-w-[430px]">
-        <div className="bg-[linear-gradient(94deg,#b6842d,#ebda8d_55%,#b7862f)] px-4 py-2.5 text-center text-[#111]"><h2 className="text-sm font-semibold uppercase tracking-[0.08em]"><b>Satta King Monthly Chart</b></h2></div>
+    <div className="w-full">
+      <div className="relative mt-2 mb-2 flex justify-center px-3">
+        <h2 className="relative w-full max-w-95 bg-[linear-gradient(94deg,#b6842d,#ebda8d_55%,#b7862f)] px-[clamp(52px,16vw,112px)] py-2 text-center text-xs font-bold text-black sm:text-sm">
+          {/* left angled side */}
+          <span className="absolute top-0 -left-1.5 h-full w-[clamp(20px,6vw,40px)] bg-[linear-gradient(94deg,#b6842d,#ebda8d_55%,#b7862f)] skew-x-[-25deg] sm:-left-2.5"></span>
 
-        <div className='overflow-x-auto border border-t-0 border-[#d6b774] bg-white shadow-[0_12px_28px_rgba(79,52,10,0.08)]'>
-          <div className='min-w-max'>
-          <table className="w-full border-collapse text-center text-xs text-[#111]">
-                    <thead>
-                        <tr>
-                <th className="border-b border-r border-[#ead8ab] bg-[#f7f0e3] px-3 py-2 font-semibold">Date</th>
-                {gameNames.map(g => <th key={g} className="border-b border-r border-[#ead8ab] bg-[#f7f0e3] px-3 py-2 font-semibold last:border-r-0">{g}</th>)}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {dates.length > 0 ? dates.map(date => (
-                          <tr key={date} style={todayDay === date ? { backgroundColor: '#fff3cd', fontWeight: 700 } : undefined}>
-                <td className="border-b border-r border-[#f0e3c6] px-3 py-2 font-medium">{formatDateLabel(date)}</td>
-                            {gameNames.map(g => (
-                  <td key={g} className="border-b border-r border-[#f0e3c6] px-3 py-2 last:border-r-0" style={todayDay === date ? { backgroundColor: '#ffe8a3' } : undefined}>{renderChartCell(dateMap[date]?.[g])}</td>
-                            ))}
-                            </tr>
-                        )) : (
-                <tr><td className="px-3 py-6 text-center" colSpan={gameNames.length + 1 || 7}>No data available</td></tr>
-                        )}
-                    </tbody>
-                </table>
-                </div>
-            </div>
+          {/* right angled side */}
+          <span className="absolute top-0 -right-1.5 h-full w-[clamp(20px,6vw,40px)] bg-[linear-gradient(94deg,#b6842d,#ebda8d_55%,#b7862f)] skew-x-25 sm:-right-2.5"></span>
+
+          <p className="relative z-10 whitespace-nowrap tracking-wide">
+            SATTA KING MONTHLY CHART
+          </p>
+        </h2>
+      </div>
+
+      <div className="overflow-x-auto border border-[#d6b774]">
+        <table className="min-w-max w-full border-collapse text-xs text-center">
+          {/* HEADER */}
+          <thead>
+            <tr className="bg-[#c99a3a] text-white font-bold">
+              <th className="sticky left-0 z-20 bg-[#c99a3a] border border-[#d6b774] px-3 py-2">
+                Date
+              </th>
+
+              {gameNames.map((g) => (
+                <th key={g} className="border border-[#d6b774] px-3 py-2">
+                  {g}
+                </th>
+              ))}
+            </tr>
+          </thead>
+
+          {/* BODY */}
+          <tbody>
+            {dates.map((date, index) => {
+              const rowBg = index % 2 === 0 ? "bg-[#efefef]" : "bg-[#e3e3e3]";
+
+              return (
+                <tr key={date} className={rowBg}>
+                  {/* STICKY DATE COLUMN */}
+                  <td className="sticky left-0 bg-[#c99a3a] text-white font-semibold border border-[#d6b774] px-3 py-2">
+                    {formatDateLabel(date)}
+                  </td>
+
+                  {gameNames.map((g) => (
+                    <td
+                      key={g}
+                      className="border border-[#d6b774] px-3 py-2 text-gray-400 w-32"
+                    >
+                      {renderChartCell(dateMap[date]?.[g])}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
-  )
-}
+  );
+};
 
-export default MonthlyChart
+export default MonthlyChart;

@@ -2,6 +2,7 @@ const pool = require('../config/database');
 
 exports.getProfile = async (req, res, next) => {
   try {
+    const [users] = await pool.query('SELECT default_bank_account_id FROM users WHERE id = ? LIMIT 1', [req.user.id]);
     const [wallets] = await pool.query('SELECT balance, bonus_balance FROM wallets WHERE user_id = ?', [req.user.id]);
     const wallet = wallets[0] || { balance: 0, bonus_balance: 0 };
 
@@ -20,6 +21,7 @@ exports.getProfile = async (req, res, next) => {
         phone: req.user.phone,
         role: req.user.role,
         referral_code: req.user.referral_code,
+        default_bank_account_id: users[0]?.default_bank_account_id || null,
         created_at: req.user.created_at,
       },
       wallet: {
@@ -37,7 +39,16 @@ exports.getProfile = async (req, res, next) => {
 exports.getBankAccounts = async (req, res, next) => {
   try {
     const [accounts] = await pool.query(
-      'SELECT id, account_number, ifsc, bank_name, account_holder, created_at FROM bank_accounts WHERE user_id = ?',
+      `SELECT ba.id,
+              ba.account_number,
+              ba.ifsc,
+              ba.bank_name,
+              ba.account_holder,
+              ba.created_at,
+              CASE WHEN u.default_bank_account_id = ba.id THEN 1 ELSE 0 END AS is_default
+       FROM bank_accounts ba
+       JOIN users u ON u.id = ba.user_id
+       WHERE ba.user_id = ?`,
       [req.user.id]
     );
     res.json({ accounts });
@@ -79,6 +90,11 @@ exports.addBankAccount = async (req, res, next) => {
       'INSERT INTO bank_accounts (user_id, account_number, ifsc, bank_name, account_holder, is_flagged, flag_reason) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [req.user.id, account_number, ifsc.toUpperCase(), bank_name, account_holder, isFlagged ? 1 : 0, flagReason]
     );
+
+    const [users] = await conn.query('SELECT default_bank_account_id FROM users WHERE id = ? LIMIT 1', [req.user.id]);
+    if (!users[0]?.default_bank_account_id) {
+      await conn.query('UPDATE users SET default_bank_account_id = ? WHERE id = ?', [result.insertId, req.user.id]);
+    }
 
     await conn.commit();
 
@@ -151,18 +167,60 @@ exports.updateBankAccount = async (req, res, next) => {
 };
 
 exports.deleteBankAccount = async (req, res, next) => {
+  const conn = await pool.getConnection();
   try {
     const { id } = req.params;
-    const [result] = await pool.query(
+    await conn.beginTransaction();
+
+    await conn.query(
+      'UPDATE users SET default_bank_account_id = NULL WHERE id = ? AND default_bank_account_id = ?',
+      [req.user.id, id]
+    );
+
+    const [result] = await conn.query(
       'DELETE FROM bank_accounts WHERE id = ? AND user_id = ?',
       [id, req.user.id]
     );
 
     if (result.affectedRows === 0) {
+      await conn.rollback();
       return res.status(404).json({ error: 'Bank account not found.' });
     }
 
+    const [users] = await conn.query('SELECT default_bank_account_id FROM users WHERE id = ? LIMIT 1', [req.user.id]);
+    if (!users[0]?.default_bank_account_id) {
+      const [firstAccount] = await conn.query('SELECT id FROM bank_accounts WHERE user_id = ? ORDER BY created_at ASC LIMIT 1', [req.user.id]);
+      if (firstAccount.length > 0) {
+        await conn.query('UPDATE users SET default_bank_account_id = ? WHERE id = ?', [firstAccount[0].id, req.user.id]);
+      }
+    }
+
+    await conn.commit();
+
     res.json({ message: 'Bank account deleted.' });
+  } catch (error) {
+    await conn.rollback();
+    next(error);
+  } finally {
+    conn.release();
+  }
+};
+
+exports.setDefaultBankAccount = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const [accounts] = await pool.query(
+      'SELECT id FROM bank_accounts WHERE id = ? AND user_id = ? LIMIT 1',
+      [id, req.user.id]
+    );
+
+    if (accounts.length === 0) {
+      return res.status(404).json({ error: 'Bank account not found.' });
+    }
+
+    await pool.query('UPDATE users SET default_bank_account_id = ? WHERE id = ?', [id, req.user.id]);
+    res.json({ message: 'Default bank account updated.', default_bank_account_id: Number(id) });
   } catch (error) {
     next(error);
   }
@@ -189,7 +247,7 @@ exports.getAccountStatement = async (req, res, next) => {
     const [countResult] = await pool.query(query.replace('SELECT *', 'SELECT COUNT(*) as total'), params);
     const total = countResult[0].total;
 
-    query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+    query += ' ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?';
     params.push(parseInt(limit), offset);
 
     const [transactions] = await pool.query(query, params);
