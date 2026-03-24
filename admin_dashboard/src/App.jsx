@@ -18,6 +18,7 @@ import UserDetail from './pages/UserDetail';
 import ModeratorFloats from './pages/ModeratorFloats';
 import ModeratorScanners from './pages/ModeratorScanners';
 import Results from './pages/Results';
+import CustomAds from './pages/CustomAds';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -50,6 +51,7 @@ function AppRoutes() {
         <Route path="payment-scanner" element={<PaymentScanner />} />
         <Route path="fraud-alerts" element={<FraudLogs />} />
         <Route path="fraud-logs" element={<FraudLogs />} />
+        <Route path="custom-ads" element={<CustomAds />} />
       </Route>
     </Routes>
   );

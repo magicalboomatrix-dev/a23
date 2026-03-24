@@ -20,6 +20,7 @@ const moderatorRoutes = require('./routes/moderator.routes');
 const moderatorSelfRoutes = require('./routes/moderator-self.routes');
 const adminRoutes = require('./routes/admin.routes');
 const notificationRoutes = require('./routes/notification.routes');
+const customAdsRoutes = require('./routes/home-banner.routes');
 
 const { errorHandler } = require('./middleware/error.middleware');
 
@@ -113,6 +114,7 @@ app.use('/api/moderators', moderatorRoutes);
 app.use('/api/moderator', moderatorSelfRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/custom-ads', customAdsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

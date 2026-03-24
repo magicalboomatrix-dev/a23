@@ -8,6 +8,7 @@ import MonthlyChart from "../components/MonthlyChart";
 import DepositWithdrawBtns from "../components/DepositWithdrawBtns";
 import SkeletonBlock from "../components/SkeletonBlock";
 import Toast from "../components/Toast";
+import CustomAds from "../components/CustomAds";
 import { betAPI, gameAPI, resultAPI } from "../lib/api";
 
 function parseTimeParts(timeValue) {
@@ -90,7 +91,7 @@ function getGameAvailability(game, referenceDate = new Date()) {
 function LockBadge({ size = "text-base" }) {
   return (
     <span
-      className={`inline-flex items-center justify-center ${size} text-[#b91c1c]`}
+      className={`inline-flex items-center justify-center ${size} text-white drop-shadow-2xl px-2 py-1 rounded-full gap-1`}
     >
       <i className="fa fa-lock" aria-hidden="true"></i>
     </span>
@@ -335,6 +336,9 @@ const HomePage = () => {
         </div>
       </section>
 
+      <CustomAds />
+
+      {/* 
       <section className="border border-[#e9dcc0] bg-white shadow-[0_18px_34px_rgba(15,23,42,0.08)] p-3">
         <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.14em] text-[#1f1500]">
           <span>🏆</span>
@@ -369,12 +373,12 @@ const HomePage = () => {
         {!winnersLoading && recentWinners.length === 0 && (
           <p className="mt-2 text-xs text-[#6b5a3a]">No winners yet.</p>
         )}
-      </section>
+      </section> */}
 
       <section className="">
         <div className="overflow-hidden border border-[#e9dcc0] bg-white shadow-[0_18px_34px_rgba(15,23,42,0.08)]">
           <div className={titleBarClass}>
-            <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.16em]">
+            <div className="flex items-center gap-2 text-sm text-white font-bold uppercase tracking-[0.16em]">
               <i className="fa fa-play-circle"></i>
               <span>In Play</span>
             </div>
@@ -433,7 +437,7 @@ const HomePage = () => {
                                 {game.name}
                               </h2>
                               <span
-                                className={`h-2.5 w-2.5 rounded-full ${availability.canPlay ? "bg-[#2bc26b]" : "bg-[#b91c1c]"}`}
+                                className={`h-2.5 w-2.5 rounded-full ${availability.canPlay ? "bg-green-700 animate-pulse" : "bg-[#b91c1c]"}`}
                               ></span>
                             </div>
                             <div className="mt-2 text-[11px] font-semibold leading-5 text-[#6b5a3a]">
@@ -454,7 +458,7 @@ const HomePage = () => {
                           <div className="bg-[#e6f3ff] p-2 text-center text-sm font-black text-[#11446b]">
                             {game.yesterday_result_number || "-"}
                           </div>
-                          <div className="bg-[#ffe8ef] p-2 text-center text-sm font-black text-[#8f1841]">
+                          <div className="bg-[#ffe8ef] bg-black/40 backdrop-blur-[1px] p-2 text-center text-sm font-black text-[#8f1841]">
                             {getResultForGame(game.name)}
                           </div>
                           <div

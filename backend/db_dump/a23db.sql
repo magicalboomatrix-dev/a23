@@ -36,7 +36,7 @@ CREATE TABLE `bank_accounts` (
   KEY `idx_user` (`user_id`),
   KEY `idx_account` (`account_number`),
   CONSTRAINT `bank_accounts_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -54,7 +54,7 @@ CREATE TABLE `bet_numbers` (
   PRIMARY KEY (`id`),
   KEY `idx_bet` (`bet_id`),
   CONSTRAINT `bet_numbers_ibfk_1` FOREIGN KEY (`bet_id`) REFERENCES `bets` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=56 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=179 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -74,6 +74,7 @@ CREATE TABLE `bets` (
   `win_amount` decimal(12,2) DEFAULT '0.00',
   `status` enum('pending','win','loss') DEFAULT 'pending',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `game_result_id` (`game_result_id`),
   KEY `idx_user` (`user_id`),
@@ -82,7 +83,7 @@ CREATE TABLE `bets` (
   CONSTRAINT `bets_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `bets_ibfk_2` FOREIGN KEY (`game_id`) REFERENCES `games` (`id`) ON DELETE CASCADE,
   CONSTRAINT `bets_ibfk_3` FOREIGN KEY (`game_result_id`) REFERENCES `game_results` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=28 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -102,7 +103,7 @@ CREATE TABLE `bonuses` (
   PRIMARY KEY (`id`),
   KEY `idx_user` (`user_id`),
   CONSTRAINT `bonuses_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=28 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -115,11 +116,17 @@ DROP TABLE IF EXISTS `deposits`;
 CREATE TABLE `deposits` (
   `id` int NOT NULL AUTO_INCREMENT,
   `user_id` int NOT NULL,
+  `moderator_id` int DEFAULT NULL,
   `amount` decimal(12,2) NOT NULL,
   `utr_number` varchar(50) NOT NULL,
   `screenshot` varchar(255) DEFAULT NULL,
+  `receipt_image` varchar(255) DEFAULT NULL,
+  `receipt_image_hash` varchar(64) DEFAULT NULL,
   `status` enum('pending','approved','rejected') DEFAULT 'pending',
   `approved_by` int DEFAULT NULL,
+  `approved_by_role` enum('admin','moderator') DEFAULT NULL,
+  `approved_by_id` int DEFAULT NULL,
+  `approved_at` timestamp NULL DEFAULT NULL,
   `reject_reason` varchar(255) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -129,9 +136,10 @@ CREATE TABLE `deposits` (
   KEY `idx_user` (`user_id`),
   KEY `idx_status` (`status`),
   KEY `idx_utr` (`utr_number`),
+  KEY `idx_moderator` (`moderator_id`),
   CONSTRAINT `deposits_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `deposits_ibfk_2` FOREIGN KEY (`approved_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=29 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -146,13 +154,13 @@ CREATE TABLE `game_results` (
   `game_id` int NOT NULL,
   `result_number` varchar(10) DEFAULT NULL,
   `result_date` date NOT NULL,
-  `declared_at` timestamp NULL DEFAULT NULL,
+  `declared_at` datetime DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_game_date` (`game_id`,`result_date`),
   KEY `idx_date` (`result_date`),
   CONSTRAINT `game_results_ibfk_1` FOREIGN KEY (`game_id`) REFERENCES `games` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=533 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -167,12 +175,102 @@ CREATE TABLE `games` (
   `name` varchar(100) NOT NULL,
   `open_time` time NOT NULL,
   `close_time` time NOT NULL,
+  `result_time` time DEFAULT NULL,
   `is_active` tinyint(1) DEFAULT '1',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `name` (`name`)
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=25 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `home_banners`
+--
+
+DROP TABLE IF EXISTS `home_banners`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `home_banners` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  `content` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `extra_text` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  `button_text` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  `button_link` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  `image_url` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  `display_order` int unsigned NOT NULL DEFAULT '0',
+  `status` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `moderator_scanner_audit_logs`
+--
+
+DROP TABLE IF EXISTS `moderator_scanner_audit_logs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `moderator_scanner_audit_logs` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `moderator_id` int NOT NULL,
+  `actor_id` int DEFAULT NULL,
+  `actor_role` varchar(20) DEFAULT NULL,
+  `field_name` varchar(50) NOT NULL,
+  `old_value` varchar(255) DEFAULT NULL,
+  `new_value` varchar(255) DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `actor_id` (`actor_id`),
+  KEY `idx_moderator_created` (`moderator_id`,`created_at`),
+  KEY `idx_field_name` (`field_name`),
+  CONSTRAINT `moderator_scanner_audit_logs_ibfk_1` FOREIGN KEY (`moderator_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `moderator_scanner_audit_logs_ibfk_2` FOREIGN KEY (`actor_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `moderator_wallet`
+--
+
+DROP TABLE IF EXISTS `moderator_wallet`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `moderator_wallet` (
+  `moderator_id` int NOT NULL,
+  `balance` decimal(12,2) DEFAULT '0.00',
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`moderator_id`),
+  CONSTRAINT `moderator_wallet_ibfk_1` FOREIGN KEY (`moderator_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `moderator_wallet_transactions`
+--
+
+DROP TABLE IF EXISTS `moderator_wallet_transactions`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `moderator_wallet_transactions` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `moderator_id` int NOT NULL,
+  `type` varchar(50) NOT NULL,
+  `amount` decimal(12,2) NOT NULL,
+  `balance_after` decimal(12,2) DEFAULT NULL,
+  `reference_id` varchar(100) DEFAULT NULL,
+  `remark` varchar(255) DEFAULT NULL,
+  `created_by` int DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_moderator_created` (`moderator_id`,`created_at`),
+  KEY `fk_moderator_wallet_transactions_created_by` (`created_by`),
+  CONSTRAINT `fk_moderator_wallet_transactions_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `moderator_wallet_transactions_ibfk_1` FOREIGN KEY (`moderator_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -193,7 +291,7 @@ CREATE TABLE `notifications` (
   KEY `idx_user` (`user_id`),
   KEY `idx_created` (`created_at`),
   CONSTRAINT `notifications_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=61 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -205,7 +303,7 @@ DROP TABLE IF EXISTS `otps`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `otps` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `phone` varchar(15) NOT NULL,
+  `phone` varchar(20) NOT NULL,
   `purpose` enum('register','reset_mpin') NOT NULL DEFAULT 'register',
   `otp` varchar(6) NOT NULL,
   `expires_at` timestamp NOT NULL,
@@ -215,7 +313,7 @@ CREATE TABLE `otps` (
   KEY `idx_phone` (`phone`),
   KEY `idx_phone_purpose` (`phone`,`purpose`),
   KEY `idx_expires` (`expires_at`)
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=30 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -236,7 +334,7 @@ CREATE TABLE `referrals` (
   KEY `referrer_id` (`referrer_id`),
   CONSTRAINT `referrals_ibfk_1` FOREIGN KEY (`referrer_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `referrals_ibfk_2` FOREIGN KEY (`referred_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -254,7 +352,7 @@ CREATE TABLE `settings` (
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `setting_key` (`setting_key`)
-) ENGINE=InnoDB AUTO_INCREMENT=32 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=256 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -267,7 +365,7 @@ DROP TABLE IF EXISTS `users`;
 CREATE TABLE `users` (
   `id` int NOT NULL AUTO_INCREMENT,
   `name` varchar(100) DEFAULT NULL,
-  `phone` varchar(15) NOT NULL,
+  `phone` varchar(20) NOT NULL,
   `password` varchar(255) DEFAULT NULL,
   `mpin_hash` varchar(255) DEFAULT NULL,
   `mpin_enabled` tinyint(1) DEFAULT '0',
@@ -276,6 +374,11 @@ CREATE TABLE `users` (
   `role` enum('admin','moderator','user') DEFAULT 'user',
   `moderator_id` int DEFAULT NULL,
   `referral_code` varchar(20) DEFAULT NULL,
+  `upi_id` varchar(150) DEFAULT NULL,
+  `qr_code_image` varchar(255) DEFAULT NULL,
+  `scanner_label` varchar(100) DEFAULT NULL,
+  `scanner_enabled` tinyint(1) DEFAULT '1',
+  `default_bank_account_id` int DEFAULT NULL,
   `is_blocked` tinyint(1) DEFAULT '0',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -283,8 +386,32 @@ CREATE TABLE `users` (
   UNIQUE KEY `phone` (`phone`),
   UNIQUE KEY `referral_code` (`referral_code`),
   KEY `moderator_id` (`moderator_id`),
+  KEY `idx_default_bank_account` (`default_bank_account_id`),
   CONSTRAINT `users_ibfk_1` FOREIGN KEY (`moderator_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=38 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `utr_attempt_logs`
+--
+
+DROP TABLE IF EXISTS `utr_attempt_logs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `utr_attempt_logs` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `attempt_user_id` int NOT NULL,
+  `utr` varchar(50) NOT NULL,
+  `original_user_id` int DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `original_user_id` (`original_user_id`),
+  KEY `idx_attempt_user` (`attempt_user_id`),
+  KEY `idx_utr` (`utr`),
+  KEY `idx_created_at` (`created_at`),
+  CONSTRAINT `utr_attempt_logs_ibfk_1` FOREIGN KEY (`attempt_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `utr_attempt_logs_ibfk_2` FOREIGN KEY (`original_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -297,18 +424,20 @@ DROP TABLE IF EXISTS `wallet_transactions`;
 CREATE TABLE `wallet_transactions` (
   `id` int NOT NULL AUTO_INCREMENT,
   `user_id` int NOT NULL,
-  `type` enum('deposit','bet','win','withdraw','bonus','refund') NOT NULL,
+  `type` enum('deposit','bet','win','withdraw','adjustment','bonus','refund') NOT NULL,
   `amount` decimal(12,2) NOT NULL,
   `balance_after` decimal(12,2) NOT NULL,
   `status` enum('pending','completed','failed') DEFAULT 'completed',
+  `reference_type` varchar(50) DEFAULT NULL,
   `reference_id` varchar(100) DEFAULT NULL,
   `remark` varchar(255) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_user_date` (`user_id`,`created_at`),
   KEY `idx_type` (`type`),
+  KEY `idx_reference` (`reference_type`,`reference_id`),
   CONSTRAINT `wallet_transactions_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=53 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -328,7 +457,7 @@ CREATE TABLE `wallets` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `user_id` (`user_id`),
   CONSTRAINT `wallets_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=75 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -356,7 +485,7 @@ CREATE TABLE `withdraw_requests` (
   CONSTRAINT `withdraw_requests_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `withdraw_requests_ibfk_2` FOREIGN KEY (`bank_id`) REFERENCES `bank_accounts` (`id`) ON DELETE CASCADE,
   CONSTRAINT `withdraw_requests_ibfk_3` FOREIGN KEY (`approved_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -368,4 +497,4 @@ CREATE TABLE `withdraw_requests` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-03-22 11:15:37
+-- Dump completed on 2026-03-25  3:12:39

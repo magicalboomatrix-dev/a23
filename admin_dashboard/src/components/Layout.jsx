@@ -16,6 +16,7 @@ const navItems = [
   { path: '/analytics', label: 'Analytics', icon: '📈' },
   { path: '/notifications', label: 'Notifications', icon: '🔔' },
   { path: '/fraud-alerts', label: 'Fraud Alerts', icon: '🚨' },
+  { path: '/custom-ads', label: 'Custom Ads', icon: '📢' },
   { path: '/settings', label: 'Settings', icon: '⚙️' },
 ];
 

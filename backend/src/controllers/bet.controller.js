@@ -293,53 +293,6 @@ exports.getUserBets = async (req, res, next) => {
   }
 };
 
-exports.getNumberStats = async (req, res, next) => {
-  try {
-    const gameId = parseInt(req.params.gameId, 10);
-    const targetDate = req.query.date || new Date().toISOString().slice(0, 10);
-
-    if (!gameId) {
-      return res.status(400).json({ error: 'Valid game id is required.' });
-    }
-
-    const [statsRows] = await pool.query(
-      `SELECT bn.number,
-              COUNT(*) AS total_bets,
-              COUNT(DISTINCT b.user_id) AS total_users,
-              COALESCE(SUM(bn.amount), 0) AS total_staked
-       FROM bet_numbers bn
-       JOIN bets b ON b.id = bn.bet_id
-       WHERE b.game_id = ?
-         AND DATE(b.created_at) = ?
-       GROUP BY bn.number
-       ORDER BY bn.number ASC`,
-      [gameId, targetDate]
-    );
-
-    const totalStaked = statsRows.reduce((sum, row) => sum + parseFloat(row.total_staked || 0), 0);
-    const stats = statsRows.map((row) => {
-      const stake = parseFloat(row.total_staked || 0);
-      const percentage = totalStaked > 0 ? Number(((stake / totalStaked) * 100).toFixed(2)) : 0;
-      return {
-        number: String(row.number).padStart(2, '0'),
-        total_bets: Number(row.total_bets || 0),
-        total_users: Number(row.total_users || 0),
-        total_staked: stake,
-        percentage,
-      };
-    });
-
-    res.json({
-      game_id: gameId,
-      date: targetDate,
-      total_staked: totalStaked,
-      stats,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
 exports.getRecentWinners = async (req, res, next) => {
   try {
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 5, 1), 20);

@@ -96,7 +96,6 @@ export const betAPI = {
   place: (data) => request('/bets/place', { method: 'POST', body: JSON.stringify(data) }),
   myBets: (params) => request(`/bets/my-bets?${new URLSearchParams(params)}`),
   history: (params) => request(`/bets/history?${new URLSearchParams(params)}`),
-  numberStats: (gameId, params = {}) => request(`/bets/number-stats/${gameId}?${new URLSearchParams(params)}`),
   recentWinners: (params = {}) => request(`/bets/recent-winners?${new URLSearchParams(params)}`),
 };
 
@@ -125,6 +124,11 @@ export const resultAPI = {
   monthly: (params) => request(`/results/monthly?${new URLSearchParams(params)}`),
   yearly: (params) => request(`/results/yearly?${new URLSearchParams(params)}`),
   live: () => request('/results/live'),
+};
+
+// Custom Ads
+export const customAdsAPI = {
+  list: () => request('/custom-ads'),
 };
 
 // Notifications
