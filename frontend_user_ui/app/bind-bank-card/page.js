@@ -27,7 +27,7 @@ const BindBankCard = () => {
         bank_name: bankName,
       });
       setSuccess('Bank account added successfully!');
-      setTimeout(() => router.push('/withdraw'), 1500);
+      setTimeout(() => router.push('/bank-accounts'), 1500);
     } catch (err) {
       setError(err.message || 'Failed to add bank account');
     } finally {

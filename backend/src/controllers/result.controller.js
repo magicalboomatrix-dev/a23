@@ -219,7 +219,13 @@ exports.getLiveResults = async (req, res, next) => {
         LIMIT 1
       )
       WHERE g.is_active = 1
-      ORDER BY g.open_time
+        AND TIMESTAMP(CURDATE(), COALESCE(g.result_time, g.close_time)) >= NOW() - INTERVAL 30 MINUTE
+        AND (
+          gr.id IS NULL
+          OR gr.declared_at >= NOW() - INTERVAL 30 MINUTE
+        )
+      ORDER BY COALESCE(g.result_time, g.close_time) ASC
+      LIMIT 2
     `);
     res.json({ results });
   } catch (error) {

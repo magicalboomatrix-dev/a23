@@ -13,6 +13,7 @@ export default function Games() {
   const [showForm, setShowForm] = useState(false);
   const [showResult, setShowResult] = useState(null);
   const [form, setForm] = useState({ name: '', open_time: '', close_time: '' });
+  const [editingGameId, setEditingGameId] = useState(null);
   const [resultForm, setResultForm] = useState({ result_number: '', result_date: getLocalDateInputValue() });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -47,6 +48,76 @@ export default function Games() {
     }
   };
 
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    setError('');
+    try {
+      await api.put(`/games/${editingGameId}`, form);
+      setShowForm(false);
+      setEditingGameId(null);
+      setForm({ name: '', open_time: '', close_time: '' });
+      loadGames();
+    } catch (err) {
+      if (err.response?.status === 409) {
+        setError('Game already exists — try a different name.');
+      } else {
+        setError(err.response?.data?.error || 'Failed');
+      }
+    }
+  };
+
+  const startCreate = () => {
+    setShowForm((prev) => {
+      const next = !prev;
+      if (!next) {
+        setEditingGameId(null);
+        setForm({ name: '', open_time: '', close_time: '' });
+        setError('');
+      }
+      return next;
+    });
+    if (!showForm) {
+      setEditingGameId(null);
+      setForm({ name: '', open_time: '', close_time: '' });
+      setError('');
+    }
+  };
+
+  const startEdit = (game) => {
+    setEditingGameId(game.id);
+    setForm({
+      name: game.name || '',
+      open_time: game.open_time || '',
+      close_time: game.close_time || '',
+    });
+    setError('');
+    setShowForm(true);
+  };
+
+  const cancelForm = () => {
+    setShowForm(false);
+    setEditingGameId(null);
+    setForm({ name: '', open_time: '', close_time: '' });
+    setError('');
+  };
+
+  const handleDelete = async (game) => {
+    const confirmed = window.confirm(`Delete game "${game.name}"? This action cannot be undone.`);
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await api.delete(`/games/${game.id}`);
+      if (editingGameId === game.id) {
+        cancelForm();
+      }
+      loadGames();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to delete game');
+    }
+  };
+
   const toggleActive = async (id, current) => {
     try {
       await api.put(`/games/${id}`, { is_active: current ? 0 : 1 });
@@ -74,15 +145,16 @@ export default function Games() {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold text-gray-800">Games ({games.length})</h3>
-        <button onClick={() => setShowForm(!showForm)}
+        <button onClick={startCreate}
           className="px-4 py-2 bg-primary-600 text-white hover:bg-primary-700 text-sm font-medium">
-          {showForm ? 'Cancel' : '+ Add Game'}
+          {showForm && editingGameId === null ? 'Cancel' : '+ Add Game'}
         </button>
       </div>
 
       {showForm && (
-        <form onSubmit={handleCreate} className="bg-white border p-6 space-y-4">
+        <form onSubmit={editingGameId ? handleUpdate : handleCreate} className="bg-white border p-6 space-y-4">
           {error && <div className="p-3 bg-red-50 text-red-700 text-sm">{error}</div>}
+          <h4 className="font-semibold text-gray-800">{editingGameId ? 'Edit Game' : 'Add Game'}</h4>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <input type="text" placeholder="Game Name (e.g., DISAWAR)" value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -100,7 +172,12 @@ export default function Games() {
                 className="w-full px-4 py-2 border focus:ring-2 focus:ring-primary-500 outline-none" required />
             </div>
           </div>
-          <button type="submit" className="px-6 py-2 bg-green-600 text-white hover:bg-green-700 text-sm font-medium">Create Game</button>
+          <div className="flex gap-2">
+            <button type="submit" className="px-6 py-2 bg-green-600 text-white hover:bg-green-700 text-sm font-medium">
+              {editingGameId ? 'Update Game' : 'Create Game'}
+            </button>
+            <button type="button" onClick={cancelForm} className="px-4 py-2 bg-gray-200 text-sm">Cancel</button>
+          </div>
         </form>
       )}
 
@@ -148,6 +225,16 @@ export default function Games() {
               <button onClick={() => toggleActive(g.id, g.is_active)}
                 className={`px-3 py-2 text-xs font-medium ${g.is_active ? 'bg-gray-200 text-gray-600' : 'bg-green-100 text-green-700'}`}>
                 {g.is_active ? 'Disable' : 'Enable'}
+              </button>
+            </div>
+            <div className="flex gap-2 mt-2">
+              <button onClick={() => startEdit(g)}
+                className="flex-1 px-3 py-2 bg-yellow-100 text-yellow-800 text-xs font-medium hover:bg-yellow-200">
+                Edit
+              </button>
+              <button onClick={() => handleDelete(g)}
+                className="px-3 py-2 bg-red-100 text-red-700 text-xs font-medium hover:bg-red-200">
+                Delete
               </button>
             </div>
           </div>

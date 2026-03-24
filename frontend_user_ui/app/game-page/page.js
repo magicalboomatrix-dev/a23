@@ -1,10 +1,13 @@
 'use client'
 import React, { useState, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import Header from '../components/Header'
 import { betAPI } from '../lib/api'
+import { formatBetType } from '../lib/formatters'
 
 function GamePageInner() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const gameId = searchParams.get('id');
   const gameName = searchParams.get('name') || 'Game';
@@ -124,6 +127,7 @@ function GamePageInner() {
     if (!gameId) return;
     setError('');
     setSuccess('');
+    const totalAmount = getTotal();
 
     const groupedNumbers = {
       jodi: Object.entries(savedAmounts).map(([n, a]) => ({ number: n, amount: parseInt(a) })),
@@ -143,17 +147,36 @@ function GamePageInner() {
 
     setLoading(true);
     try {
+      let lastBetId = null;
       for (const request of requests) {
-        await betAPI.place({
+        const response = await betAPI.place({
           game_id: parseInt(gameId),
           type: request.type,
           numbers: request.numbers,
         });
+        lastBetId = response?.bet?.id || lastBetId;
       }
-      setSuccess('Bet placed successfully.');
+
+      const allNumbers = requests.flatMap((request) => request.numbers.map((item) => item.number));
+      const numberLabel = allNumbers.length === 1 ? String(allNumbers[0]) : `${allNumbers.length} Numbers`;
+      const betTypeLabel = requests.length === 1 ? formatBetType(requests[0].type) : 'Multiple Bets';
+      const txId = lastBetId ? `TXN_BET_${lastBetId}_${Date.now()}` : `TXN_BET_${Date.now()}`;
+
       setSavedAmounts({}); setHarufAndar({}); setHarufBahar({}); setCrossCombos([]);
       setCrossDigits('');
       setCrossAmount('');
+
+      const params = new URLSearchParams({
+        type: 'bet',
+        market: decodeURIComponent(gameName),
+        betType: betTypeLabel,
+        number: numberLabel,
+        amount: String(totalAmount),
+        tx: txId,
+        primary: `/game-page?id=${gameId}&name=${encodeURIComponent(gameName)}`,
+        secondary: '/my-bets',
+      });
+      router.push(`/success?${params.toString()}`);
     } catch (err) { setError(err.message); }
     finally { setLoading(false); }
   };

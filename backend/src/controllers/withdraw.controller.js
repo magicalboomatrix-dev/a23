@@ -4,9 +4,10 @@ const { recordWalletTransaction } = require('../utils/wallet-ledger');
 exports.requestWithdraw = async (req, res, next) => {
   const conn = await pool.getConnection();
   try {
-    const { bank_id, amount } = req.body;
+    const { bank_id, bank_account_id, amount } = req.body;
+    const resolvedBankId = bank_id || bank_account_id;
 
-    if (!bank_id || !amount) {
+    if (!resolvedBankId || !amount) {
       return res.status(400).json({ error: 'Bank account and amount are required.' });
     }
 
@@ -27,7 +28,7 @@ exports.requestWithdraw = async (req, res, next) => {
     // Verify bank account belongs to user
     const [banks] = await conn.query(
       'SELECT * FROM bank_accounts WHERE id = ? AND user_id = ?',
-      [bank_id, req.user.id]
+      [resolvedBankId, req.user.id]
     );
     if (banks.length === 0) {
       await conn.rollback();
@@ -56,7 +57,7 @@ exports.requestWithdraw = async (req, res, next) => {
     // Create withdraw request
     const [result] = await conn.query(
       'INSERT INTO withdraw_requests (user_id, bank_id, amount) VALUES (?, ?, ?)',
-      [req.user.id, bank_id, parsedAmount]
+      [req.user.id, resolvedBankId, parsedAmount]
     );
 
     const newBalance = await recordWalletTransaction(conn, {

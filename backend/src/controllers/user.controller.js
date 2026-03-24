@@ -95,6 +95,61 @@ exports.addBankAccount = async (req, res, next) => {
   }
 };
 
+exports.updateBankAccount = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { account_number, ifsc, bank_name, account_holder } = req.body;
+
+    if (!account_number || !ifsc || !bank_name || !account_holder) {
+      return res.status(400).json({ error: 'All bank details are required.' });
+    }
+
+    if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(String(ifsc).toUpperCase())) {
+      return res.status(400).json({ error: 'Invalid IFSC code format.' });
+    }
+
+    const [existingAccounts] = await pool.query(
+      'SELECT id FROM bank_accounts WHERE id = ? AND user_id = ? LIMIT 1',
+      [id, req.user.id]
+    );
+
+    if (existingAccounts.length === 0) {
+      return res.status(404).json({ error: 'Bank account not found.' });
+    }
+
+    const [crossUserMatch] = await pool.query(
+      'SELECT user_id FROM bank_accounts WHERE account_number = ? AND user_id != ? LIMIT 1',
+      [account_number, req.user.id]
+    );
+
+    const isFlagged = crossUserMatch.length > 0;
+    const flagReason = isFlagged
+      ? `Account number used by user IDs: ${crossUserMatch.map((row) => row.user_id).join(', ')}`
+      : null;
+
+    await pool.query(
+      `UPDATE bank_accounts
+       SET account_number = ?, ifsc = ?, bank_name = ?, account_holder = ?, is_flagged = ?, flag_reason = ?
+       WHERE id = ? AND user_id = ?`,
+      [account_number, String(ifsc).toUpperCase(), bank_name, account_holder, isFlagged ? 1 : 0, flagReason, id, req.user.id]
+    );
+
+    res.json({
+      message: 'Bank account updated successfully.',
+      account: {
+        id: Number(id),
+        account_number,
+        ifsc: String(ifsc).toUpperCase(),
+        bank_name,
+        account_holder,
+      },
+      flagged: isFlagged,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.deleteBankAccount = async (req, res, next) => {
   try {
     const { id } = req.params;

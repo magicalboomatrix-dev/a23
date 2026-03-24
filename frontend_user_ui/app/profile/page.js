@@ -116,7 +116,7 @@ const Profile = () => {
                             </div>
                             <img src="/images/right-arw.png" alt="Arrow" className="h-4 w-4 object-contain" />
                         </Link>
-                        <Link href="/bind-bank-card" className={menuItemClass}>
+                        <Link href="/bank-accounts" className={menuItemClass}>
                             <div className="flex items-center gap-3 text-sm font-semibold text-[#111]">
                                 <img src="/images/ref-icon4.png" alt="Bank Account" className="h-9 w-9 object-cover" />
                                 <span>Bank Account</span>

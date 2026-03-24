@@ -64,10 +64,18 @@ export const userAPI = {
   getProfile: () => request('/users/profile'),
   getBankAccounts: () => request('/users/bank-accounts'),
   addBankAccount: (data) => request('/users/bank-accounts', { method: 'POST', body: JSON.stringify(data) }),
+  updateBankAccount: (id, data) => request(`/users/bank-accounts/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteBankAccount: (id) => request(`/users/bank-accounts/${id}`, { method: 'DELETE' }),
   getAccountStatement: (params) => request(`/users/account-statement?${new URLSearchParams(params)}`),
   getProfitLoss: (params) => request(`/users/profit-loss?${new URLSearchParams(params)}`),
   getUiConfig: () => request('/users/ui-config'),
+};
+
+export const bankAccountAPI = {
+  list: () => request('/bank-accounts'),
+  create: (data) => request('/bank-accounts', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id, data) => request(`/bank-accounts/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  remove: (id) => request(`/bank-accounts/${id}`, { method: 'DELETE' }),
 };
 
 // Wallet

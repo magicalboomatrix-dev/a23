@@ -118,6 +118,22 @@ exports.updateGame = async (req, res, next) => {
   }
 };
 
+exports.deleteGame = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const [existing] = await pool.query('SELECT id FROM games WHERE id = ? LIMIT 1', [id]);
+    if (existing.length === 0) {
+      return res.status(404).json({ error: 'Game not found.' });
+    }
+
+    await pool.query('DELETE FROM games WHERE id = ?', [id]);
+    res.json({ message: 'Game deleted.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.declareResult = async (req, res, next) => {
   const conn = await pool.getConnection();
   try {

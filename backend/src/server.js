@@ -7,6 +7,7 @@ const rateLimit = require('express-rate-limit');
 
 const authRoutes = require('./routes/auth.routes');
 const userRoutes = require('./routes/user.routes');
+const bankAccountRoutes = require('./routes/bank-account.routes');
 const walletRoutes = require('./routes/wallet.routes');
 const gameRoutes = require('./routes/game.routes');
 const betRoutes = require('./routes/bet.routes');
@@ -98,6 +99,7 @@ app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads'), {
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/bank-accounts', bankAccountRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/games', gameRoutes);
 app.use('/api/bets', betRoutes);
