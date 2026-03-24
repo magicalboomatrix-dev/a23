@@ -49,7 +49,7 @@ const ChartPage = () => {
     <div>
         <Header></Header>
 
-      <div className='bg-white'>
+      <div className='bg-white ext'>
         
       <div className='mx-auto w-full max-w-[430px] '>
         <div className="bg-[linear-gradient(94deg,#b6842d,#ebda8d_55%,#b7862f)] px-4 py-2.5 text-center text-[#111]"><h2 className="text-sm font-semibold uppercase tracking-[0.08em]"><b>Satta Record Chart {selectedYear}</b></h2></div>
