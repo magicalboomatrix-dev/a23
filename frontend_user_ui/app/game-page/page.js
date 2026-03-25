@@ -79,9 +79,7 @@ function GamePageInner() {
   const [countdown, setCountdown] = useState('00:00')
   const [bettingClosed, setBettingClosed] = useState(false)
   const [serverOffsetMs, setServerOffsetMs] = useState(0)
-  const [favorites, setFavorites] = useState([])
-
-  const favoritesStorageKey = useMemo(() => `favoriteNumbers_${gameId || 'global'}`, [gameId])
+  // Removed favorites state and related logic
 
   useEffect(() => {
     if (!gameId) return
@@ -110,15 +108,7 @@ function GamePageInner() {
     }
   }, [gameId])
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(favoritesStorageKey)
-      const parsed = raw ? JSON.parse(raw) : []
-      setFavorites(Array.isArray(parsed) ? parsed.map((value) => String(value).padStart(2, '0')) : [])
-    } catch {
-      setFavorites([])
-    }
-  }, [favoritesStorageKey])
+  // Removed favorites effect
 
   useEffect(() => {
     if (!gameInfo?.open_time || !gameInfo?.close_time) {
@@ -140,17 +130,7 @@ function GamePageInner() {
     return () => window.clearInterval(timer)
   }, [gameInfo, serverOffsetMs])
 
-  const toggleFavorite = (numberValue) => {
-    const normalized = String(numberValue).padStart(2, '0')
-    setFavorites((current) => {
-      const next = current.includes(normalized)
-        ? current.filter((value) => value !== normalized)
-        : [...current, normalized]
-
-      localStorage.setItem(favoritesStorageKey, JSON.stringify(next))
-      return next
-    })
-  }
+  // Removed toggleFavorite function
 
   const jodiNumbers = Array.from({length: 100}, (_, i) => String(i).padStart(2, '0'));
   const harufDigits = ['0','1','2','3','4','5','6','7','8','9'];
@@ -350,39 +330,12 @@ function GamePageInner() {
           </div>
 
           <div className={activeTab === 'tab-1' ? 'block' : 'hidden'}>
-            {favorites.length > 0 && (
-              <div className="px-4 pt-4">
-                <div className="mb-2 text-xs font-black uppercase tracking-[0.14em] text-[#6b5a3a]">Favorite Numbers</div>
-                <div className="flex flex-wrap gap-2">
-                  {favorites.map((numberValue) => (
-                    <button
-                      type="button"
-                      key={numberValue}
-                      className="border border-[#b88422] bg-[#fff5d9] px-3 py-1 text-xs font-bold text-[#2f2410]"
-                      onClick={() => !bettingClosed && openPopup(numberValue)}
-                    >
-                      ★ {numberValue}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* Removed favorites UI */}
             <div className="grid grid-cols-5 gap-2 p-4">
                 {jodiNumbers.map((num) => (
                   <div key={num} className={`${cardBoxClass(Boolean(savedAmounts[num]))} ${bettingClosed ? 'opacity-60 cursor-not-allowed' : ''}`} onClick={() => openPopup(num)}>
                     <div className="flex items-center justify-center gap-1">
                       <div className="text-sm font-semibold text-[#111]">{num}</div>
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          toggleFavorite(num)
-                        }}
-                        className={`text-xs ${favorites.includes(num) ? 'text-[#b88422]' : 'text-[#9ca3af]'}`}
-                        aria-label={`Toggle favorite for ${num}`}
-                      >
-                        <i className={`fa ${favorites.includes(num) ? 'fa-star' : 'fa-star-o'}`}></i>
-                      </button>
                     </div>
                     {savedAmounts[num] && <div className="mt-1 text-[10px] font-bold text-[#d62828]">₹{savedAmounts[num]}</div>}
                   </div>

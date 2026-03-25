@@ -9,13 +9,12 @@ import React from 'react';
 import { useState, useEffect, useRef } from 'react';
 
 const slides = [
-  { src: '/images/new-launch-img1.webp', alt: 'Launch 1' },
-  { src: '/images/new-launch-img2.webp', alt: 'Launch 2' },
-  { src: '/images/new-launch-img3.webp', alt: 'Launch 3' },
-  { src: '/images/new-launch-img4.webp', alt: 'Launch 4' },
-  { src: '/images/new-launch-img5.png', alt: 'Launch 5' },
-  { src: '/images/new-launch-img6.webp', alt: 'Launch 6' },
-  { src: '/images/new-launch-img7.webp', alt: 'Launch 7' },
+  { src: '/images/DISAWAR.png', alt: 'Launch 1' },
+  { src: '/images/FARIDABAD.png', alt: 'Launch 2' },
+  { src: '/images/GALI.png', alt: 'Launch 3' },
+  { src: '/images/GAZIABAD.png', alt: 'Launch 4' },
+  { src: '/images/DELHI BAZAR.png', alt: 'Launch 5' },
+  { src: '/images/SHRI GANESH.png', alt: 'Launch 6' },
 ];
 
 const SLIDES_PER_VIEW = 4;

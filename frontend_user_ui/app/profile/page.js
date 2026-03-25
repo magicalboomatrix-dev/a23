@@ -1,5 +1,6 @@
 'use client'
 import React, { useState, useEffect } from 'react'
+import { User, BarChart2, CreditCard, ChevronRight, Bell, Shield, FileText, Info } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { userAPI, notificationAPI } from '../lib/api'
@@ -43,7 +44,7 @@ const Profile = () => {
   };
 
   return (
-    <div className="mx-auto min-h-screen w-full max-w-[430px] bg-[#f6f7fa] pb-8">
+    <div className="mx-auto min-h-screen w-full max-w-107.5 bg-[#f6f7fa] pb-8">
       {/* Header */}
       <header className="relative flex items-center justify-between bg-white px-4 py-3 shadow-sm">
         <Link href="/home">
@@ -53,7 +54,7 @@ const Profile = () => {
         <div className="h-5 w-5" />
       </header>
 
-      <main className="mx-auto w-full max-w-[430px] space-y-4 px-4 pt-4">
+      <main className="mx-auto w-full max-w-107.5 space-y-4 px-4 pt-4">
         {/* Profile Header Card */}
       <section className="flex items-center bg-white px-4 py-6 shadow-sm gap-4 rounded-xl">
   
@@ -66,8 +67,8 @@ const Profile = () => {
 </div>
 
   <div className="flex flex-col">
-    <h2 className="text-base font-black text-[#111] text-xl">{displayName}</h2>
-    <h3 className="text-sm text-gray-600">+91 {phone}</h3>
+    <h2 className="font-black text-[#111] text-xl">{displayName}</h2>
+    <h3 className="text-sm font-bold text-gray-800"> {phone}</h3>
   </div>
 
 </section>
@@ -76,14 +77,13 @@ const Profile = () => {
         <div className="flex items-center justify-between gap-3 bg-[#111] px-4 py-3 text-white">
           <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center bg-[#1f1f1f]">
-              <img src="/images/notify.png" alt="Notice" className="h-4 w-4 object-contain" />
+              <Bell size={18} className="text-[#ffd26a]" />
             </div>
             <div className="min-w-0">
               <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[#ffd26a]">Notifications</p>
               <p className="truncate text-xs text-white/90" aria-live="polite" key={tickerIndex}>{tickerItems[tickerIndex]}</p>
             </div>
           </div>
-          <img src="/images/right-arw.png" alt="Open" className="h-4 w-4 object-contain" />
         </div>
 
        
@@ -94,24 +94,30 @@ const Profile = () => {
           <div className="divide-y divide-[#f0ece3]">
             <Link href="/account-statement" className={menuItemClass}>
               <div className="flex items-center gap-3 text-sm font-semibold text-[#111]">
-                <img src="/images/ref-icon1.png" alt="Account Statement" className="h-9 w-9 object-cover" />
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#f7f6f3]">
+                  <User size={28} strokeWidth={2.2} className="text-[#b88422]" />
+                </span>
                 <span>Account Statement</span>
               </div>
-              <img src="/images/right-arw.png" alt="Arrow" className="h-4 w-4 object-contain" />
+              <ChevronRight size={20} className="text-[#b88422]" />
             </Link>
             <Link href="/profit-loss" className={menuItemClass}>
               <div className="flex items-center gap-3 text-sm font-semibold text-[#111]">
-                <img src="/images/ref-icon2.png" alt="Betting Profit and Loss" className="h-9 w-9 object-cover" />
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#f7f6f3]">
+                  <BarChart2 size={28} strokeWidth={2.2} className="text-[#b88422]" />
+                </span>
                 <span>Betting Profit &amp; Loss</span>
               </div>
-              <img src="/images/right-arw.png" alt="Arrow" className="h-4 w-4 object-contain" />
+              <ChevronRight size={20} className="text-[#b88422]" />
             </Link>
             <Link href="/bank-accounts" className={menuItemClass}>
               <div className="flex items-center gap-3 text-sm font-semibold text-[#111]">
-                <img src="/images/ref-icon4.png" alt="Bank Account" className="h-9 w-9 object-cover" />
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#f7f6f3]">
+                  <CreditCard size={28} strokeWidth={2.2} className="text-[#b88422]" />
+                </span>
                 <span>Bank Account</span>
               </div>
-              <img src="/images/right-arw.png" alt="Arrow" className="h-4 w-4 object-contain" />
+              <ChevronRight size={20} className="text-[#b88422]" />
             </Link>
           </div>
         </section>
@@ -123,29 +129,27 @@ const Profile = () => {
             <Link href="/privacy-policy" className={menuItemClass}>
               <div className="flex items-center gap-3 text-sm font-semibold text-[#111]">
                 <div className="flex h-9 w-9 items-center justify-center bg-[#fff4d6]">
-                  <i className="fa-solid fa-shield-halved text-[#c8960c]" />
+                  <Shield size={20} className="text-[#c8960c]" />
                 </div>
                 <span>Privacy Policy</span>
               </div>
-              <img src="/images/right-arw.png" alt="Arrow" className="h-4 w-4 object-contain" />
             </Link>
             <Link href="/terms-and-conditions" className={menuItemClass}>
               <div className="flex items-center gap-3 text-sm font-semibold text-[#111]">
                 <div className="flex h-9 w-9 items-center justify-center bg-[#fff4d6]">
-                  <i className="fa-solid fa-file-lines text-[#c8960c]" />
+                  <FileText size={20} className="text-[#c8960c]" />
                 </div>
                 <span>Terms &amp; Conditions</span>
               </div>
-              <img src="/images/right-arw.png" alt="Arrow" className="h-4 w-4 object-contain" />
             </Link>
             <Link href="/disclaimer" className={menuItemClass}>
               <div className="flex items-center gap-3 text-sm font-semibold text-[#111]">
                 <div className="flex h-9 w-9 items-center justify-center bg-[#fff4d6]">
-                  <i className="fa-solid fa-circle-info text-[#c8960c]" />
+                  <Info size={20} className="text-[#c8960c]" />
                 </div>
                 <span>Disclaimer</span>
               </div>
-              <img src="/images/right-arw.png" alt="Arrow" className="h-4 w-4 object-contain" />
+              <ChevronRight size={20} className="text-[#b88422]" />
             </Link>
           </div>
         </section>

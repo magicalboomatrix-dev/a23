@@ -128,7 +128,7 @@ const Header = () => {
           <ul className="border-t border-[#b88831] pt-2 text-sm font-semibold">
             <li><Link href="/account-statement" className='flex items-center gap-2 border-b border-[#eee] px-2 py-2'><i className="fa fa-university"></i> Account Statement</Link></li>
             <li><Link href="/profit-loss" className='flex items-center gap-2 border-b border-[#eee] px-2 py-2'><i className="fa fa-cog"></i> Betting Profit & Loss</Link></li>
-            <li><Link href="/" className='flex items-center gap-2 border-b border-[#eee] px-2 py-2'><i className="fa fa-gavel"></i> Bonus Rules</Link></li>
+            <li><Link href="/bonus-rules" className='flex items-center gap-2 border-b border-[#eee] px-2 py-2'><i className="fa fa-gavel"></i> Bonus Rules</Link></li>
             {isLoggedIn ? (
               <li><button onClick={handleLogout} className='flex w-full items-center gap-2 px-2 py-2 text-left'><i className="fa fa-sign-out"></i> Logout</button></li>
             ) : (

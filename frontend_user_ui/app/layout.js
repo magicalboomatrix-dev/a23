@@ -1,8 +1,8 @@
-
 import Footer from "./components/Footer";
 import AuthGate from "./components/AuthGate";
 import { AuthProvider } from "./lib/AuthContext";
 import "./globals.css";
+
 import { Exo_2, Mona_Sans } from "next/font/google";
 
 const exo2 = Exo_2({
@@ -20,28 +20,31 @@ const monaSans = Mona_Sans({
 export const metadata = {
   title: "A23Satta",
   description: "A23 Satta user application",
-  manifest: "/manifest.webmanifest",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "A23Satta",
-  },
+  manifest: "/manifest.json",
 };
 
 export const viewport = {
-  width: 'device-width',
+  width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  viewportFit: 'cover',
-  themeColor: '#111111',
+  viewportFit: "cover",
+  themeColor: "#111111",
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className={`${exo2.variable} ${monaSans.variable} flex min-h-screen justify-center bg-[#eef1f5] text-[#171717] antialiased`}>
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#000000" />
+        <link rel="apple-touch-icon" href="/icons/a23_icon_192.png" />
+      </head>
+
+      <body
+        className={`${exo2.variable} ${monaSans.variable} flex min-h-screen justify-center bg-[#eef1f5] text-[#171717] antialiased`}
+      >
         <AuthProvider>
-          <div className="relative flex  w-full max-w-[430px] flex-col overflow-x-hidden bg-white ">
+          <div className="relative flex w-full max-w-[430px] flex-col overflow-x-hidden bg-white">
             <AuthGate>
               {children}
               <Footer />
