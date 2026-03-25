@@ -374,7 +374,7 @@ const HomePage = () => {
       <CustomAds />
 
       {/* Winners Section */}
-      <section className="border border-[#e9dcc0] bg-white shadow-[0_18px_34px_rgba(15,23,42,0.08)] p-3">
+      {/* <section className="border border-[#e9dcc0] bg-white shadow-[0_18px_34px_rgba(15,23,42,0.08)] p-3">
         <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.14em] text-[#1f1500]">
           <span>🏆</span>
           <span>Recent Winners</span>
@@ -404,7 +404,7 @@ const HomePage = () => {
         {!winnersLoading && recentWinners.length === 0 && (
           <p className="mt-2 text-xs text-[#6b5a3a]">No winners yet.</p>
         )}
-      </section>
+      </section> */}
 
       {/* In Play Section */}
       <section>

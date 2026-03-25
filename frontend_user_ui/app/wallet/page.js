@@ -244,7 +244,7 @@ export default function WalletPage() {
       </div>
     </div>
 
-    <div className="flex flex-col items-center text-center space-y-2 p-3">
+    <div className="flex flex-col items-center text-center space-y-2 p-2">
 
       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#111]">
         <img
@@ -280,7 +280,7 @@ export default function WalletPage() {
       </div>
     </div>
 
-    <div className="flex flex-col items-center text-center space-y-2 p-3">
+    <div className="flex flex-col items-center text-center space-y-2 p-2">
 
       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#111]">
         <img
