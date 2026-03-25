@@ -400,7 +400,8 @@ exports.approveDeposit = async (req, res, next) => {
       return res.status(409).json({ error: 'This deposit has already been credited.' });
     }
 
-    if (deposit.effective_moderator_id) {
+    // Only deduct moderator float if approver is a moderator
+    if (deposit.effective_moderator_id && req.user.role === 'moderator') {
       await recordModeratorWalletTransaction(conn, {
         moderatorId: deposit.effective_moderator_id,
         type: 'deposit',

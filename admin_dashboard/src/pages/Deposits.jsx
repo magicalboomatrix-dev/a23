@@ -20,16 +20,19 @@ export default function Deposits() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [previewDeposit, setPreviewDeposit] = useState(null);
+  const [error, setError] = useState('');
 
   useEffect(() => { loadDeposits(); }, [page, filter]);
 
   const loadDeposits = async () => {
     setLoading(true);
+    setError('');
     try {
       const res = await api.get('/deposits/all', { params: { status: filter, page, limit: 15 } });
       setDeposits(Array.isArray(res.data.deposits) ? res.data.deposits : []);
       setPagination(res.data.pagination || {});
     } catch (err) {
+      setError('Failed to load deposits.');
       console.error(err);
     } finally {
       setLoading(false);
@@ -38,11 +41,12 @@ export default function Deposits() {
 
   const approve = async (id) => {
     if (!confirm('Approve this deposit?')) return;
+    setError('');
     try {
       await api.put(`/deposits/${id}/approve`);
       loadDeposits();
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed');
+      setError(err.response?.data?.error || 'Failed');
     }
   };
 
@@ -63,6 +67,11 @@ export default function Deposits() {
 
   return (
     <div className="space-y-4">
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
+          {error}
+        </div>
+      )}
       {/* Filter tabs */}
       <div className="flex gap-2">
         {['pending', 'approved', 'rejected'].map((s) => (
