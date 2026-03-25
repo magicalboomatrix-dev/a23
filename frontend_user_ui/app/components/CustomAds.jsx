@@ -56,14 +56,14 @@ export default function CustomAds() {
                 <img
                   src={adImageUrl(ad.image_url)}
                   alt={ad.title || 'Custom Ad'}
-                  className="mx-auto max-h-28 object-contain rounded-xl"
+                  className="mx-auto h-16 w-36 object-cover rounded-xl"
                 />
               </Link>
             ) : ad.image_url ? (
               <img
                 src={adImageUrl(ad.image_url)}
                 alt={ad.title || 'Custom Ad'}
-                className="mt-3 mx-auto max-h-28 object-contain rounded-xl"
+                className="mt-3 mx-auto h-16 w-36 object-cover rounded-xl"
               />
             ) : null}
 
