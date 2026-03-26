@@ -45,7 +45,7 @@ const HomeNewLaunch = () => {
     <div className="mx-auto w-full max-w-[430px] ">
       <div className="overflow-hidden bg-white ">
         <div>
-          <div className="relative mt-1 flex justify-center px-3">
+          <div className="relative mt-0.5 flex justify-center px-3">
 
         <h2 className="relative w-full max-w-[380px] bg-[linear-gradient(94deg,#b6842d,#ebda8d_55%,#b7862f)] px-[clamp(52px,16vw,112px)] py-2 text-center text-xs font-bold text-black sm:text-sm">
 
