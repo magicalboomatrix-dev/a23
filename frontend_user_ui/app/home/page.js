@@ -46,11 +46,12 @@ function getGameWindow(timeOpen, timeClose, referenceDate = new Date()) {
   closeTime.setHours(closeParts.hours, closeParts.minutes, 0, 0);
 
   if (isOvernight) {
-    if (
-      referenceDate.getHours() > closeParts.hours ||
-      (referenceDate.getHours() === closeParts.hours &&
-        referenceDate.getMinutes() >= closeParts.minutes)
-    ) {
+    const todayOpenTime = new Date(openTime);
+    const todayCloseTime = new Date(closeTime);
+
+    if (referenceDate >= todayOpenTime) {
+      closeTime.setDate(closeTime.getDate() + 1);
+    } else if (referenceDate < todayCloseTime) {
       openTime.setDate(openTime.getDate() - 1);
     } else {
       closeTime.setDate(closeTime.getDate() + 1);

@@ -4,7 +4,7 @@ const slides = [{ src: "/images/banner-img2.jpg", alt: "Banner 1" }];
 
 const HomeHeroBanner = () => {
   return (
-    <div className="mx-auto w-full max-w-[430px]">
+    <div className="w-full">
       <div className="relative">
         <div className="relative w-full h-[100px]">
           <img

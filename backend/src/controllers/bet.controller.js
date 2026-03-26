@@ -21,8 +21,12 @@ function resolveGameWindow(openTimeValue, closeTimeValue, referenceDate = new Da
   closeTime.setHours(closeParsed.hours, closeParsed.minutes, 0, 0);
 
   if (isOvernight) {
-    if (referenceDate.getHours() > closeParsed.hours ||
-        (referenceDate.getHours() === closeParsed.hours && referenceDate.getMinutes() >= closeParsed.minutes)) {
+    const todayOpenTime = new Date(openTime);
+    const todayCloseTime = new Date(closeTime);
+
+    if (referenceDate >= todayOpenTime) {
+      closeTime.setDate(closeTime.getDate() + 1);
+    } else if (referenceDate < todayCloseTime) {
       openTime.setDate(openTime.getDate() - 1);
     } else {
       closeTime.setDate(closeTime.getDate() + 1);
