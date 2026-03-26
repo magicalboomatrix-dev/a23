@@ -108,7 +108,7 @@ export default function Notifications() {
                   )}
                 </div>
                 <p className="text-sm font-medium text-gray-800 leading-6">{notification.message}</p>
-                <p className="text-xs text-gray-500 mt-2">{new Date(notification.created_at).toLocaleString()}</p>
+                <p className="text-xs text-gray-500 mt-2">{new Date(notification.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</p>
               </div>
 
               {!notification.is_read && (

@@ -81,7 +81,7 @@ export default function FraudLogs() {
           {alerts?.large_new_user_deposits?.map((item) => (
             <div key={item.id} className=" border border-purple-200 bg-purple-50 px-4 py-3">
               <p className="text-sm font-medium text-gray-800">{item.user_name} ({item.user_phone}) deposited ₹{Number(item.amount).toLocaleString('en-IN')}</p>
-              <p className="text-xs text-gray-500 mt-1">Account age: {item.account_age_hours} hours • {new Date(item.created_at).toLocaleString()}</p>
+              <p className="text-xs text-gray-500 mt-1">Account age: {item.account_age_hours} hours • {new Date(item.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</p>
             </div>
           ))}
           {!alerts?.large_new_user_deposits?.length && <div className="text-sm text-gray-400">No large new-user deposit alerts.</div>}
@@ -109,7 +109,7 @@ export default function FraudLogs() {
                 <td className="px-4 py-3 text-xs text-gray-700">
                   {log.original_user_name ? `${log.original_user_name} (${log.original_user_phone})` : '-'}
                 </td>
-                <td className="px-4 py-3 text-xs text-gray-600">{new Date(log.created_at).toLocaleString()}</td>
+                <td className="px-4 py-3 text-xs text-gray-600">{new Date(log.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</td>
               </tr>
             ))}
             {logs.length === 0 && (

@@ -60,7 +60,7 @@ const MonthlyChart = ({ data, gameNames: providedGameNames = [] }) => {
     results.forEach((r) => {
       const d = r.result_date || r.date;
       const dateStr = d
-        ? new Date(d).toLocaleDateString("en-GB", {
+        ? new Date(d).toLocaleDateString("en-IN", {
             day: "2-digit",
             month: "2-digit",
           })

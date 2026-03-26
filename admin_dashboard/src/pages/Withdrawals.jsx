@@ -104,7 +104,7 @@ export default function Withdrawals() {
                       : 'bg-yellow-100 text-yellow-700'
                   }`}>{w.status}</span>
                 </td>
-                <td className="px-4 py-3 text-gray-500 text-xs">{new Date(w.created_at).toLocaleString()}</td>
+                <td className="px-4 py-3 text-gray-500 text-xs">{new Date(w.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</td>
                 {filter === 'pending' && (
                   <td className="px-4 py-3 text-center space-x-2">
                     <button onClick={() => approve(w.id)} className="px-3 py-1 bg-green-600 text-white  text-xs hover:bg-green-700">Approve</button>

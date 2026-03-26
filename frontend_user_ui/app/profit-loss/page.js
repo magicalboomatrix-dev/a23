@@ -79,7 +79,7 @@ const ProfitLoss = () => {
                         {currentRows.map((row, idx) => (
                             <tr key={row.id || idx}>
                             <td className="border-b border-r border-[#f0e3c6] px-3 py-2">{start + idx + 1}</td>
-                            <td className="border-b border-r border-[#f0e3c6] px-3 py-2">{row.created_at ? new Date(row.created_at).toLocaleString() : '-'}</td>
+                            <td className="border-b border-r border-[#f0e3c6] px-3 py-2">{row.created_at ? new Date(row.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
                           <td className="border-b border-r border-[#f0e3c6] px-3 py-2">{row.event || row.game_name || '-'}</td>
                           <td className="border-b border-r border-[#f0e3c6] px-3 py-2">{formatBetType(row.event_type || row.bet_type || '-')}</td>
                           <td className="border-b border-r border-[#f0e3c6] px-3 py-2">{formatCurrency(row.total_amount)}</td>

@@ -218,7 +218,7 @@ export default function Moderators() {
                   </td>
                   <td className="px-4 py-3 text-right">{Number(stat.total_deposits || 0).toLocaleString('en-IN')}</td>
                   <td className="px-4 py-3 text-right font-semibold text-green-700">{formatCurrency(stat.total_amount)}</td>
-                  <td className="px-4 py-3 text-xs text-gray-600">{stat.last_deposit_date ? new Date(stat.last_deposit_date).toLocaleString() : '-'}</td>
+                  <td className="px-4 py-3 text-xs text-gray-600">{stat.last_deposit_date ? new Date(stat.last_deposit_date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
                   <td className="px-4 py-3 text-center">
                     <Link
                       to={`/moderators/${stat.moderator_id}`}

@@ -477,7 +477,7 @@ export default function Results() {
           </div>
           <div className="select-opts">
             <select className="select-dropdown" value={monthlyFilters.month} onChange={(event) => setMonthlyFilters((current) => ({ ...current, month: event.target.value }))}>
-              {Array.from({ length: 12 }, (_, index) => index + 1).map((monthValue) => <option key={monthValue} value={String(monthValue)}>{new Date(2000, monthValue - 1, 1).toLocaleString('en-US', { month: 'long' })}</option>)}
+              {Array.from({ length: 12 }, (_, index) => index + 1).map((monthValue) => <option key={monthValue} value={String(monthValue)}>{new Date(2000, monthValue - 1, 1).toLocaleString('en-IN', { month: 'long' })}</option>)}
             </select>
             <input className="results-input" type="number" min="2024" max="2100" value={monthlyFilters.year} onChange={(event) => setMonthlyFilters((current) => ({ ...current, year: event.target.value }))} />
             <button className="header_btn" type="button" onClick={() => loadMonthlyChart(monthlyFilters.year, monthlyFilters.month)}>Check</button>

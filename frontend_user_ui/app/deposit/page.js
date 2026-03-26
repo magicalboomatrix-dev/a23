@@ -196,7 +196,7 @@ const DipositPage = () => {
                                 <td className="border-b border-r border-[#f0e3c6] px-3 py-2">{formatStatusLabel(d.status)}</td>
                             <td className="border-b border-r border-[#f0e3c6] px-3 py-2">{formatApprovalLabel(d)}</td>
                             <td className="border-b border-r border-[#f0e3c6] px-3 py-2">{d.reject_reason || '-'}</td>
-                                <td className="border-b px-3 py-2">{d.created_at ? new Date(d.created_at).toLocaleDateString() : '-'}</td>
+                                <td className="border-b px-3 py-2">{d.created_at ? new Date(d.created_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
                             </tr>
                             ))}
                           {history.length === 0 && <tr><td className="px-3 py-6 text-center" colSpan="7">No deposits yet</td></tr>}

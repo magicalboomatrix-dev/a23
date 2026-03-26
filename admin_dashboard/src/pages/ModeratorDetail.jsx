@@ -178,7 +178,7 @@ export default function ModeratorDetail() {
             <div><span className="font-medium text-gray-800">UPI User:</span> {upiDetails.username || '-'}</div>
             <div><span className="font-medium text-gray-800">UPI Handle:</span> {upiDetails.handle || '-'}</div>
             <div><span className="font-medium text-gray-800">UPI Format:</span> {upiDetails.full ? (upiDetails.isValid ? 'Valid' : 'Check format') : '-'}</div>
-            <div><span className="font-medium text-gray-800">Created:</span> {new Date(moderator.created_at).toLocaleString()}</div>
+            <div><span className="font-medium text-gray-800">Created:</span> {new Date(moderator.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</div>
             <div className="sm:col-span-2 break-all"><span className="font-medium text-gray-800">QR File:</span> {qrFileName || '-'}</div>
             <div className="sm:col-span-2 break-all"><span className="font-medium text-gray-800">QR Path:</span> {moderator.qr_code_image || '-'}</div>
           </div>
@@ -251,7 +251,7 @@ export default function ModeratorDetail() {
           <tbody className="divide-y">
             {deposits.map((transaction) => (
               <tr key={transaction.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-xs text-gray-600">{new Date(transaction.created_at).toLocaleString()}</td>
+                <td className="px-4 py-3 text-xs text-gray-600">{new Date(transaction.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</td>
                 <td className="px-4 py-3 text-xs text-gray-700">
                   <Link to={`/users/${transaction.user_id}`} className="text-blue-600 hover:underline">{transaction.user_name}</Link>
                   <div className="text-gray-500">{transaction.user_phone}</div>
@@ -268,7 +268,7 @@ export default function ModeratorDetail() {
                 </td>
                 <td className="px-4 py-3 text-xs text-gray-600">
                   <div>{formatApprovedBy(transaction)}</div>
-                  <div className="text-gray-500">{transaction.reviewed_at ? new Date(transaction.reviewed_at).toLocaleString() : '-'}</div>
+                  <div className="text-gray-500">{transaction.reviewed_at ? new Date(transaction.reviewed_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '-'}</div>
                 </td>
                 <td className="px-4 py-3 text-center text-xs">
                   {transaction.receipt_image ? <a href={buildUploadUrl(transaction.receipt_image)} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">View</a> : '-'}
@@ -301,7 +301,7 @@ export default function ModeratorDetail() {
             <tbody className="divide-y">
               {floats.map((transaction) => (
                 <tr key={transaction.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-xs text-gray-600">{new Date(transaction.created_at).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-xs text-gray-600">{new Date(transaction.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</td>
                   <td className="px-4 py-3 text-xs text-gray-700">{transaction.type}</td>
                   <td className={`px-4 py-3 text-right font-semibold ${Number(transaction.amount) >= 0 ? 'text-green-700' : 'text-red-700'}`}>{formatCurrency(transaction.amount)}</td>
                   <td className="px-4 py-3 text-right text-xs text-gray-700">{formatCurrency(transaction.balance_after)}</td>
@@ -372,7 +372,7 @@ export default function ModeratorDetail() {
           <tbody className="divide-y">
             {scannerAuditHistory.map((entry) => (
               <tr key={entry.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-xs text-gray-600">{new Date(entry.created_at).toLocaleString()}</td>
+                <td className="px-4 py-3 text-xs text-gray-600">{new Date(entry.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</td>
                 <td className="px-4 py-3 text-xs text-gray-700">
                   <div>{entry.actor_name || 'System'}</div>
                   <div className="text-gray-500">{entry.actor_role || '-'}</div>
@@ -403,7 +403,7 @@ export default function ModeratorDetail() {
                   {notification.is_read ? 'Read' : 'Unread'}
                 </span>
               </div>
-              <div className="text-xs text-gray-500 mt-1">{new Date(notification.created_at).toLocaleString()}</div>
+              <div className="text-xs text-gray-500 mt-1">{new Date(notification.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</div>
             </div>
           ))}
           {notifications.length === 0 && <div className="text-sm text-gray-400">No notifications</div>}

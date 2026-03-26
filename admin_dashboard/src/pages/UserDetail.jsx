@@ -94,8 +94,8 @@ export default function UserDetail() {
           <div><span className="font-medium text-gray-800">Referral:</span> {user.referral_code}</div>
           <div><span className="font-medium text-gray-800">Moderator:</span> {user.moderator_name || '-'}</div>
           <div><span className="font-medium text-gray-800">Status:</span> {user.is_blocked ? 'Blocked' : 'Active'}</div>
-          <div><span className="font-medium text-gray-800">Created:</span> {new Date(user.created_at).toLocaleString()}</div>
-          <div><span className="font-medium text-gray-800">Updated:</span> {new Date(user.updated_at).toLocaleString()}</div>
+          <div><span className="font-medium text-gray-800">Created:</span> {new Date(user.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</div>
+          <div><span className="font-medium text-gray-800">Updated:</span> {new Date(user.updated_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</div>
           <div><span className="font-medium text-gray-800">Withdrawals:</span> {withdrawals.length}</div>
           <div><span className="font-medium text-gray-800">Wallet Entries:</span> {walletTransactions.length}</div>
         </div>
@@ -117,7 +117,7 @@ export default function UserDetail() {
           <tbody className="divide-y">
             {deposits.map((deposit) => (
               <tr key={deposit.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-xs text-gray-600">{new Date(deposit.created_at).toLocaleString()}</td>
+                <td className="px-4 py-3 text-xs text-gray-600">{new Date(deposit.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</td>
                 <td className="px-4 py-3 text-right font-semibold text-green-700">{formatCurrency(deposit.amount)}</td>
                 <td className="px-4 py-3 font-mono text-xs">{deposit.utr_number}</td>
                 <td className="px-4 py-3 text-center">
@@ -127,7 +127,7 @@ export default function UserDetail() {
                 </td>
                 <td className="px-4 py-3 text-xs text-gray-600">
                   <div>{formatApprovedBy(deposit)}</div>
-                  <div className="text-gray-500">{deposit.reviewed_at ? new Date(deposit.reviewed_at).toLocaleString() : '-'}</div>
+                  <div className="text-gray-500">{deposit.reviewed_at ? new Date(deposit.reviewed_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '-'}</div>
                 </td>
                 <td className="px-4 py-3 text-center text-xs">
                   {deposit.receipt_image ? <a href={buildUploadUrl(deposit.receipt_image)} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">View</a> : '-'}
@@ -155,7 +155,7 @@ export default function UserDetail() {
             <tbody className="divide-y">
               {walletTransactions.map((transaction) => (
                 <tr key={transaction.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-xs text-gray-600">{new Date(transaction.created_at).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-xs text-gray-600">{new Date(transaction.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</td>
                   <td className="px-4 py-3 text-xs text-gray-700">{transaction.type}</td>
                   <td className={`px-4 py-3 text-right font-semibold ${Number(transaction.amount) >= 0 ? 'text-green-700' : 'text-red-700'}`}>{formatCurrency(transaction.amount)}</td>
                   <td className="px-4 py-3 text-right text-xs text-gray-700">{formatCurrency(transaction.balance_after)}</td>
@@ -185,7 +185,7 @@ export default function UserDetail() {
             <tbody className="divide-y">
               {withdrawals.map((withdrawal) => (
                 <tr key={withdrawal.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-xs text-gray-600">{new Date(withdrawal.created_at).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-xs text-gray-600">{new Date(withdrawal.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</td>
                   <td className="px-4 py-3 text-right font-semibold text-gray-800">{formatCurrency(withdrawal.amount)}</td>
                   <td className="px-4 py-3 text-center">
                     <span className={`px-2 py-1 text-xs font-medium ${withdrawal.status === 'approved' ? 'bg-green-100 text-green-700' : withdrawal.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
@@ -224,7 +224,7 @@ export default function UserDetail() {
             <tbody className="divide-y">
               {bets.map((bet) => (
                 <tr key={bet.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-xs text-gray-600">{new Date(bet.created_at).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-xs text-gray-600">{new Date(bet.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</td>
                   <td className="px-4 py-3 text-xs text-gray-700">
                     <div>{bet.game_name}</div>
                     <div className="text-gray-500">{bet.result_number || '-'}</div>
@@ -254,7 +254,7 @@ export default function UserDetail() {
               <tbody className="divide-y">
                 {bonuses.map((bonus) => (
                   <tr key={bonus.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-xs text-gray-600">{new Date(bonus.created_at).toLocaleString()}</td>
+                    <td className="px-4 py-3 text-xs text-gray-600">{new Date(bonus.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</td>
                     <td className="px-4 py-3 text-xs text-gray-700">{bonus.type}</td>
                     <td className="px-4 py-3 text-right text-xs text-green-700">{formatCurrency(bonus.amount)}</td>
                     <td className="px-4 py-3 text-xs text-gray-600">{bonus.reference_id || '-'}</td>
@@ -309,7 +309,7 @@ export default function UserDetail() {
                   {notification.is_read ? 'Read' : 'Unread'}
                 </span>
               </div>
-              <div className="text-xs text-gray-500 mt-1">{new Date(notification.created_at).toLocaleString()}</div>
+              <div className="text-xs text-gray-500 mt-1">{new Date(notification.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</div>
             </div>
           ))}
           {notifications.length === 0 && <div className="text-sm text-gray-400">No notifications</div>}

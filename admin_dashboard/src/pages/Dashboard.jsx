@@ -111,7 +111,7 @@ export default function Dashboard() {
               <div key={userRow.id} className=" border border-amber-200 bg-amber-50 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium text-gray-800">{userRow.name}</p>
-                  <p className="text-xs text-gray-600 mt-1">{userRow.phone} • Joined {new Date(userRow.created_at).toLocaleDateString()}</p>
+                  <p className="text-xs text-gray-600 mt-1">{userRow.phone} • Joined {new Date(userRow.created_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}</p>
                 </div>
                 <div className="text-xs font-medium text-amber-700 uppercase tracking-wide">Needs Moderator</div>
               </div>
@@ -173,7 +173,7 @@ export default function Dashboard() {
                   <div>
                     <p className="text-sm font-medium text-gray-800">{notification.message}</p>
                     <p className="text-xs text-gray-500 mt-1">
-                      {notification.type} • {new Date(notification.created_at).toLocaleString()}
+                      {notification.type} • {new Date(notification.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
                     </p>
                   </div>
                   {!notification.is_read && (
@@ -224,7 +224,7 @@ export default function Dashboard() {
                       {bet.status}
                     </span>
                   </td>
-                  <td className="px-5 py-3 text-gray-500">{new Date(bet.created_at).toLocaleString()}</td>
+                  <td className="px-5 py-3 text-gray-500">{new Date(bet.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</td>
                 </tr>
               ))}
               {recentBets.length === 0 && (

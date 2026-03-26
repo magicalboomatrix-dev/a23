@@ -165,11 +165,8 @@ exports.declareResult = async (req, res, next) => {
     const checkTime = gameRows[0].result_time || gameRows[0].close_time;
     let canSettle = true;
     if (checkTime) {
-      const now = new Date();
-      const [h, m, s] = checkTime.split(':').map(Number);
-      const resultMoment = new Date(now);
-      resultMoment.setHours(h, m, s || 0, 0);
-      canSettle = now >= resultMoment;
+      const [[{ past }]] = await conn.query('SELECT CURTIME() >= ? AS past', [checkTime]);
+      canSettle = !!past;
     }
 
     await conn.beginTransaction();
@@ -227,15 +224,12 @@ exports.settleBets = async (req, res, next) => {
       return res.status(404).json({ error: 'Game not found.' });
     }
 
-    // Block settlement before the game's result/close time
+    // Block settlement before the game's result/close time (use DB time to avoid timezone mismatch)
     const game = games[0];
     const checkTime = game.result_time || game.close_time;
     if (checkTime) {
-      const now = new Date();
-      const [h, m, s] = checkTime.split(':').map(Number);
-      const resultMoment = new Date(now);
-      resultMoment.setHours(h, m, s || 0, 0);
-      if (now < resultMoment) {
+      const [[{ past }]] = await conn.query('SELECT CURTIME() >= ? AS past', [checkTime]);
+      if (!past) {
         return res.status(400).json({ error: `Cannot settle before result time (${checkTime}). Please wait.` });
       }
     }

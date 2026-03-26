@@ -141,9 +141,9 @@ export default function Deposits() {
                 </td>
                 <td className="px-4 py-3 text-xs text-gray-600">{d.moderator_name || '-'}</td>
                 <td className="px-4 py-3 text-xs text-gray-600">{getReviewLabel(d)}</td>
-                <td className="px-4 py-3 text-gray-500 text-xs">{d.approved_at ? new Date(d.approved_at).toLocaleString() : '-'}</td>
+                <td className="px-4 py-3 text-gray-500 text-xs">{d.approved_at ? new Date(d.approved_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
                 <td className="px-4 py-3 text-xs text-gray-600">{d.reject_reason || '-'}</td>
-                <td className="px-4 py-3 text-gray-500 text-xs">{new Date(d.created_at).toLocaleString()}</td>
+                <td className="px-4 py-3 text-gray-500 text-xs">{new Date(d.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</td>
                 <td className="px-4 py-3 text-center space-x-2">
                   {(d.status === 'pending' || (user?.role === 'admin' && d.status === 'rejected')) && (
                     <button onClick={() => approve(d.id)} className="px-3 py-1 bg-green-600 text-white text-xs hover:bg-green-700">Approve</button>

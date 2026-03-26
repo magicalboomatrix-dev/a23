@@ -112,7 +112,7 @@ const AccountStatement = () => {
                         {currentRows.map((row, idx) => (
                             <tr key={row.id || idx}>
                 <td className="border-b border-r border-[#f0e3c6] px-3 py-2">{start + idx + 1}</td>
-                <td className="border-b border-r border-[#f0e3c6] px-3 py-2">{row.created_at ? new Date(row.created_at).toLocaleString() : row.date || '-'}</td>
+                <td className="border-b border-r border-[#f0e3c6] px-3 py-2">{row.created_at ? new Date(row.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : row.date || '-'}</td>
                 <td className="border-b border-r border-[#f0e3c6] px-3 py-2 text-[#127a3b]">{getCredit(row)}</td>
                 <td className="border-b border-r border-[#f0e3c6] px-3 py-2">{getDebit(row)}</td>
                 <td className="border-b border-r border-[#f0e3c6] px-3 py-2 text-[#127a3b]">{row.balance_after != null ? formatCurrency(row.balance_after) : '-'}</td>

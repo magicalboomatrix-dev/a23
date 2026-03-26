@@ -118,7 +118,7 @@ export default function ModeratorFloats() {
                 <td className="px-4 py-3 text-right font-semibold text-green-700">{formatCurrency(moderator.float_balance)}</td>
                 <td className="px-4 py-3 text-right">{formatCurrency(moderator.total_topups)}</td>
                 <td className="px-4 py-3 text-right">{formatCurrency(moderator.total_deductions)}</td>
-                <td className="px-4 py-3 text-xs text-gray-600">{moderator.last_transaction_at ? new Date(moderator.last_transaction_at).toLocaleString() : '-'}</td>
+                <td className="px-4 py-3 text-xs text-gray-600">{moderator.last_transaction_at ? new Date(moderator.last_transaction_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
                 <td className="px-4 py-3 min-w-[240px]">
                   <div className="space-y-2">
                     <input

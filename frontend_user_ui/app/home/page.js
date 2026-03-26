@@ -23,10 +23,11 @@ function formatGameTime(timeValue) {
   const { hours, minutes } = parseTimeParts(timeValue);
   const date = new Date();
   date.setHours(hours, minutes, 0, 0);
-  return date.toLocaleTimeString("en-US", {
+  return date.toLocaleTimeString("en-IN", {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
+    timeZone: "Asia/Kolkata",
   });
 }
 
@@ -246,7 +247,7 @@ const HomePage = () => {
     // Clock interval
     clockIntervalRef.current = setInterval(() => {
       setClock(
-        new Date().toLocaleString("en-US", {
+        new Date().toLocaleString("en-IN", {
           year: "numeric",
           month: "long",
           day: "numeric",
@@ -254,6 +255,7 @@ const HomePage = () => {
           minute: "2-digit",
           second: "2-digit",
           hour12: true,
+          timeZone: "Asia/Kolkata",
         }),
       );
     }, 1000);
@@ -269,7 +271,7 @@ const HomePage = () => {
     }, 30000);
 
     setClock(
-      new Date().toLocaleString("en-US", {
+      new Date().toLocaleString("en-IN", {
         year: "numeric",
         month: "long",
         day: "numeric",
@@ -277,6 +279,7 @@ const HomePage = () => {
         minute: "2-digit",
         second: "2-digit",
         hour12: true,
+        timeZone: "Asia/Kolkata",
       }),
     );
 
