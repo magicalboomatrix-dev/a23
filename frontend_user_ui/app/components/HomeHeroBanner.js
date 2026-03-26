@@ -6,7 +6,7 @@ const HomeHeroBanner = () => {
   return (
     <div className="w-full">
       <div className="relative">
-        <div className="relative w-full h-[100px]">
+        <div className="relative w-full">
           <img
             src={slides[0].src}
             alt={slides[0].alt}
