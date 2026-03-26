@@ -386,7 +386,7 @@ const LoginAccountPage = () => {
                     <label className={labelClass}>Mobile Number</label>
                     <input
                       className={inputClass}
-                      placeholder="Enter phone number, e.g. 9876543210 or +919876543210"
+                      placeholder="Enter your number"
                       type="tel"
                       inputMode="tel"
                       maxLength={16}

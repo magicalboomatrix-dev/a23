@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const { IST_NOW_SQL, IST_DATE_SQL } = require('../utils/sql-time');
 
 const LARGE_NEW_USER_DEPOSIT_THRESHOLD = 5000;
 const LARGE_NEW_USER_DEPOSIT_MAX_AGE_DAYS = 3;
@@ -417,7 +418,7 @@ exports.getFraudAlerts = async (req, res, next) => {
       pool.query(`
         SELECT COUNT(*) AS attempts_today
         FROM utr_attempt_logs
-        WHERE created_at >= CURDATE()
+        WHERE DATE(created_at) = DATE(${IST_NOW_SQL})
       `),
       pool.query(`
         SELECT receipt_image_hash, COUNT(*) AS duplicate_count,
@@ -438,7 +439,7 @@ exports.getFraudAlerts = async (req, res, next) => {
         FROM deposits d
         JOIN users approver ON approver.id = COALESCE(d.approved_by_id, d.approved_by)
         WHERE d.status = 'approved'
-          AND COALESCE(d.approved_at, d.updated_at) >= CURDATE()
+          AND DATE(COALESCE(d.approved_at, d.updated_at)) = DATE(${IST_NOW_SQL})
         GROUP BY approver.id, approver.name, COALESCE(d.approved_by_role, approver.role)
         HAVING COUNT(*) >= 10
         ORDER BY approval_count DESC
@@ -479,12 +480,12 @@ exports.getDashboardStats = async (req, res, next) => {
                COALESCE(SUM(amount), 0) AS total_amount_today
         FROM deposits
         WHERE status = 'approved'
-          AND DATE(COALESCE(approved_at, updated_at)) = CURDATE()
+          AND DATE(COALESCE(approved_at, updated_at)) = DATE(${IST_NOW_SQL})
       `),
       pool.query(`
         SELECT COUNT(*) AS fraud_attempts_today
         FROM utr_attempt_logs
-        WHERE created_at >= CURDATE()
+        WHERE DATE(created_at) = DATE(${IST_NOW_SQL})
       `),
       pool.query(`
         SELECT COUNT(*) AS active_moderators

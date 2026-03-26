@@ -1,5 +1,6 @@
 const pool = require('../config/database');
 const XLSX = require('xlsx');
+const { IST_DATE_SQL, IST_TIME_SQL } = require('../utils/sql-time');
 
 function normalizeResultNumber(value) {
   const trimmed = String(value ?? '').trim();
@@ -85,8 +86,8 @@ async function fetchMonthlyChart(year, month, includeHidden = false) {
   const visibilitySql = includeHidden
     ? '1'
     : `CASE
-         WHEN gr.result_date = CURDATE()
-           THEN CASE WHEN COALESCE(g.result_time, g.close_time) <= CURTIME() THEN 1 ELSE 0 END
+         WHEN gr.result_date = ${IST_DATE_SQL}
+           THEN CASE WHEN COALESCE(g.result_time, g.close_time) <= ${IST_TIME_SQL} THEN 1 ELSE 0 END
          ELSE 1
        END`;
 
@@ -121,8 +122,8 @@ async function fetchYearlyChart(year, city, includeHidden = false) {
   const visibilitySql = includeHidden
     ? '1'
     : `CASE
-         WHEN gr.result_date = CURDATE()
-           THEN CASE WHEN COALESCE(g.result_time, g.close_time) <= CURTIME() THEN 1 ELSE 0 END
+         WHEN gr.result_date = ${IST_DATE_SQL}
+           THEN CASE WHEN COALESCE(g.result_time, g.close_time) <= ${IST_TIME_SQL} THEN 1 ELSE 0 END
          ELSE 1
        END`;
 
@@ -235,7 +236,7 @@ exports.getLiveResults = async (req, res, next) => {
       FROM games g
       LEFT JOIN game_results gr
         ON gr.game_id = g.id
-       AND gr.result_date = CURDATE()
+       AND gr.result_date = ${IST_DATE_SQL}
        AND gr.declared_at IS NOT NULL
       WHERE g.is_active = 1
       ORDER BY g.close_time ASC

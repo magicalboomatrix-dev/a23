@@ -1,5 +1,6 @@
 const pool = require('../config/database');
 const { settleBetsForGame } = require('../utils/settle-bets');
+const { IST_TIME_SQL } = require('../utils/sql-time');
 
 /**
  * Auto-settle cron: runs every 60 seconds.
@@ -19,7 +20,7 @@ async function autoSettleBets() {
         LIMIT 1
       )
       WHERE g.is_active = 1
-        AND COALESCE(g.result_time, g.close_time) <= CURTIME()
+        AND COALESCE(g.result_time, g.close_time) <= ${IST_TIME_SQL}
         AND EXISTS (
           SELECT 1 FROM bets b WHERE b.game_id = g.id AND b.status = 'pending'
         )

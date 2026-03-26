@@ -65,7 +65,7 @@ const Header = () => {
         <div className="flex items-center justify-between px-2 py-1.5">
           <div className="flex items-center gap-4">
             <div className="flex items-center">
-              <Link href="/"><img src="/images/logo.png" alt="Winbuzz" className="h-6 w-auto" /></Link>
+              <Link href="/"><img src="/images/logo.png" alt="Winbuzz" className="h-8 w-auto" /></Link>
             </div>
           </div>
           <div className="flex items-center gap-2.5">
@@ -88,15 +88,17 @@ const Header = () => {
           </div>
         </div>
       <div className="notice-marquee bg-[linear-gradient(94deg,#b6842d,#ebda8d_55%,#b7862f)] px-3 py-1.5 text-[12px] text-black">
-        <div className="notice-marquee-track">
-          {[0, 1].map((itemIndex) => (
-            <div key={itemIndex} className="notice-marquee-item">
-              <span className="bg-black px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.14em] text-[#ffd26a]">
-                Notice
-              </span>
-              <span className="notice-marquee-text text-[12px] font-semibold">{NOTICE_TEXT}</span>
-            </div>
-          ))}
+        <span className="notice-marquee-label bg-black px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.14em] text-[#ffd26a]">
+          Notice
+        </span>
+        <div className="notice-marquee-body">
+          <div className="notice-marquee-track">
+            {[0, 1].map((itemIndex) => (
+              <div key={itemIndex} className="notice-marquee-item">
+                <span className="notice-marquee-text text-[12px] font-semibold">{NOTICE_TEXT}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -130,7 +132,7 @@ const Header = () => {
             <li><Link href="/profit-loss" className='flex items-center gap-2 border-b border-[#eee] px-2 py-2'><i className="fa fa-cog"></i> Betting Profit & Loss</Link></li>
             <li><Link href="/bonus-rules" className='flex items-center gap-2 border-b border-[#eee] px-2 py-2'><i className="fa fa-gavel"></i> Bonus Rules</Link></li>
             {isLoggedIn ? (
-              <li><button onClick={handleLogout} className='flex w-full items-center gap-2 px-2 py-2 text-left'><i className="fa fa-sign-out"></i> Logout</button></li>
+              <li><button onClick={handleLogout} className='flex w-full items-center gap-2 px-2 py-2 text-left text-red-600 text-shadow-red-700 cursor-pointer'><i className="fa fa-sign-out"></i> Logout</button></li>
             ) : (
               <li><Link href="/login" className='flex items-center gap-2 px-2 py-2'><i className="fa fa-sign-out"></i> Login</Link></li>
             )}

@@ -156,7 +156,7 @@ const Profile = () => {
 
         {/* Logout */}
         <button
-          className="w-full bg-[#111] px-4 py-3 text-sm font-black uppercase tracking-[0.14em] text-white"
+          className="w-full bg-red-600 px-4 py-3 text-sm font-black uppercase tracking-[0.14em] text-white"
           onClick={handleLogout}
         >
           Logout

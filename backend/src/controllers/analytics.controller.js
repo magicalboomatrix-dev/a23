@@ -1,11 +1,12 @@
 const pool = require('../config/database');
+const { IST_NOW_SQL, IST_DATE_SQL } = require('../utils/sql-time');
 
 exports.getDashboard = async (req, res, next) => {
   try {
     const isModerator = req.user.role === 'moderator';
     const userScopeClause = isModerator ? ' AND moderator_id = ?' : '';
     const userScopeParams = isModerator ? [req.user.id] : [];
-    const currentDayFilter = (column) => `${column} >= CURDATE() AND ${column} < CURDATE() + INTERVAL 1 DAY`;
+    const currentDayFilter = (column) => `${column} >= ${IST_DATE_SQL} AND ${column} < ${IST_DATE_SQL} + INTERVAL 1 DAY`;
 
     // Total users
     const [userCount] = await pool.query(
@@ -171,21 +172,21 @@ exports.getRevenueAnalytics = async (req, res, next) => {
     const [deposits] = await pool.query(`
       SELECT DATE_FORMAT(created_at, '%Y-%m-%d') as date, SUM(amount) as total
       FROM deposits
-      WHERE status = 'approved' AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+      WHERE status = 'approved' AND created_at >= DATE_SUB(${IST_NOW_SQL}, INTERVAL ? DAY)
       GROUP BY DATE_FORMAT(created_at, '%Y-%m-%d') ORDER BY date
     `, [interval]);
 
     const [withdrawals] = await pool.query(`
       SELECT DATE_FORMAT(created_at, '%Y-%m-%d') as date, SUM(amount) as total
       FROM withdraw_requests
-      WHERE status = 'approved' AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+      WHERE status = 'approved' AND created_at >= DATE_SUB(${IST_NOW_SQL}, INTERVAL ? DAY)
       GROUP BY DATE_FORMAT(created_at, '%Y-%m-%d') ORDER BY date
     `, [interval]);
 
     const [bets] = await pool.query(`
       SELECT DATE_FORMAT(created_at, '%Y-%m-%d') as date, SUM(total_amount) as total_bet, SUM(win_amount) as total_win
       FROM bets
-      WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+      WHERE created_at >= DATE_SUB(${IST_NOW_SQL}, INTERVAL ? DAY)
       GROUP BY DATE_FORMAT(created_at, '%Y-%m-%d') ORDER BY date
     `, [interval]);
 

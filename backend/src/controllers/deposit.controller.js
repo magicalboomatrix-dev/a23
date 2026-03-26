@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { recordWalletTransaction, recordModeratorWalletTransaction } = require('../utils/wallet-ledger');
+const { IST_NOW_SQL } = require('../utils/sql-time');
 
 const uploadDir = path.join(__dirname, '..', '..', 'uploads');
 const LARGE_NEW_USER_DEPOSIT_THRESHOLD = 5000;
@@ -148,7 +149,7 @@ async function notifyLargeNewUserDeposit({ depositId, userId, moderatorId, amoun
     `SELECT id, name, phone, created_at
      FROM users
      WHERE id = ?
-       AND TIMESTAMPDIFF(DAY, created_at, NOW()) <= ?
+       AND TIMESTAMPDIFF(DAY, created_at, ${IST_NOW_SQL}) <= ?
      LIMIT 1`,
     [userId, LARGE_NEW_USER_DEPOSIT_MAX_AGE_DAYS]
   );
@@ -415,7 +416,7 @@ exports.approveDeposit = async (req, res, next) => {
     // Update deposit status
     await conn.query(
       `UPDATE deposits
-       SET status = ?, reject_reason = NULL, approved_by = ?, approved_by_role = ?, approved_by_id = ?, approved_at = NOW()
+       SET status = ?, reject_reason = NULL, approved_by = ?, approved_by_role = ?, approved_by_id = ?, approved_at = ${IST_NOW_SQL}
        WHERE id = ?`,
       ['approved', req.user.id, req.user.role, req.user.id, id]
     );
@@ -520,7 +521,7 @@ exports.rejectDeposit = async (req, res, next) => {
 
     const [result] = await pool.query(
       `UPDATE deposits
-       SET status = ?, reject_reason = ?, approved_by = ?, approved_by_role = ?, approved_by_id = ?, approved_at = NOW()
+       SET status = ?, reject_reason = ?, approved_by = ?, approved_by_role = ?, approved_by_id = ?, approved_at = ${IST_NOW_SQL}
        WHERE id = ? AND status = ?`,
       ['rejected', reason || 'Rejected by admin', req.user.id, req.user.role, req.user.id, id, 'pending']
     );

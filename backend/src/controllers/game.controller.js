@@ -1,5 +1,6 @@
 const pool = require('../config/database');
 const { settleBetsForGame } = require('../utils/settle-bets');
+const { IST_NOW_SQL, IST_DATE_SQL, IST_TIME_SQL } = require('../utils/sql-time');
 
 exports.listGames = async (req, res, next) => {
   try {
@@ -8,7 +9,7 @@ exports.listGames = async (req, res, next) => {
              gry.result_number AS yesterday_result_number,
              gry.result_date AS yesterday_result_date,
              CASE
-               WHEN gr.id IS NOT NULL AND COALESCE(g.result_time, g.close_time) <= CURTIME() THEN 1
+               WHEN gr.id IS NOT NULL AND COALESCE(g.result_time, g.close_time) <= ${IST_TIME_SQL} THEN 1
                ELSE 0
              END AS result_visible,
              COALESCE(pb.pending_bets_count, 0) AS pending_bets_count
@@ -18,7 +19,7 @@ exports.listGames = async (req, res, next) => {
         FROM game_results gr2
         WHERE gr2.game_id = g.id
           AND gr2.declared_at IS NOT NULL
-          AND gr2.result_date = CURDATE()
+          AND gr2.result_date = ${IST_DATE_SQL}
         ORDER BY gr2.result_date DESC, gr2.declared_at DESC
         LIMIT 1
       )
@@ -27,7 +28,7 @@ exports.listGames = async (req, res, next) => {
         FROM game_results gr3
         WHERE gr3.game_id = g.id
           AND gr3.declared_at IS NOT NULL
-          AND gr3.result_date = CURDATE() - INTERVAL 1 DAY
+          AND gr3.result_date = ${IST_DATE_SQL} - INTERVAL 1 DAY
         ORDER BY gr3.result_date DESC, gr3.declared_at DESC
         LIMIT 1
       )
@@ -165,7 +166,7 @@ exports.declareResult = async (req, res, next) => {
     const checkTime = gameRows[0].result_time || gameRows[0].close_time;
     let canSettle = true;
     if (checkTime) {
-      const [[{ past }]] = await conn.query('SELECT CURTIME() >= ? AS past', [checkTime]);
+      const [[{ past }]] = await conn.query(`SELECT ${IST_TIME_SQL} >= ? AS past`, [checkTime]);
       canSettle = !!past;
     }
 
@@ -181,12 +182,12 @@ exports.declareResult = async (req, res, next) => {
     if (existing.length > 0) {
       resultId = existing[0].id;
       await conn.query(
-        'UPDATE game_results SET result_number = ?, declared_at = NOW() WHERE id = ?',
+        `UPDATE game_results SET result_number = ?, declared_at = ${IST_NOW_SQL} WHERE id = ?`,
         [resultStr, resultId]
       );
     } else {
       const [ins] = await conn.query(
-        'INSERT INTO game_results (game_id, result_number, result_date, declared_at) VALUES (?, ?, ?, NOW())',
+        `INSERT INTO game_results (game_id, result_number, result_date, declared_at) VALUES (?, ?, ?, ${IST_NOW_SQL})`,
         [id, resultStr, result_date]
       );
       resultId = ins.insertId;
@@ -228,7 +229,7 @@ exports.settleBets = async (req, res, next) => {
     const game = games[0];
     const checkTime = game.result_time || game.close_time;
     if (checkTime) {
-      const [[{ past }]] = await conn.query('SELECT CURTIME() >= ? AS past', [checkTime]);
+      const [[{ past }]] = await conn.query(`SELECT ${IST_TIME_SQL} >= ? AS past`, [checkTime]);
       if (!past) {
         return res.status(400).json({ error: `Cannot settle before result time (${checkTime}). Please wait.` });
       }

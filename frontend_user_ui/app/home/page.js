@@ -356,12 +356,12 @@ const HomePage = () => {
                 className="flex flex-col items-center"
               >
                 {/* Game Name */}
-                <p className="text-3xl font-bold tracking-wide">
+                <p className="text-3xl font-semibold tracking-wide">
                   {resultItem.name}
                 </p>
                 {/* Result */}
                 {resultItem.result_visible && resultItem.result_number ? (
-                  <p className="mt-2 text-5xl font-extrabold text-gray-200">
+                  <p className="mt-2 text-3xl font-bold text-gray-200">
                     {resultItem.result_number}
                   </p>
                 ) : (
@@ -492,7 +492,7 @@ const HomePage = () => {
                         <div className="bg-[#e6f3ff] p-2 text-center text-sm font-black text-[#11446b]">
                           {game.yesterday_result_number || "-"}
                         </div>
-                        <div className="bg-[#ffe8ef] bg-black/40 backdrop-blur-[1px] p-2 text-center text-sm font-black text-[#8f1841]">
+                        <div className="bg-[#ffe8ef] bg-black/10 backdrop-blur-[1px] p-2 text-center text-sm font-black text-[#000000]">
                           {getResultForGame(game.name)}
                         </div>
                         <div

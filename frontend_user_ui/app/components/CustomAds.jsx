@@ -26,7 +26,7 @@ export default function CustomAds() {
         {ads.map((ad) => (
           <div
             key={ad.id}
-            className="rounded-2xl border-2 border-dashed border-red-500 bg-[linear-gradient(to_bottom,#b6842d_0%,#e6c86f_40%,#f4e7b3_70%,#fff6dc_100%)] p-4 text-center shadow-md"
+            className="rounded-2xl border-2 border-dashed border-red-500 bg-[linear-gradient(to_bottom,#b6842d_0%,#e6c86f_40%,#f4e7b3_70%,#fff6dc_100%)] p-2 text-center shadow-md"
           >
             {ad.title && (
               <p className="text-base font-black leading-snug text-[#1a0000] mb-2 line-through-none">
@@ -51,19 +51,19 @@ export default function CustomAds() {
                 href={ad.button_link}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-3 block"
+                className="block"
               >
                 <img
                   src={adImageUrl(ad.image_url)}
                   alt={ad.title || 'Custom Ad'}
-                  className="mx-auto h-16 w-36 object-cover rounded-xl"
+                  className="mx-auto h-10 w-full object-contain rounded-xl"
                 />
               </Link>
             ) : ad.image_url ? (
               <img
                 src={adImageUrl(ad.image_url)}
                 alt={ad.title || 'Custom Ad'}
-                className="mt-3 mx-auto h-16 w-36 object-cover rounded-xl"
+                className="mx-auto h-10 w-full object-contain rounded-xl"
               />
             ) : null}
 

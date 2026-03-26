@@ -59,6 +59,21 @@ select:-webkit-autofill:focus {
 }
 
 .notice-marquee {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  overflow: hidden;
+}
+
+.notice-marquee-label {
+  position: relative;
+  z-index: 1;
+  flex: none;
+}
+
+.notice-marquee-body {
+  min-width: 0;
+  flex: 1;
   overflow: hidden;
   white-space: nowrap;
 }
@@ -73,7 +88,6 @@ select:-webkit-autofill:focus {
 .notice-marquee-item {
   display: inline-flex;
   align-items: center;
-  gap: 1rem;
   flex: none;
   white-space: nowrap;
   padding-right: 3rem;
