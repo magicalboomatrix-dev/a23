@@ -10,7 +10,7 @@ const HomeHeroBanner = () => {
           <img
             src={slides[0].src}
             alt={slides[0].alt}
-            className="w-full h-full object-contain"
+            className="w-full object-contain"
           />
         </div>
       </div>
