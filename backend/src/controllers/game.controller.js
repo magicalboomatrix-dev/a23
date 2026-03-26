@@ -198,10 +198,11 @@ exports.declareResult = async (req, res, next) => {
       resultId = ins.insertId;
     }
 
-    // Only settle bets if past the game's close/result time
+    // Only settle bets if past the game's close/result time.
+    // When settling here, settle only bets from this result_date.
     let settledCount = 0;
     if (canSettle) {
-      settledCount = await settleBetsForGame(conn, id, resultStr, resultId);
+      settledCount = await settleBetsForGame(conn, id, resultStr, resultId, { resultDate: result_date });
     }
 
     await conn.commit();
@@ -230,39 +231,70 @@ exports.settleBets = async (req, res, next) => {
       return res.status(404).json({ error: 'Game not found.' });
     }
 
-    // Get the most recent declared result (covers yesterday's bets after midnight)
-    const [results] = await conn.query(
-      `SELECT id, result_number, result_date,
-              (result_date < ${IST_DATE_SQL}) AS is_past_result_date
-       FROM game_results
-       WHERE game_id = ? AND declared_at IS NOT NULL
-       ORDER BY result_date DESC, declared_at DESC LIMIT 1`,
+    // For manual settle, process pending bets date-wise:
+    // yesterday bets with yesterday result, today bets with today result.
+    const game = games[0];
+    const checkTime = game.result_time || game.close_time;
+
+    const [pendingDates] = await conn.query(
+      `SELECT DISTINCT DATE_FORMAT(DATE(CONVERT_TZ(created_at, '+00:00', '+05:30')), '%Y-%m-%d') AS bet_date
+       FROM bets
+       WHERE game_id = ? AND status = 'pending'
+       ORDER BY bet_date DESC`,
       [id]
     );
 
-    if (results.length === 0) {
-      return res.status(400).json({ error: 'No result declared for this game. Declare a result first.' });
+    if (pendingDates.length === 0) {
+      return res.json({ message: 'No pending bets to settle.', settledCount: 0 });
     }
-
-    // For today's result we still enforce result/close time.
-    // For older result dates, settle immediately.
-    const game = games[0];
-    const checkTime = game.result_time || game.close_time;
-    if (checkTime && !results[0].is_past_result_date) {
-      const [[{ past }]] = await conn.query(`SELECT ${IST_TIME_SQL} >= ? AS past`, [checkTime]);
-      if (!past) {
-        return res.status(400).json({ error: `Cannot settle before result time (${checkTime}). Please wait.` });
-      }
-    }
-
-    const { id: resultId, result_number } = results[0];
-    const resultStr = result_number.toString().padStart(2, '0');
 
     await conn.beginTransaction();
-    const settledCount = await settleBetsForGame(conn, id, resultStr, resultId);
+    let settledCount = 0;
+    let missingResultDates = 0;
+
+    for (const row of pendingDates) {
+      const betDate = row.bet_date;
+
+      const [results] = await conn.query(
+        `SELECT id, result_number
+         FROM game_results
+         WHERE game_id = ? AND result_date = ? AND declared_at IS NOT NULL
+         ORDER BY declared_at DESC
+         LIMIT 1`,
+        [id, betDate]
+      );
+
+      if (results.length === 0) {
+        missingResultDates++;
+        continue;
+      }
+
+      const [[{ isToday }]] = await conn.query(
+        `SELECT DATE(?) = ${IST_DATE_SQL} AS isToday`,
+        [betDate]
+      );
+
+      if (checkTime && isToday) {
+        const [[{ past }]] = await conn.query(`SELECT ${IST_TIME_SQL} >= ? AS past`, [checkTime]);
+        if (!past) {
+          continue;
+        }
+      }
+
+      const resultId = results[0].id;
+      const resultStr = results[0].result_number.toString().padStart(2, '0');
+      settledCount += await settleBetsForGame(conn, id, resultStr, resultId, { resultDate: betDate });
+    }
+
     await conn.commit();
 
-    res.json({ message: `Settled ${settledCount} bets.`, settledCount });
+    if (settledCount === 0 && missingResultDates > 0) {
+      return res.status(400).json({
+        error: 'No matching declared result found for pending bet date(s). Declare results for those dates first.'
+      });
+    }
+
+    res.json({ message: `Settled ${settledCount} bets.`, settledCount, pending_dates_without_result: missingResultDates });
   } catch (error) {
     await conn.rollback();
     next(error);

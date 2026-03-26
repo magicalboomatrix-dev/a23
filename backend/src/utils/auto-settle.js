@@ -9,21 +9,28 @@ const { IST_TIME_SQL } = require('../utils/sql-time');
  */
 async function autoSettleBets() {
   try {
-    // Find games with pending bets that have a recent declared result (deduplicated per game)
+    // Find declared results that have pending bets for the same IST bet date.
+    // For older dates, settle immediately; for today, wait until result/close time.
     const [games] = await pool.query(`
-      SELECT g.id AS game_id, gr.id AS result_id, gr.result_number
+      SELECT g.id AS game_id,
+             gr.id AS result_id,
+             gr.result_number,
+             DATE_FORMAT(gr.result_date, '%Y-%m-%d') AS result_date
       FROM games g
-      INNER JOIN game_results gr ON gr.id = (
-        SELECT gr2.id FROM game_results gr2
-        WHERE gr2.game_id = g.id AND gr2.declared_at IS NOT NULL
-        ORDER BY gr2.result_date DESC, gr2.declared_at DESC
-        LIMIT 1
-      )
+      INNER JOIN game_results gr ON gr.game_id = g.id AND gr.declared_at IS NOT NULL
       WHERE g.is_active = 1
-        AND COALESCE(g.result_time, g.close_time) <= ${IST_TIME_SQL}
         AND EXISTS (
-          SELECT 1 FROM bets b WHERE b.game_id = g.id AND b.status = 'pending'
+          SELECT 1
+          FROM bets b
+          WHERE b.game_id = g.id
+            AND b.status = 'pending'
+            AND DATE(CONVERT_TZ(b.created_at, '+00:00', '+05:30')) = gr.result_date
         )
+        AND (
+          gr.result_date < DATE(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+05:30'))
+          OR COALESCE(g.result_time, g.close_time) <= ${IST_TIME_SQL}
+        )
+      ORDER BY g.id, gr.result_date DESC
     `);
 
     for (const game of games) {
@@ -31,7 +38,9 @@ async function autoSettleBets() {
       try {
         const resultStr = game.result_number.toString().padStart(2, '0');
         await conn.beginTransaction();
-        const count = await settleBetsForGame(conn, game.game_id, resultStr, game.result_id);
+        const count = await settleBetsForGame(conn, game.game_id, resultStr, game.result_id, {
+          resultDate: game.result_date,
+        });
         await conn.commit();
         if (count > 0) {
           console.log(`[auto-settle] Game ${game.game_id}: settled ${count} bets`);

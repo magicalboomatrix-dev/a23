@@ -5,13 +5,22 @@ const { recordWalletTransaction } = require('./wallet-ledger');
  * Must be called within an existing transaction (conn).
  * Returns the number of bets settled.
  */
-async function settleBetsForGame(conn, gameId, resultStr, resultId) {
+async function settleBetsForGame(conn, gameId, resultStr, resultId, options = {}) {
+  const resultDate = options.resultDate || null;
+
+  const dateFilterSql = resultDate
+    ? " AND DATE(CONVERT_TZ(b.created_at, '+00:00', '+05:30')) = ?"
+    : '';
+  const queryParams = resultDate
+    ? [gameId, 'pending', resultDate]
+    : [gameId, 'pending'];
+
   const [pendingBets] = await conn.query(
     `SELECT b.*, bn.number, bn.amount as number_amount, bn.id as bn_id
      FROM bets b
      JOIN bet_numbers bn ON b.id = bn.bet_id
-     WHERE b.game_id = ? AND b.status = ?`,
-    [gameId, 'pending']
+     WHERE b.game_id = ? AND b.status = ?${dateFilterSql}`,
+    queryParams
   );
 
   if (pendingBets.length === 0) return 0;
