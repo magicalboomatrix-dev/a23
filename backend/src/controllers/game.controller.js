@@ -158,14 +158,19 @@ exports.declareResult = async (req, res, next) => {
       return res.status(400).json({ error: 'Result number must be a 2-digit number (00-99).' });
     }
 
-    // Check game's close/result time to decide whether to settle now
+    // Check game's close/result time to decide whether to settle now.
+    // For backdated results (before IST today), allow immediate settlement.
     const [gameRows] = await conn.query('SELECT close_time, result_time FROM games WHERE id = ?', [id]);
     if (gameRows.length === 0) {
       return res.status(404).json({ error: 'Game not found.' });
     }
     const checkTime = gameRows[0].result_time || gameRows[0].close_time;
     let canSettle = true;
-    if (checkTime) {
+    const [[{ isPastResultDate }]] = await conn.query(
+      `SELECT DATE(?) < ${IST_DATE_SQL} AS isPastResultDate`,
+      [result_date]
+    );
+    if (checkTime && !isPastResultDate) {
       const [[{ past }]] = await conn.query(`SELECT ${IST_TIME_SQL} >= ? AS past`, [checkTime]);
       canSettle = !!past;
     }
@@ -225,19 +230,11 @@ exports.settleBets = async (req, res, next) => {
       return res.status(404).json({ error: 'Game not found.' });
     }
 
-    // Block settlement before the game's result/close time (use DB time to avoid timezone mismatch)
-    const game = games[0];
-    const checkTime = game.result_time || game.close_time;
-    if (checkTime) {
-      const [[{ past }]] = await conn.query(`SELECT ${IST_TIME_SQL} >= ? AS past`, [checkTime]);
-      if (!past) {
-        return res.status(400).json({ error: `Cannot settle before result time (${checkTime}). Please wait.` });
-      }
-    }
-
     // Get the most recent declared result (covers yesterday's bets after midnight)
     const [results] = await conn.query(
-      `SELECT id, result_number, result_date FROM game_results
+      `SELECT id, result_number, result_date,
+              (result_date < ${IST_DATE_SQL}) AS is_past_result_date
+       FROM game_results
        WHERE game_id = ? AND declared_at IS NOT NULL
        ORDER BY result_date DESC, declared_at DESC LIMIT 1`,
       [id]
@@ -245,6 +242,17 @@ exports.settleBets = async (req, res, next) => {
 
     if (results.length === 0) {
       return res.status(400).json({ error: 'No result declared for this game. Declare a result first.' });
+    }
+
+    // For today's result we still enforce result/close time.
+    // For older result dates, settle immediately.
+    const game = games[0];
+    const checkTime = game.result_time || game.close_time;
+    if (checkTime && !results[0].is_past_result_date) {
+      const [[{ past }]] = await conn.query(`SELECT ${IST_TIME_SQL} >= ? AS past`, [checkTime]);
+      if (!past) {
+        return res.status(400).json({ error: `Cannot settle before result time (${checkTime}). Please wait.` });
+      }
     }
 
     const { id: resultId, result_number } = results[0];
