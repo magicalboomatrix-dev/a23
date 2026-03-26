@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import api, { buildUploadUrl } from '../utils/api';
+import { useToast, ToastContainer, useConfirm, ConfirmModal } from '../components/ui';
 
 const EMPTY_FORM = {
   title: '',
@@ -22,6 +23,8 @@ export default function CustomAds() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const fileInputRef = useRef(null);
+  const { toasts, success, error: toastError, dismiss } = useToast();
+  const { confirmState, confirm, handleConfirm, handleCancel } = useConfirm();
 
   useEffect(() => {
     loadAds();
@@ -118,17 +121,18 @@ export default function CustomAds() {
       const res = await api.patch(`/custom-ads/${ad.id}/toggle`);
       setAds((prev) => prev.map((a) => (a.id === ad.id ? { ...a, status: res.data.status } : a)));
     } catch (err) {
-      alert(err.response?.data?.error || 'Toggle failed.');
+      toastError(err.response?.data?.error || 'Toggle failed.');
     }
   };
 
   const handleDelete = async (ad) => {
-    if (!window.confirm(`Delete "${ad.title || 'this ad'}"? This cannot be undone.`)) return;
+    const ok = await confirm(`Delete "${ad.title || 'this ad'}"? This cannot be undone.`, 'Delete Ad', 'danger');
+    if (!ok) return;
     try {
       await api.delete(`/custom-ads/${ad.id}`);
       setAds((prev) => prev.filter((a) => a.id !== ad.id));
     } catch (err) {
-      alert(err.response?.data?.error || 'Delete failed.');
+      toastError(err.response?.data?.error || 'Delete failed.');
     }
   };
 
@@ -444,6 +448,8 @@ export default function CustomAds() {
           </div>
         </div>
       )}
+      <ToastContainer toasts={toasts} dismiss={dismiss} />
+      <ConfirmModal state={confirmState} onConfirm={handleConfirm} onCancel={handleCancel} />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect } from 'react';
 import api from '../utils/api';
+import { useToast, ToastContainer, useConfirm, ConfirmModal } from '../components/ui';
 
 function getLocalDateInputValue(referenceDate = new Date()) {
   const year = referenceDate.getFullYear();
@@ -17,6 +18,9 @@ export default function Games() {
   const [resultForm, setResultForm] = useState({ result_number: '', result_date: getLocalDateInputValue() });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [settling, setSettling] = useState(null);
+  const { toasts, success, error: toastError, dismiss } = useToast();
+  const { confirmState, confirm, handleConfirm, handleCancel } = useConfirm();
 
   useEffect(() => { loadGames(); }, []);
 
@@ -102,10 +106,13 @@ export default function Games() {
   };
 
   const handleDelete = async (game) => {
-    const confirmed = window.confirm(`Delete game "${game.name}"? This action cannot be undone.`);
-    if (!confirmed) {
-      return;
-    }
+    const confirmed = await confirm({
+      title: 'Delete Game',
+      message: `Delete game "${game.name}"? This action cannot be undone.`,
+      confirmText: 'Delete',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
 
     try {
       await api.delete(`/games/${game.id}`);
@@ -113,8 +120,9 @@ export default function Games() {
         cancelForm();
       }
       loadGames();
+      success('Game deleted successfully.');
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to delete game');
+      toastError(err.response?.data?.error || 'Failed to delete game');
     }
   };
 
@@ -123,7 +131,7 @@ export default function Games() {
       await api.put(`/games/${id}`, { is_active: current ? 0 : 1 });
       loadGames();
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed');
+      toastError(err.response?.data?.error || 'Failed');
     }
   };
 
@@ -131,18 +139,33 @@ export default function Games() {
     e.preventDefault();
     setError('');
     try {
-      await api.post(`/games/${showResult}/result`, resultForm);
+      const res = await api.post(`/games/${showResult}/result`, resultForm);
       setShowResult(null);
       setResultForm({ result_number: '', result_date: getLocalDateInputValue() });
       loadGames();
-      alert('Result declared and bets settled!');
+      success(res.data?.message || 'Result declared successfully!');
     } catch (err) {
       setError(err.response?.data?.error || 'Failed');
     }
   };
 
+  const handleSettle = async (gameId) => {
+    setSettling(gameId);
+    try {
+      const res = await api.post(`/games/${gameId}/settle`);
+      success(res.data?.message || 'Bets settled!');
+      loadGames();
+    } catch (err) {
+      toastError(err.response?.data?.error || 'Failed to settle bets');
+    } finally {
+      setSettling(null);
+    }
+  };
+
   return (
     <div className="space-y-4">
+      <ToastContainer toasts={toasts} dismiss={dismiss} />
+      <ConfirmModal state={confirmState} onConfirm={handleConfirm} onCancel={handleCancel} />
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold text-gray-800">Games ({games.length})</h3>
         <button onClick={startCreate}
@@ -216,12 +239,24 @@ export default function Games() {
               {g.result_number && (
                 <p className="text-primary-600 font-bold">Today's Result: {g.result_number}</p>
               )}
+              {g.pending_bets_count > 0 && (
+                <p className="text-orange-600 font-semibold text-xs">⏳ {g.pending_bets_count} pending bet(s)</p>
+              )}
             </div>
             <div className="flex gap-2 mt-4">
               <button onClick={() => { setShowResult(g.id); setError(''); }}
                 className="flex-1 px-3 py-2 bg-primary-600 text-white text-xs font-medium hover:bg-primary-700">
                 Declare Result
               </button>
+              {g.pending_bets_count > 0 && (
+                <button
+                  onClick={() => handleSettle(g.id)}
+                  disabled={settling === g.id}
+                  className="px-3 py-2 bg-orange-500 text-white text-xs font-medium hover:bg-orange-600 disabled:opacity-50"
+                >
+                  {settling === g.id ? 'Settling...' : 'Settle'}
+                </button>
+              )}
               <button onClick={() => toggleActive(g.id, g.is_active)}
                 className={`px-3 py-2 text-xs font-medium ${g.is_active ? 'bg-gray-200 text-gray-600' : 'bg-green-100 text-green-700'}`}>
                 {g.is_active ? 'Disable' : 'Enable'}

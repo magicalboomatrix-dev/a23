@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api, { buildUploadUrl } from '../utils/api';
+import { useToast, ToastContainer, useConfirm, ConfirmModal } from '../components/ui';
 
 function formatCurrency(value) {
   return `₹${Number(value || 0).toLocaleString('en-IN')}`;
@@ -14,6 +15,8 @@ export default function Moderators() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('moderators');
+  const { toasts, success, error: toastError, dismiss } = useToast();
+  const { confirmState, confirm, handleConfirm, handleCancel } = useConfirm();
 
   useEffect(() => {
     loadModerators();
@@ -54,12 +57,13 @@ export default function Moderators() {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Delete this moderator? Their users will be unassigned.')) return;
+    const ok = await confirm('Delete this moderator? Their users will be unassigned.', 'Delete Moderator', 'danger');
+    if (!ok) return;
     try {
       await api.delete(`/moderators/${id}`);
       loadModerators();
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed');
+      toastError(err.response?.data?.error || 'Failed');
     }
   };
 
@@ -68,7 +72,7 @@ export default function Moderators() {
       await api.put(`/moderators/${id}`, { is_blocked: !current });
       loadModerators();
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed');
+      toastError(err.response?.data?.error || 'Failed');
     }
   };
 
@@ -233,6 +237,8 @@ export default function Moderators() {
         </div>
       )}
 
+      <ToastContainer toasts={toasts} dismiss={dismiss} />
+      <ConfirmModal state={confirmState} onConfirm={handleConfirm} onCancel={handleCancel} />
     </div>
   );
 }

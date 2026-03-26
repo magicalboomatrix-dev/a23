@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../utils/api';
+import { useToast, ToastContainer } from '../components/ui';
 
 export default function Users() {
   const [users, setUsers] = useState([]);
@@ -12,6 +13,7 @@ export default function Users() {
   const [selectedModerators, setSelectedModerators] = useState({});
   const [assigningUserId, setAssigningUserId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const { toasts, success, error: toastError, dismiss } = useToast();
 
   useEffect(() => {
     loadModerators();
@@ -60,14 +62,14 @@ export default function Users() {
       await api.put(`/admin/users/${id}/block`, { is_blocked: !current });
       loadUsers();
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed');
+      toastError(err.response?.data?.error || 'Failed');
     }
   };
 
   const assignModerator = async (userId) => {
     const moderatorId = selectedModerators[userId];
     if (!moderatorId) {
-      alert('Select a moderator first.');
+      toastError('Select a moderator first.');
       return;
     }
 
@@ -80,7 +82,7 @@ export default function Users() {
       await loadUsers();
       await loadModerators();
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to assign moderator');
+      toastError(err.response?.data?.error || 'Failed to assign moderator');
     } finally {
       setAssigningUserId(null);
     }
@@ -197,6 +199,7 @@ export default function Users() {
             className="px-4 py-2 bg-white border text-sm disabled:opacity-50 hover:bg-gray-50">Next</button>
         </div>
       )}
+      <ToastContainer toasts={toasts} dismiss={dismiss} />
     </div>
   );
 }

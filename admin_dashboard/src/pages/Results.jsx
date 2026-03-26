@@ -1,5 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
 import api from '../utils/api';
+import { useConfirm, ConfirmModal } from '../components/ui';
 
 function formatDayLabel(day, month) {
   return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}`;
@@ -103,6 +104,7 @@ export default function Results() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [importSummary, setImportSummary] = useState(null);
+  const { confirmState, confirm, handleConfirm, handleCancel } = useConfirm();
 
   useEffect(() => {
     initialize();
@@ -253,9 +255,13 @@ export default function Results() {
   };
 
   const deleteSingle = async (row) => {
-    if (!window.confirm(`Delete result ${row.result_number} for ${row.game_name} on ${row.result_date?.slice(0, 10)}?`)) {
-      return;
-    }
+    const confirmed = await confirm({
+      title: 'Delete Result',
+      message: `Delete result ${row.result_number} for ${row.game_name} on ${row.result_date?.slice(0, 10)}?`,
+      confirmText: 'Delete',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
 
     setError('');
     setMessage('');
@@ -296,9 +302,13 @@ export default function Results() {
       return;
     }
 
-    if (!window.confirm(`Delete ${selectedResultIds.length} selected results?`)) {
-      return;
-    }
+    const confirmed = await confirm({
+      title: 'Bulk Delete',
+      message: `Delete ${selectedResultIds.length} selected results?`,
+      confirmText: 'Delete All',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
 
     setError('');
     setMessage('');
@@ -325,6 +335,7 @@ export default function Results() {
 
   return (
     <div className="results-admin-page space-y-6">
+      <ConfirmModal state={confirmState} onConfirm={handleConfirm} onCancel={handleCancel} />
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <form onSubmit={handleResultSave} className="bg-white border p-5 space-y-4">
           <div>

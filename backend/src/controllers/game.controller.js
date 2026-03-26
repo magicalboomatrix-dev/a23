@@ -1,5 +1,5 @@
 const pool = require('../config/database');
-const { recordWalletTransaction } = require('../utils/wallet-ledger');
+const { settleBetsForGame } = require('../utils/settle-bets');
 
 exports.listGames = async (req, res, next) => {
   try {
@@ -10,7 +10,8 @@ exports.listGames = async (req, res, next) => {
              CASE
                WHEN gr.id IS NOT NULL AND COALESCE(g.result_time, g.close_time) <= CURTIME() THEN 1
                ELSE 0
-             END AS result_visible
+             END AS result_visible,
+             COALESCE(pb.pending_bets_count, 0) AS pending_bets_count
       FROM games g
       LEFT JOIN game_results gr ON gr.id = (
         SELECT gr2.id
@@ -30,10 +31,16 @@ exports.listGames = async (req, res, next) => {
         ORDER BY gr3.result_date DESC, gr3.declared_at DESC
         LIMIT 1
       )
+      LEFT JOIN (
+        SELECT game_id, COUNT(*) AS pending_bets_count
+        FROM bets
+        WHERE status = 'pending'
+        GROUP BY game_id
+      ) pb ON pb.game_id = g.id
       WHERE g.is_active = 1
       ORDER BY g.open_time
     `);
-    res.json({ games });
+    res.json({ games, server_now: new Date().toISOString() });
   } catch (error) {
     next(error);
   }
@@ -150,6 +157,21 @@ exports.declareResult = async (req, res, next) => {
       return res.status(400).json({ error: 'Result number must be a 2-digit number (00-99).' });
     }
 
+    // Check game's close/result time to decide whether to settle now
+    const [gameRows] = await conn.query('SELECT close_time, result_time FROM games WHERE id = ?', [id]);
+    if (gameRows.length === 0) {
+      return res.status(404).json({ error: 'Game not found.' });
+    }
+    const checkTime = gameRows[0].result_time || gameRows[0].close_time;
+    let canSettle = true;
+    if (checkTime) {
+      const now = new Date();
+      const [h, m, s] = checkTime.split(':').map(Number);
+      const resultMoment = new Date(now);
+      resultMoment.setHours(h, m, s || 0, 0);
+      canSettle = now >= resultMoment;
+    }
+
     await conn.beginTransaction();
 
     // Insert or update result
@@ -173,80 +195,71 @@ exports.declareResult = async (req, res, next) => {
       resultId = ins.insertId;
     }
 
-    // Settle bets — settle all pending bets for this game
-    // Previous day's bets should already be settled; using game_id + pending status is sufficient
-    const [pendingBets] = await conn.query(
-      'SELECT b.*, bn.number, bn.amount as number_amount, bn.id as bn_id FROM bets b JOIN bet_numbers bn ON b.id = bn.bet_id WHERE b.game_id = ? AND b.status = ?',
-      [id, 'pending']
-    );
-
-    // Get payout settings
-    const [settings] = await conn.query("SELECT setting_key, setting_value FROM settings WHERE setting_key LIKE 'payout_%'");
-    const payouts = {};
-    for (const s of settings) {
-      payouts[s.setting_key] = parseFloat(s.setting_value);
-    }
-
-    // Group bet numbers by bet_id
-    const betGroups = {};
-    for (const row of pendingBets) {
-      if (!betGroups[row.id]) {
-        betGroups[row.id] = { ...row, numbers: [] };
-      }
-      betGroups[row.id].numbers.push({ number: row.number, amount: parseFloat(row.number_amount) });
-    }
-
-    const resultLastDigit = resultStr.slice(-1);
-    const resultFirstDigit = resultStr.slice(0, 1);
-
-    for (const betId of Object.keys(betGroups)) {
-      const bet = betGroups[betId];
-      let totalWin = 0;
-
-      for (const num of bet.numbers) {
-        let isWin = false;
-
-        if (bet.type === 'jodi') {
-          isWin = num.number === resultStr;
-          if (isWin) totalWin += num.amount * (payouts.payout_jodi || 90);
-        } else if (bet.type === 'haruf_andar') {
-          isWin = num.number === resultLastDigit;
-          if (isWin) totalWin += num.amount * (payouts.payout_haruf || 9);
-        } else if (bet.type === 'haruf_bahar') {
-          isWin = num.number === resultFirstDigit;
-          if (isWin) totalWin += num.amount * (payouts.payout_haruf || 9);
-        } else if (bet.type === 'crossing') {
-          isWin = num.number === resultStr;
-          if (isWin) totalWin += num.amount * (payouts.payout_crossing || 90);
-        }
-      }
-
-      const status = totalWin > 0 ? 'win' : 'loss';
-      await conn.query(
-        'UPDATE bets SET status = ?, win_amount = ?, game_result_id = ? WHERE id = ?',
-        [status, totalWin, resultId, betId]
-      );
-
-      if (totalWin > 0) {
-        await recordWalletTransaction(conn, {
-          userId: bet.user_id,
-          type: 'win',
-          amount: totalWin,
-          referenceType: 'bet',
-          referenceId: `bet_${betId}`,
-          remark: `Won on ${bet.type} bet`,
-        });
-
-        // Create notification
-        await conn.query(
-          'INSERT INTO notifications (user_id, type, message) VALUES (?, ?, ?)',
-          [bet.user_id, 'win', `Congratulations! You won ₹${totalWin} on your ${bet.type} bet!`]
-        );
-      }
+    // Only settle bets if past the game's close/result time
+    let settledCount = 0;
+    if (canSettle) {
+      settledCount = await settleBetsForGame(conn, id, resultStr, resultId);
     }
 
     await conn.commit();
-    res.json({ message: 'Result declared and bets settled.', resultId });
+
+    const message = canSettle
+      ? `Result declared and ${settledCount} bet(s) settled.`
+      : 'Result saved. Bets will auto-settle after close time.';
+    res.json({ message, resultId, settledCount });
+  } catch (error) {
+    await conn.rollback();
+    next(error);
+  } finally {
+    conn.release();
+  }
+};
+
+// Manual settle endpoint — settles pending bets for a game using the most recent declared result
+exports.settleBets = async (req, res, next) => {
+  const conn = await pool.getConnection();
+  try {
+    const { id } = req.params;
+
+    // Check game exists and get close/result time
+    const [games] = await conn.query('SELECT id, close_time, result_time FROM games WHERE id = ?', [id]);
+    if (games.length === 0) {
+      return res.status(404).json({ error: 'Game not found.' });
+    }
+
+    // Block settlement before the game's result/close time
+    const game = games[0];
+    const checkTime = game.result_time || game.close_time;
+    if (checkTime) {
+      const now = new Date();
+      const [h, m, s] = checkTime.split(':').map(Number);
+      const resultMoment = new Date(now);
+      resultMoment.setHours(h, m, s || 0, 0);
+      if (now < resultMoment) {
+        return res.status(400).json({ error: `Cannot settle before result time (${checkTime}). Please wait.` });
+      }
+    }
+
+    // Get the most recent declared result (covers yesterday's bets after midnight)
+    const [results] = await conn.query(
+      `SELECT id, result_number, result_date FROM game_results
+       WHERE game_id = ? AND declared_at IS NOT NULL
+       ORDER BY result_date DESC, declared_at DESC LIMIT 1`,
+      [id]
+    );
+
+    if (results.length === 0) {
+      return res.status(400).json({ error: 'No result declared for this game. Declare a result first.' });
+    }
+
+    const { id: resultId, result_number } = results[0];
+    const resultStr = result_number.toString().padStart(2, '0');
+
+    await conn.beginTransaction();
+    const settledCount = await settleBetsForGame(conn, id, resultStr, resultId);
+    await conn.commit();
+
+    res.json({ message: `Settled ${settledCount} bets.`, settledCount });
   } catch (error) {
     await conn.rollback();
     next(error);

@@ -23,6 +23,7 @@ const notificationRoutes = require('./routes/notification.routes');
 const customAdsRoutes = require('./routes/home-banner.routes');
 
 const { errorHandler } = require('./middleware/error.middleware');
+const { startAutoSettle } = require('./utils/auto-settle');
 
 const app = express();
 
@@ -127,6 +128,7 @@ app.use(errorHandler);
 const PORT = process.env.PORT;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  startAutoSettle();
 });
 
 module.exports = app;

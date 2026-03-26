@@ -119,7 +119,15 @@ function GamePageInner() {
 
     const tick = () => {
       const serverNow = new Date(Date.now() + serverOffsetMs)
-      const { closeTime } = resolveGameWindow(gameInfo.open_time, gameInfo.close_time, serverNow)
+      const { openTime, closeTime } = resolveGameWindow(gameInfo.open_time, gameInfo.close_time, serverNow)
+
+      if (serverNow < openTime) {
+        const untilOpen = openTime.getTime() - serverNow.getTime()
+        setCountdown(`Opens in ${formatRemainingTime(untilOpen)}`)
+        setBettingClosed(true)
+        return
+      }
+
       const remainingMs = closeTime.getTime() - serverNow.getTime()
       setCountdown(formatRemainingTime(remainingMs))
       setBettingClosed(remainingMs <= 0)

@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect } from 'react';
 import api, { buildUploadUrl } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import { useToast, ToastContainer, useConfirm, ConfirmModal } from '../components/ui';
 
 function getReviewLabel(deposit) {
   if (!deposit?.approved_by_role || !deposit?.approved_by_name) {
@@ -21,6 +22,8 @@ export default function Deposits() {
   const [loading, setLoading] = useState(true);
   const [previewDeposit, setPreviewDeposit] = useState(null);
   const [error, setError] = useState('');
+  const { toasts, success, error: toastError, dismiss } = useToast();
+  const { confirmState, confirm, handleConfirm, handleCancel } = useConfirm();
 
   useEffect(() => { loadDeposits(); }, [page, filter]);
 
@@ -40,13 +43,20 @@ export default function Deposits() {
   };
 
   const approve = async (id) => {
-    if (!confirm('Approve this deposit?')) return;
+    const confirmed = await confirm({
+      title: 'Approve Deposit',
+      message: 'Approve this deposit?',
+      confirmText: 'Approve',
+      variant: 'primary',
+    });
+    if (!confirmed) return;
     setError('');
     try {
       await api.put(`/deposits/${id}/approve`);
       loadDeposits();
+      success('Deposit approved.');
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed');
+      toastError(err.response?.data?.error || 'Failed');
     }
   };
 
@@ -57,7 +67,7 @@ export default function Deposits() {
       await api.put(`/deposits/${id}/reject`, { reason });
       loadDeposits();
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed');
+      toastError(err.response?.data?.error || 'Failed');
     }
   };
 
@@ -67,6 +77,8 @@ export default function Deposits() {
 
   return (
     <div className="space-y-4">
+      <ToastContainer toasts={toasts} dismiss={dismiss} />
+      <ConfirmModal state={confirmState} onConfirm={handleConfirm} onCancel={handleCancel} />
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
           {error}

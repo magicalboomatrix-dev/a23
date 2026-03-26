@@ -121,6 +121,7 @@ const HomePage = () => {
   // State
   const [games, setGames] = useState([]);
   const [gamesLoading, setGamesLoading] = useState(true);
+  const [serverOffsetMs, setServerOffsetMs] = useState(0);
 
   const [liveResults, setLiveResults] = useState([]);
   const [resultsLoading, setResultsLoading] = useState(true);
@@ -159,6 +160,9 @@ const HomePage = () => {
       const data = await gameAPI.list();
       if (!isMounted.current) return;
       setGames(Array.isArray(data?.games) ? data.games : []);
+      if (data?.server_now) {
+        setServerOffsetMs(new Date(data.server_now).getTime() - Date.now());
+      }
     } catch (error) {
       if (!isMounted.current) return;
       setToast({
@@ -444,7 +448,7 @@ const HomePage = () => {
               )}
               {!gamesLoading &&
                 (games ?? []).map((game) => {
-                  const availability = getGameAvailability(game, new Date());
+                  const availability = getGameAvailability(game, new Date(Date.now() + serverOffsetMs));
                   return (
                     <div
                       className="border border-[#efe1c6] bg-[#fffdfa] p-2"

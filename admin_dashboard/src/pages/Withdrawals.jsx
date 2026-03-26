@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect } from 'react';
 import api from '../utils/api';
+import { useToast, ToastContainer, useConfirm, ConfirmModal } from '../components/ui';
 
 export default function Withdrawals() {
   const [withdrawals, setWithdrawals] = useState([]);
@@ -7,6 +8,8 @@ export default function Withdrawals() {
   const [filter, setFilter] = useState('pending');
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const { toasts, success, error: toastError, dismiss } = useToast();
+  const { confirmState, confirm, handleConfirm, handleCancel } = useConfirm();
 
   useEffect(() => { loadData(); }, [page, filter]);
 
@@ -24,12 +27,19 @@ export default function Withdrawals() {
   };
 
   const approve = async (id) => {
-    if (!confirm('Approve this withdrawal?')) return;
+    const confirmed = await confirm({
+      title: 'Approve Withdrawal',
+      message: 'Approve this withdrawal?',
+      confirmText: 'Approve',
+      variant: 'primary',
+    });
+    if (!confirmed) return;
     try {
       await api.put(`/withdraw/${id}/approve`);
       loadData();
+      success('Withdrawal approved.');
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed');
+      toastError(err.response?.data?.error || 'Failed');
     }
   };
 
@@ -40,12 +50,14 @@ export default function Withdrawals() {
       await api.put(`/withdraw/${id}/reject`, { reason });
       loadData();
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed');
+      toastError(err.response?.data?.error || 'Failed');
     }
   };
 
   return (
     <div className="space-y-4">
+      <ToastContainer toasts={toasts} dismiss={dismiss} />
+      <ConfirmModal state={confirmState} onConfirm={handleConfirm} onCancel={handleCancel} />
       <div className="flex gap-2">
         {['pending', 'approved', 'rejected'].map((s) => (
           <button key={s} onClick={() => { setFilter(s); setPage(1); }}

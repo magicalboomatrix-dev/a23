@@ -1,6 +1,7 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../utils/api';
+import { useToast, ToastContainer } from '../components/ui';
 
 function formatCurrency(value) {
   return `₹${Number(value || 0).toLocaleString('en-IN')}`;
@@ -11,6 +12,7 @@ export default function ModeratorFloats() {
   const [adjustments, setAdjustments] = useState({});
   const [savingId, setSavingId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const { toasts, success, error: toastError, dismiss } = useToast();
 
   const loadRows = async () => {
     setLoading(true);
@@ -49,7 +51,7 @@ export default function ModeratorFloats() {
     const amount = parseFloat(entry.amount);
 
     if (!Number.isFinite(amount) || amount === 0) {
-      alert('Enter a non-zero amount.');
+      toastError('Enter a non-zero amount.');
       return;
     }
 
@@ -65,7 +67,7 @@ export default function ModeratorFloats() {
       }));
       await loadRows();
     } catch (error) {
-      alert(error.response?.data?.error || 'Failed to update moderator float');
+      toastError(error.response?.data?.error || 'Failed to update moderator float');
     } finally {
       setSavingId(null);
     }
@@ -160,6 +162,7 @@ export default function ModeratorFloats() {
           </tbody>
         </table>
       </div>
+      <ToastContainer toasts={toasts} dismiss={dismiss} />
     </div>
   );
 }

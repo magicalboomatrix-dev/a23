@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect } from 'react';
 import api from '../utils/api';
+import { useToast, ToastContainer } from '../components/ui';
 
 const SETTING_LABELS = {
   max_bet_60min: 'Max Bet More Than 60 Min',
@@ -14,6 +15,7 @@ export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [flaggedAccounts, setFlaggedAccounts] = useState([]);
+  const { toasts, success, error: toastError, dismiss } = useToast();
 
   useEffect(() => { loadData(); }, []);
 
@@ -42,9 +44,9 @@ export default function Settings() {
       await api.put('/admin/settings', {
         settings: settings.map(s => ({ key: s.setting_key, value: s.setting_value }))
       });
-      alert('Settings saved!');
+      success('Settings saved!');
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed');
+      toastError(err.response?.data?.error || 'Failed');
     } finally {
       setSaving(false);
     }
@@ -127,6 +129,7 @@ export default function Settings() {
           </div>
         </div>
       )}
+      <ToastContainer toasts={toasts} dismiss={dismiss} />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 ﻿import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import api, { buildUploadUrl } from '../utils/api';
+import { useToast, ToastContainer } from '../components/ui';
 
 function formatCurrency(value) {
   return `₹${Number(value || 0).toLocaleString('en-IN')}`;
@@ -74,6 +75,7 @@ export default function ModeratorDetail() {
   const [adjustAmount, setAdjustAmount] = useState('');
   const [adjustNote, setAdjustNote] = useState('');
   const [saving, setSaving] = useState(false);
+  const { toasts, success, error: toastError, dismiss } = useToast();
 
   const loadDetail = async () => {
     setLoading(true);
@@ -96,7 +98,7 @@ export default function ModeratorDetail() {
     const amount = parseFloat(adjustAmount);
 
     if (!Number.isFinite(amount) || amount === 0) {
-      alert('Enter a non-zero amount.');
+      toastError('Enter a non-zero amount.');
       return;
     }
 
@@ -107,7 +109,7 @@ export default function ModeratorDetail() {
       setAdjustNote('');
       await loadDetail();
     } catch (error) {
-      alert(error.response?.data?.error || 'Failed to update float');
+      toastError(error.response?.data?.error || 'Failed to update float');
     } finally {
       setSaving(false);
     }
@@ -407,6 +409,7 @@ export default function ModeratorDetail() {
           {notifications.length === 0 && <div className="text-sm text-gray-400">No notifications</div>}
         </div>
       </div>
+      <ToastContainer toasts={toasts} dismiss={dismiss} />
     </div>
   );
 }

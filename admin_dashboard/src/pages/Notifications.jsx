@@ -1,5 +1,6 @@
 ﻿import { useEffect, useState } from 'react';
 import api from '../utils/api';
+import { useToast, ToastContainer } from '../components/ui';
 
 function getNotificationTone(notification) {
   if (notification.type === 'system') {
@@ -29,6 +30,7 @@ export default function Notifications() {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+  const { toasts, error: toastError, dismiss } = useToast();
 
   useEffect(() => {
     loadNotifications();
@@ -53,7 +55,7 @@ export default function Notifications() {
         item.id === id ? { ...item, is_read: 1 } : item
       )));
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to mark notification as read');
+      toastError(err.response?.data?.error || 'Failed to mark notification as read');
     }
   };
 
@@ -127,6 +129,7 @@ export default function Notifications() {
           </div>
         )}
       </div>
+      <ToastContainer toasts={toasts} dismiss={dismiss} />
     </div>
   );
 }
