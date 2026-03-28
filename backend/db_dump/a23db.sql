@@ -53,8 +53,9 @@ CREATE TABLE `bet_numbers` (
   `amount` decimal(12,2) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_bet` (`bet_id`),
+  KEY `idx_bet_numbers_bet` (`bet_id`),
   CONSTRAINT `bet_numbers_ibfk_1` FOREIGN KEY (`bet_id`) REFERENCES `bets` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=179 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=391 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -73,6 +74,7 @@ CREATE TABLE `bets` (
   `total_amount` decimal(12,2) NOT NULL,
   `win_amount` decimal(12,2) DEFAULT '0.00',
   `status` enum('pending','win','loss') DEFAULT 'pending',
+  `settled_at` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -80,10 +82,29 @@ CREATE TABLE `bets` (
   KEY `idx_user` (`user_id`),
   KEY `idx_game` (`game_id`),
   KEY `idx_status` (`status`),
+  KEY `idx_bets_game_status` (`game_id`,`status`),
   CONSTRAINT `bets_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `bets_ibfk_2` FOREIGN KEY (`game_id`) REFERENCES `games` (`id`) ON DELETE CASCADE,
   CONSTRAINT `bets_ibfk_3` FOREIGN KEY (`game_result_id`) REFERENCES `game_results` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=28 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=45 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `bonus_settings`
+--
+
+DROP TABLE IF EXISTS `bonus_settings`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `bonus_settings` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `setting_key` varchar(100) DEFAULT NULL,
+  `setting_value` varchar(255) DEFAULT NULL,
+  `updated_by` int DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `setting_key` (`setting_key`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -103,7 +124,7 @@ CREATE TABLE `bonuses` (
   PRIMARY KEY (`id`),
   KEY `idx_user` (`user_id`),
   CONSTRAINT `bonuses_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=28 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=29 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -139,7 +160,47 @@ CREATE TABLE `deposits` (
   KEY `idx_moderator` (`moderator_id`),
   CONSTRAINT `deposits_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `deposits_ibfk_2` FOREIGN KEY (`approved_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=29 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=30 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `game_bonus_rates`
+--
+
+DROP TABLE IF EXISTS `game_bonus_rates`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `game_bonus_rates` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `game_type` enum('jodi','haruf_andar','haruf_bahar','crossing') NOT NULL,
+  `bonus_multiplier` decimal(10,2) NOT NULL DEFAULT '1.00',
+  `updated_by` int DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_bonus_game_type` (`game_type`),
+  KEY `fk_bonus_updated_by` (`updated_by`),
+  CONSTRAINT `fk_bonus_updated_by` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `game_payout_rates`
+--
+
+DROP TABLE IF EXISTS `game_payout_rates`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `game_payout_rates` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `game_type` enum('jodi','haruf_andar','haruf_bahar','crossing') NOT NULL,
+  `multiplier` decimal(10,2) NOT NULL,
+  `updated_by` int DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_game_type` (`game_type`),
+  KEY `fk_payout_updated_by` (`updated_by`),
+  CONSTRAINT `fk_payout_updated_by` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -155,12 +216,15 @@ CREATE TABLE `game_results` (
   `result_number` varchar(10) DEFAULT NULL,
   `result_date` date NOT NULL,
   `declared_at` datetime DEFAULT NULL,
+  `is_settled` tinyint(1) NOT NULL DEFAULT '0',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_game_date` (`game_id`,`result_date`),
   KEY `idx_date` (`result_date`),
+  KEY `idx_game_results_game_date` (`game_id`,`result_date`),
+  KEY `idx_game_results_declared` (`declared_at`),
   CONSTRAINT `game_results_ibfk_1` FOREIGN KEY (`game_id`) REFERENCES `games` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=533 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=544 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -176,6 +240,7 @@ CREATE TABLE `games` (
   `open_time` time NOT NULL,
   `close_time` time NOT NULL,
   `result_time` time DEFAULT NULL,
+  `is_overnight` tinyint(1) NOT NULL DEFAULT '0',
   `is_active` tinyint(1) DEFAULT '1',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -291,7 +356,7 @@ CREATE TABLE `notifications` (
   KEY `idx_user` (`user_id`),
   KEY `idx_created` (`created_at`),
   CONSTRAINT `notifications_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=61 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=73 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -352,7 +417,36 @@ CREATE TABLE `settings` (
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `setting_key` (`setting_key`)
-) ENGINE=InnoDB AUTO_INCREMENT=256 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=304 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `settlement_queue`
+--
+
+DROP TABLE IF EXISTS `settlement_queue`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `settlement_queue` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `game_result_id` int NOT NULL,
+  `game_id` int NOT NULL,
+  `result_number` varchar(2) NOT NULL,
+  `result_date` date NOT NULL,
+  `status` enum('pending','processing','done','failed') NOT NULL DEFAULT 'pending',
+  `attempts` int NOT NULL DEFAULT '0',
+  `error_message` text,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `started_at` timestamp NULL DEFAULT NULL,
+  `completed_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_sq_game_result` (`game_result_id`),
+  KEY `idx_sq_status` (`status`),
+  KEY `fk_sq_game` (`game_id`),
+  KEY `idx_sq_status_started` (`status`,`started_at`),
+  CONSTRAINT `fk_sq_game` FOREIGN KEY (`game_id`) REFERENCES `games` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_sq_game_result` FOREIGN KEY (`game_result_id`) REFERENCES `game_results` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=24 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -433,11 +527,12 @@ CREATE TABLE `wallet_transactions` (
   `remark` varchar(255) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_wt_reference` (`reference_type`,`reference_id`),
   KEY `idx_user_date` (`user_id`,`created_at`),
   KEY `idx_type` (`type`),
   KEY `idx_reference` (`reference_type`,`reference_id`),
   CONSTRAINT `wallet_transactions_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=53 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=80 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -457,7 +552,7 @@ CREATE TABLE `wallets` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `user_id` (`user_id`),
   CONSTRAINT `wallets_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=75 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=102 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -485,7 +580,7 @@ CREATE TABLE `withdraw_requests` (
   CONSTRAINT `withdraw_requests_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `withdraw_requests_ibfk_2` FOREIGN KEY (`bank_id`) REFERENCES `bank_accounts` (`id`) ON DELETE CASCADE,
   CONSTRAINT `withdraw_requests_ibfk_3` FOREIGN KEY (`approved_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -497,4 +592,4 @@ CREATE TABLE `withdraw_requests` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-03-25  3:12:39
+-- Dump completed on 2026-03-28  2:28:59

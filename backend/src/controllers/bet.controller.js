@@ -1,40 +1,6 @@
 const pool = require('../config/database');
 const { recordWalletTransaction } = require('../utils/wallet-ledger');
-
-// Helper to parse MySQL TIME string (handles "HH:MM:SS" or "HH:MM")
-function parseTimeString(timeVal) {
-  const str = typeof timeVal === 'string' ? timeVal : String(timeVal);
-  const parts = str.split(':').map(Number);
-  return { hours: parts[0] || 0, minutes: parts[1] || 0 };
-}
-
-function resolveGameWindow(openTimeValue, closeTimeValue, referenceDate = new Date()) {
-  const openParsed = parseTimeString(openTimeValue);
-  const closeParsed = parseTimeString(closeTimeValue);
-  const isOvernight = closeParsed.hours < openParsed.hours ||
-    (closeParsed.hours === openParsed.hours && closeParsed.minutes < openParsed.minutes);
-
-  const openTime = new Date(referenceDate);
-  openTime.setHours(openParsed.hours, openParsed.minutes, 0, 0);
-
-  const closeTime = new Date(referenceDate);
-  closeTime.setHours(closeParsed.hours, closeParsed.minutes, 0, 0);
-
-  if (isOvernight) {
-    const todayOpenTime = new Date(openTime);
-    const todayCloseTime = new Date(closeTime);
-
-    if (referenceDate >= todayOpenTime) {
-      closeTime.setDate(closeTime.getDate() + 1);
-    } else if (referenceDate < todayCloseTime) {
-      openTime.setDate(openTime.getDate() - 1);
-    } else {
-      closeTime.setDate(closeTime.getDate() + 1);
-    }
-  }
-
-  return { openTime, closeTime, isOvernight };
-}
+const { canPlaceBet } = require('../utils/game-time');
 
 // Generate crossing combinations: digits A,B → "AB" and "BA" (if different)
 function generateCrossingNumbers(digit1, digit2) {
@@ -123,40 +89,23 @@ exports.placeBet = async (req, res, next) => {
     const game = games[0];
 
     const now = new Date();
-    const { openTime, closeTime } = resolveGameWindow(game.open_time, game.close_time, now);
 
-    if (now < openTime) {
-      await conn.rollback();
-      return res.status(400).json({
-        error: `Betting opens at ${openTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false })} for this game.`
-      });
-    }
-
-    if (now >= closeTime) {
-      await conn.rollback();
-      return res.status(400).json({ error: 'Betting is closed for this game.' });
-    }
-
-    // Check time-based max bet
-    const minutesLeft = (closeTime - now) / (1000 * 60);
-    const [settings] = await conn.query("SELECT setting_key, setting_value FROM settings WHERE setting_key LIKE 'max_bet_%' OR setting_key = 'min_bet'");
+    // Check time-based betting constraints using the game-time utility
+    const [settings] = await conn.query(
+      "SELECT setting_key, setting_value FROM settings WHERE setting_key LIKE 'max_bet_%' OR setting_key = 'min_bet'"
+    );
     const settingsMap = {};
     for (const s of settings) {
       settingsMap[s.setting_key] = parseFloat(s.setting_value);
     }
 
-    let maxBet;
-    if (minutesLeft > 60) {
-      maxBet = settingsMap.max_bet_60min || 10000;
-    } else if (minutesLeft > 30) {
-      maxBet = settingsMap.max_bet_30min || 5000;
-    } else if (minutesLeft > 15) {
-      maxBet = settingsMap.max_bet_15min || 1000;
-    } else {
-      maxBet = settingsMap.max_bet_last_15min || 500;
+    const betCheck = canPlaceBet(game, settingsMap, now);
+    if (!betCheck.allowed) {
+      await conn.rollback();
+      return res.status(400).json({ error: betCheck.reason });
     }
 
-    const minBet = settingsMap.min_bet || 10;
+    const { maxBet, minBet, minutesLeft } = betCheck;
     const totalAmount = betNumbers.reduce((sum, n) => sum + parseFloat(n.amount), 0);
 
     // Validate each number amount

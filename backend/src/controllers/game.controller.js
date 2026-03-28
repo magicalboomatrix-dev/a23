@@ -1,37 +1,21 @@
 const pool = require('../config/database');
 const { settleBetsForGame } = require('../utils/settle-bets');
-const { IST_NOW_SQL, IST_DATE_SQL, IST_TIME_SQL } = require('../utils/sql-time');
+const { enqueueSettlement } = require('../utils/auto-settle');
+const {
+  isOvernightGame,
+  getResultDate,
+  isResultVisible,
+  canSettleGame,
+  calculateGameDatetimes,
+  formatDate,
+} = require('../utils/game-time');
 
 exports.listGames = async (req, res, next) => {
   try {
     const [games] = await pool.query(`
-      SELECT g.*, gr.result_number, gr.result_date,
-             gry.result_number AS yesterday_result_number,
-             gry.result_date AS yesterday_result_date,
-             CASE
-               WHEN gr.id IS NOT NULL AND COALESCE(g.result_time, g.close_time) <= ${IST_TIME_SQL} THEN 1
-               ELSE 0
-             END AS result_visible,
+      SELECT g.*,
              COALESCE(pb.pending_bets_count, 0) AS pending_bets_count
       FROM games g
-      LEFT JOIN game_results gr ON gr.id = (
-        SELECT gr2.id
-        FROM game_results gr2
-        WHERE gr2.game_id = g.id
-          AND gr2.declared_at IS NOT NULL
-          AND gr2.result_date = ${IST_DATE_SQL}
-        ORDER BY gr2.result_date DESC, gr2.declared_at DESC
-        LIMIT 1
-      )
-      LEFT JOIN game_results gry ON gry.id = (
-        SELECT gr3.id
-        FROM game_results gr3
-        WHERE gr3.game_id = g.id
-          AND gr3.declared_at IS NOT NULL
-          AND gr3.result_date = ${IST_DATE_SQL} - INTERVAL 1 DAY
-        ORDER BY gr3.result_date DESC, gr3.declared_at DESC
-        LIMIT 1
-      )
       LEFT JOIN (
         SELECT game_id, COUNT(*) AS pending_bets_count
         FROM bets
@@ -41,6 +25,51 @@ exports.listGames = async (req, res, next) => {
       WHERE g.is_active = 1
       ORDER BY g.open_time
     `);
+
+    const now = new Date();
+
+    // For each game, attach today's result and yesterday's result
+    // with correct overnight-aware result_date logic
+    for (const g of games) {
+      const resultDateToday = getResultDate(g, now);
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const resultDateYesterday = formatDate(yesterday);
+
+      // Today's result
+      const [todayResults] = await pool.query(
+        `SELECT result_number, result_date, declared_at, is_settled
+         FROM game_results
+         WHERE game_id = ? AND result_date = ? AND declared_at IS NOT NULL
+         LIMIT 1`,
+        [g.id, resultDateToday]
+      );
+
+      // Yesterday's result
+      const [yesterdayResults] = await pool.query(
+        `SELECT result_number, result_date, declared_at, is_settled
+         FROM game_results
+         WHERE game_id = ? AND result_date = ? AND declared_at IS NOT NULL
+         LIMIT 1`,
+        [g.id, resultDateYesterday]
+      );
+
+      const todayResult = todayResults[0] || null;
+      const yesterdayResult = yesterdayResults[0] || null;
+
+      g.result_number = todayResult ? todayResult.result_number : null;
+      g.result_date = todayResult ? todayResult.result_date : null;
+      g.declared_at = todayResult ? todayResult.declared_at : null;
+      g.is_result_settled = todayResult ? !!todayResult.is_settled : null;
+      g.result_visible = todayResult ? isResultVisible(g, resultDateToday, now) : false;
+
+      g.yesterday_result_number = yesterdayResult ? yesterdayResult.result_number : null;
+      g.yesterday_result_date = yesterdayResult ? yesterdayResult.result_date : null;
+      g.is_yesterday_result_settled = yesterdayResult ? !!yesterdayResult.is_settled : null;
+
+      g.is_overnight = isOvernightGame(g);
+    }
+
     res.json({ games, server_now: new Date().toISOString() });
   } catch (error) {
     next(error);
@@ -78,9 +107,11 @@ exports.createGame = async (req, res, next) => {
       return res.status(400).json({ error: 'Name, open_time, and close_time are required.' });
     }
 
+    const overnight = isOvernightGame({ open_time, close_time }) ? 1 : 0;
+
     const [result] = await pool.query(
-      'INSERT INTO games (name, open_time, close_time, result_time) VALUES (?, ?, ?, ?)',
-      [name, open_time, close_time, close_time]
+      'INSERT INTO games (name, open_time, close_time, result_time, is_overnight) VALUES (?, ?, ?, ?, ?)',
+      [name, open_time, close_time, close_time, overnight]
     );
 
     res.status(201).json({ message: 'Game created.', id: result.insertId });
@@ -109,6 +140,19 @@ exports.updateGame = async (req, res, next) => {
       values.push(close_time);
     }
     if (is_active !== undefined) { fields.push('is_active = ?'); values.push(is_active); }
+
+    // Recalculate is_overnight if either time changed
+    if (open_time !== undefined || close_time !== undefined) {
+      // Fetch current times to merge with updates
+      const [current] = await pool.query('SELECT open_time, close_time FROM games WHERE id = ?', [id]);
+      if (current.length > 0) {
+        const effectiveOpen = open_time !== undefined ? open_time : current[0].open_time;
+        const effectiveClose = close_time !== undefined ? close_time : current[0].close_time;
+        const overnight = isOvernightGame({ open_time: effectiveOpen, close_time: effectiveClose }) ? 1 : 0;
+        fields.push('is_overnight = ?');
+        values.push(overnight);
+      }
+    }
 
     if (fields.length === 0) {
       return res.status(400).json({ error: 'No fields to update.' });
@@ -158,56 +202,81 @@ exports.declareResult = async (req, res, next) => {
       return res.status(400).json({ error: 'Result number must be a 2-digit number (00-99).' });
     }
 
-    // Check game's close/result time to decide whether to settle now.
-    // For backdated results (before IST today), allow immediate settlement.
-    const [gameRows] = await conn.query('SELECT close_time, result_time FROM games WHERE id = ?', [id]);
+    const [gameRows] = await conn.query('SELECT * FROM games WHERE id = ?', [id]);
     if (gameRows.length === 0) {
       return res.status(404).json({ error: 'Game not found.' });
     }
-    const checkTime = gameRows[0].result_time || gameRows[0].close_time;
-    let canSettle = true;
-    const [[{ isPastResultDate }]] = await conn.query(
-      `SELECT DATE(?) < ${IST_DATE_SQL} AS isPastResultDate`,
-      [result_date]
-    );
-    if (checkTime && !isPastResultDate) {
-      const [[{ past }]] = await conn.query(`SELECT ${IST_TIME_SQL} >= ? AS past`, [checkTime]);
-      canSettle = !!past;
-    }
+
+    const game = gameRows[0];
+    const now = new Date();
+
+    // Use game-time utilities to determine if settlement can proceed
+    const settleAllowed = canSettleGame(game, result_date, now);
 
     await conn.beginTransaction();
 
-    // Insert or update result
+    // Insert or update result — declared_at = actual current time
     const [existing] = await conn.query(
-      'SELECT id FROM game_results WHERE game_id = ? AND result_date = ?',
+      'SELECT id, is_settled FROM game_results WHERE game_id = ? AND result_date = ?',
       [id, result_date]
     );
 
     let resultId;
     if (existing.length > 0) {
       resultId = existing[0].id;
+      // Allow re-declaration only if not yet settled
+      if (existing[0].is_settled) {
+        await conn.rollback();
+        return res.status(409).json({ error: 'Result already settled. Cannot re-declare.' });
+      }
       await conn.query(
-        `UPDATE game_results SET result_number = ?, declared_at = ${IST_NOW_SQL} WHERE id = ?`,
+        'UPDATE game_results SET result_number = ?, declared_at = NOW() WHERE id = ?',
         [resultStr, resultId]
       );
     } else {
       const [ins] = await conn.query(
-        `INSERT INTO game_results (game_id, result_number, result_date, declared_at) VALUES (?, ?, ?, ${IST_NOW_SQL})`,
+        'INSERT INTO game_results (game_id, result_number, result_date, declared_at) VALUES (?, ?, ?, NOW())',
         [id, resultStr, result_date]
       );
       resultId = ins.insertId;
     }
 
-    // Only settle bets if past the game's close/result time.
-    // When settling here, settle only bets from this result_date.
+    // Only settle bets if the game's close_datetime has passed
     let settledCount = 0;
-    if (canSettle) {
-      settledCount = await settleBetsForGame(conn, id, resultStr, resultId, { resultDate: result_date });
+    if (settleAllowed) {
+      // Lock the result row to prevent concurrent settlement
+      const [locked] = await conn.query(
+        'SELECT id FROM game_results WHERE id = ? AND is_settled = 0 FOR UPDATE',
+        [resultId]
+      );
+      if (locked.length > 0) {
+        settledCount = await settleBetsForGame(conn, id, resultStr, resultId);
+        await conn.query('UPDATE game_results SET is_settled = 1 WHERE id = ?', [resultId]);
+        // Record completed queue entry so worker skips it
+        await enqueueSettlement(conn, {
+          gameResultId: resultId,
+          gameId: parseInt(id),
+          resultNumber: resultStr,
+          resultDate: result_date,
+        });
+        await conn.query(
+          `UPDATE settlement_queue SET status = 'done', completed_at = NOW() WHERE game_result_id = ?`,
+          [resultId]
+        );
+      }
+    } else {
+      // Close time hasn't passed yet — enqueue for the worker to pick up later
+      await enqueueSettlement(conn, {
+        gameResultId: resultId,
+        gameId: parseInt(id),
+        resultNumber: resultStr,
+        resultDate: result_date,
+      });
     }
 
     await conn.commit();
 
-    const message = canSettle
+    const message = settleAllowed
       ? `Result declared and ${settledCount} bet(s) settled.`
       : 'Result saved. Bets will auto-settle after close time.';
     res.json({ message, resultId, settledCount });
@@ -225,65 +294,80 @@ exports.settleBets = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    // Check game exists and get close/result time
-    const [games] = await conn.query('SELECT id, close_time, result_time FROM games WHERE id = ?', [id]);
+    const [games] = await conn.query('SELECT * FROM games WHERE id = ?', [id]);
     if (games.length === 0) {
       return res.status(404).json({ error: 'Game not found.' });
     }
 
-    // For manual settle, process pending bets date-wise:
-    // yesterday bets with yesterday result, today bets with today result.
     const game = games[0];
-    const checkTime = game.result_time || game.close_time;
+    const now = new Date();
 
-    const [pendingDates] = await conn.query(
-      `SELECT DISTINCT DATE_FORMAT(DATE(CONVERT_TZ(created_at, '+00:00', '+05:30')), '%Y-%m-%d') AS bet_date
-       FROM bets
-       WHERE game_id = ? AND status = 'pending'
-       ORDER BY bet_date DESC`,
-      [id]
-    );
+    // Determine the relevant result_date for this game
+    const resultDateStr = getResultDate(game, now);
 
-    if (pendingDates.length === 0) {
-      return res.json({ message: 'No pending bets to settle.', settledCount: 0 });
-    }
+    // Also consider yesterday for leftover bets
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = formatDate(yesterday);
+    const datesToCheck = [resultDateStr, yesterdayStr];
 
     await conn.beginTransaction();
     let settledCount = 0;
     let missingResultDates = 0;
 
-    for (const row of pendingDates) {
-      const betDate = row.bet_date;
-
-      const [results] = await conn.query(
-        `SELECT id, result_number
-         FROM game_results
-         WHERE game_id = ? AND result_date = ? AND declared_at IS NOT NULL
-         ORDER BY declared_at DESC
-         LIMIT 1`,
-        [id, betDate]
-      );
-
-      if (results.length === 0) {
-        missingResultDates++;
+    for (const checkDate of datesToCheck) {
+      // Check if close_datetime has passed for this date
+      if (!canSettleGame(game, checkDate, now)) {
         continue;
       }
 
-      const [[{ isToday }]] = await conn.query(
-        `SELECT DATE(?) = ${IST_DATE_SQL} AS isToday`,
-        [betDate]
+      const [results] = await conn.query(
+        `SELECT id, result_number, is_settled
+         FROM game_results
+         WHERE game_id = ? AND result_date = ? AND declared_at IS NOT NULL
+         LIMIT 1`,
+        [id, checkDate]
       );
 
-      if (checkTime && isToday) {
-        const [[{ past }]] = await conn.query(`SELECT ${IST_TIME_SQL} >= ? AS past`, [checkTime]);
-        if (!past) {
-          continue;
-        }
+      if (results.length === 0) {
+        // Check if there are pending bets for this game at all
+        const [[{ cnt }]] = await conn.query(
+          'SELECT COUNT(*) as cnt FROM bets WHERE game_id = ? AND status = ?',
+          [id, 'pending']
+        );
+        if (cnt > 0) missingResultDates++;
+        continue;
       }
+
+      // Skip already-settled results
+      if (results[0].is_settled) continue;
 
       const resultId = results[0].id;
       const resultStr = results[0].result_number.toString().padStart(2, '0');
-      settledCount += await settleBetsForGame(conn, id, resultStr, resultId, { resultDate: betDate });
+
+      // Lock the result row to prevent concurrent settlement
+      const [locked] = await conn.query(
+        'SELECT id FROM game_results WHERE id = ? AND is_settled = 0 FOR UPDATE',
+        [resultId]
+      );
+      if (locked.length === 0) continue;
+
+      const count = await settleBetsForGame(conn, id, resultStr, resultId);
+      await conn.query('UPDATE game_results SET is_settled = 1 WHERE id = ?', [resultId]);
+
+      // Record in queue as done
+      await enqueueSettlement(conn, {
+        gameResultId: resultId,
+        gameId: parseInt(id),
+        resultNumber: resultStr,
+        resultDate: checkDate,
+      });
+      await conn.query(
+        `UPDATE settlement_queue SET status = 'done', completed_at = NOW() WHERE game_result_id = ?`,
+        [resultId]
+      );
+
+      settledCount += count;
     }
 
     await conn.commit();
@@ -294,7 +378,7 @@ exports.settleBets = async (req, res, next) => {
       });
     }
 
-    res.json({ message: `Settled ${settledCount} bets.`, settledCount, pending_dates_without_result: missingResultDates });
+    res.json({ message: `Settled ${settledCount} bets.`, settledCount });
   } catch (error) {
     await conn.rollback();
     next(error);

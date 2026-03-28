@@ -491,10 +491,16 @@ const HomePage = () => {
                       </div>
                       <div className="mt-2 grid grid-cols-[1fr_1fr_1.2fr] gap-2">
                         <div className="bg-[#e6f3ff] p-2 text-center text-sm font-black text-[#11446b]">
-                          {game.yesterday_result_number || "-"}
+                          {/* Overnight: yesterday's result is the latest if today is empty */}
+                          {game.is_overnight && !game.result_number && game.yesterday_result_number
+                            ? game.yesterday_result_number
+                            : game.yesterday_result_number || "-"}
                         </div>
-                        <div className="bg-[#ffe8ef] bg-black/10 backdrop-blur-[1px] p-2 text-center text-sm font-black text-[#000000]">
-                          {getResultForGame(game.name)}
+                        <div className="bg-[#ffe8ef] backdrop-blur-[1px] p-2 text-center text-sm font-black text-[#000000]">
+                          {/* Show today's result if visible, else lock */}
+                          {game.result_visible && game.result_number
+                            ? game.result_number
+                            : <LockBadge size="text-sm" />}
                         </div>
                         <div
                           className={`flex items-center justify-center px-2 text-center text-[11px] font-black uppercase tracking-widest text-white ${availability.canPlay ? "bg-green-700" : "bg-[#b91c1c]"}`}

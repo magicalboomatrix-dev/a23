@@ -1,6 +1,6 @@
 const pool = require('../config/database');
 const XLSX = require('xlsx');
-const { IST_DATE_SQL, IST_TIME_SQL } = require('../utils/sql-time');
+const { isResultVisible, getResultDate, resolveGameWindow } = require('../utils/game-time');
 
 function normalizeResultNumber(value) {
   const trimmed = String(value ?? '').trim();
@@ -83,19 +83,14 @@ function parseMonthHeader(headerValue) {
 async function fetchMonthlyChart(year, month, includeHidden = false) {
   const y = parseInt(year, 10) || new Date().getFullYear();
   const m = parseInt(month, 10) || (new Date().getMonth() + 1);
-  const visibilitySql = includeHidden
-    ? '1'
-    : `CASE
-         WHEN gr.result_date = ${IST_DATE_SQL}
-           THEN CASE WHEN COALESCE(g.result_time, g.close_time) <= ${IST_TIME_SQL} THEN 1 ELSE 0 END
-         ELSE 1
-       END`;
 
   const [results] = await pool.query(`
     SELECT DAYOFMONTH(gr.result_date) AS result_day,
+           DATE_FORMAT(gr.result_date, '%Y-%m-%d') AS result_date_str,
            gr.result_number,
            g.name AS game_name,
-           ${visibilitySql} AS result_visible
+           g.open_time,
+           g.close_time
     FROM game_results gr
     JOIN games g ON gr.game_id = g.id
     WHERE YEAR(gr.result_date) = ? AND MONTH(gr.result_date) = ?
@@ -103,14 +98,20 @@ async function fetchMonthlyChart(year, month, includeHidden = false) {
     ORDER BY gr.result_date, g.name
   `, [y, m]);
 
+  const now = new Date();
   const chart = {};
   for (const row of results) {
     const day = row.result_day;
     if (!chart[day]) chart[day] = {};
+    const visible = includeHidden || isResultVisible(
+      { open_time: row.open_time, close_time: row.close_time },
+      row.result_date_str,
+      now
+    );
     chart[day][row.game_name] = {
       has_result: true,
-      result_number: row.result_visible ? row.result_number : (includeHidden ? row.result_number : null),
-      result_visible: Boolean(row.result_visible),
+      result_number: visible ? row.result_number : null,
+      result_visible: visible,
     };
   }
 
@@ -119,20 +120,15 @@ async function fetchMonthlyChart(year, month, includeHidden = false) {
 
 async function fetchYearlyChart(year, city, includeHidden = false) {
   const y = parseInt(year, 10) || new Date().getFullYear();
-  const visibilitySql = includeHidden
-    ? '1'
-    : `CASE
-         WHEN gr.result_date = ${IST_DATE_SQL}
-           THEN CASE WHEN COALESCE(g.result_time, g.close_time) <= ${IST_TIME_SQL} THEN 1 ELSE 0 END
-         ELSE 1
-       END`;
 
   let query = `
     SELECT DAYOFMONTH(gr.result_date) AS result_day,
            MONTH(gr.result_date) - 1 AS result_month,
+           DATE_FORMAT(gr.result_date, '%Y-%m-%d') AS result_date_str,
            gr.result_number,
            g.name AS game_name,
-           ${visibilitySql} AS result_visible
+           g.open_time,
+           g.close_time
     FROM game_results gr
     JOIN games g ON gr.game_id = g.id
     WHERE YEAR(gr.result_date) = ?
@@ -148,15 +144,21 @@ async function fetchYearlyChart(year, city, includeHidden = false) {
   query += ' ORDER BY gr.result_date, g.name';
   const [results] = await pool.query(query, params);
 
+  const now = new Date();
   const chart = {};
   for (const row of results) {
     const day = row.result_day;
     const month = row.result_month;
     if (!chart[day]) chart[day] = new Array(12).fill('');
+    const visible = includeHidden || isResultVisible(
+      { open_time: row.open_time, close_time: row.close_time },
+      row.result_date_str,
+      now
+    );
     chart[day][month] = {
       has_result: true,
-      result_number: row.result_visible ? row.result_number : (includeHidden ? row.result_number : null),
-      result_visible: Boolean(row.result_visible),
+      result_number: visible ? row.result_number : null,
+      result_visible: visible,
     };
   }
 
@@ -226,72 +228,84 @@ exports.getAdminYearlyResults = async (req, res, next) => {
  */
 exports.getLiveResults = async (req, res, next) => {
   try {
-    // 1. Fetch every active game with today's declared result (if any),
-    //    ordered by close_time so we can compute "next game" windows.
-    const [rows] = await pool.query(`
-      SELECT g.id        AS game_id,
-             g.name,
-             g.close_time,
-             gr.result_number
-      FROM games g
-      LEFT JOIN game_results gr
-        ON gr.game_id = g.id
-       AND gr.result_date = ${IST_DATE_SQL}
-       AND gr.declared_at IS NOT NULL
-      WHERE g.is_active = 1
-      ORDER BY g.close_time ASC
+    // 1. Fetch all active games (we need open_time for overnight detection).
+    const [gameRows] = await pool.query(`
+      SELECT id AS game_id, name, open_time, close_time
+      FROM games
+      WHERE is_active = 1
     `);
 
-    if (rows.length === 0) {
+    if (gameRows.length === 0) {
       return res.json({ results: [] });
     }
 
-    // 2. Convert close_time strings into today's Date objects for arithmetic.
     const now = new Date();
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
-    const games = rows.map((row) => {
-      const closeDate = new Date(`${todayStr}T${row.close_time}`);
-      return { ...row, closeDate };
+    // 2. For each game compute the correct result_date and close datetime.
+    const gamesWithDates = gameRows.map((g) => {
+      const resultDate = getResultDate(g, now);
+      const { closeDatetime } = resolveGameWindow(g, now);
+      return { ...g, resultDate, closeDatetime };
     });
 
-    // 3. Compute visibility window for each game.
+    // Sort by closeDatetime so the windowing logic works correctly.
+    gamesWithDates.sort((a, b) => a.closeDatetime - b.closeDatetime);
+
+    // 3. Batch-fetch results for each (game_id, result_date) pair.
+    const pairs = gamesWithDates.map((g) => [g.game_id, g.resultDate]);
+    const resultMap = {};
+
+    if (pairs.length > 0) {
+      const placeholders = pairs.map(() => '(?, ?)').join(', ');
+      const [resultRows] = await pool.query(`
+        SELECT game_id, result_number
+        FROM game_results
+        WHERE declared_at IS NOT NULL
+          AND (game_id, result_date) IN (${placeholders})
+      `, pairs.flat());
+      for (const r of resultRows) {
+        resultMap[r.game_id] = r.result_number;
+      }
+    }
+
+    // 4. Compute visibility windows (overnight-safe).
     const THIRTY_MIN = 30 * 60 * 1000;
 
-    const windows = games.map((game, i) => {
-      const waitingStart = new Date(game.closeDate.getTime() - THIRTY_MIN);
-      const minimumEnd   = new Date(game.closeDate.getTime() + THIRTY_MIN);
+    const windows = gamesWithDates.map((game, i) => {
+      const closeDate = game.closeDatetime;
+      const waitingStart = new Date(closeDate.getTime() - THIRTY_MIN);
+      const minimumEnd   = new Date(closeDate.getTime() + THIRTY_MIN);
 
-      // Extended end: stay visible until next game's waiting window starts.
       let extendedEnd = minimumEnd;
-      if (i + 1 < games.length) {
-        const nextWaitingStart = new Date(games[i + 1].closeDate.getTime() - THIRTY_MIN);
+      if (i + 1 < gamesWithDates.length) {
+        const nextWaitingStart = new Date(gamesWithDates[i + 1].closeDatetime.getTime() - THIRTY_MIN);
         if (nextWaitingStart > minimumEnd) {
           extendedEnd = nextWaitingStart;
         }
       }
       const visibleEnd = new Date(Math.max(minimumEnd.getTime(), extendedEnd.getTime()));
 
-      const isVisible  = now >= waitingStart && now <= visibleEnd;
-      const isWaiting  = now < game.closeDate;
+      const isVisible = now >= waitingStart && now <= visibleEnd;
+      const isWaiting = now < closeDate;
+      const resultNumber = resultMap[game.game_id] || null;
 
       return {
         game_id:        game.game_id,
         name:           game.name,
         close_time:     game.close_time,
-        result_number:  game.result_number || null,
+        result_number:  resultNumber,
         status:         isWaiting ? 'waiting' : 'result',
-        result_visible: !isWaiting && !!game.result_number,
+        result_visible: !isWaiting && !!resultNumber,
         isVisible,
         waitingStart,
         visibleEnd,
       };
     });
 
-    // 4. Pick visible games first (max 2).
+    // 5. Pick visible games first (max 2).
     let selected = windows.filter((w) => w.isVisible).slice(0, 2);
 
-    // 5. If fewer than 2, pad with the nearest upcoming (not yet in window).
+    // 6. If fewer than 2, pad with the nearest upcoming (not yet in window).
     if (selected.length < 2) {
       const upcoming = windows
         .filter((w) => !w.isVisible && w.waitingStart > now)
@@ -299,7 +313,7 @@ exports.getLiveResults = async (req, res, next) => {
       selected = selected.concat(upcoming);
     }
 
-    // 6. If still fewer than 2, pad with the most recently ended games.
+    // 7. If still fewer than 2, pad with the most recently ended games.
     if (selected.length < 2) {
       const past = windows
         .filter((w) => !w.isVisible && w.visibleEnd < now)
@@ -308,7 +322,7 @@ exports.getLiveResults = async (req, res, next) => {
       selected = selected.concat(past);
     }
 
-    // 7. Strip internal fields before responding.
+    // 8. Strip internal fields before responding.
     const results = selected.map(({ isVisible, waitingStart, visibleEnd, ...rest }) => rest);
 
     res.json({ results });

@@ -3,17 +3,20 @@ import api from '../utils/api';
 import { useToast, ToastContainer } from '../components/ui';
 
 const SETTING_LABELS = {
-  max_bet_60min: 'Max Bet More Than 60 Min',
-  max_bet_30min: 'Max Bet 30-60 Min',
-  max_bet_15min: 'Max Bet 15-30 Min',
-  max_bet_last_15min: 'Max Bet Last 15 Min',
+  max_bet_full: 'Max Bet (>90 Min)',
+  max_bet_30min: 'Max Bet (30–90 Min)',
+  max_bet_last_30: 'Max Bet (<30 Min)',
   min_bet: 'Minimum Bet Amount',
 };
 
 export default function Settings() {
   const [settings, setSettings] = useState([]);
+  const [payoutRates, setPayoutRates] = useState([]);
+  const [bonusRates, setBonusRates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingRates, setSavingRates] = useState(false);
+  const [savingBonus, setSavingBonus] = useState(false);
   const [flaggedAccounts, setFlaggedAccounts] = useState([]);
   const { toasts, success, error: toastError, dismiss } = useToast();
 
@@ -21,12 +24,16 @@ export default function Settings() {
 
   const loadData = async () => {
     try {
-      const [settingsRes, flaggedRes] = await Promise.all([
+      const [settingsRes, flaggedRes, ratesRes, bonusRes] = await Promise.all([
         api.get('/admin/settings'),
         api.get('/admin/flagged-accounts'),
+        api.get('/admin/payout-rates').catch(() => ({ data: { rates: [] } })),
+        api.get('/admin/bonus-rates').catch(() => ({ data: { rates: [] } })),
       ]);
       setSettings(Array.isArray(settingsRes.data.settings) ? settingsRes.data.settings : []);
       setFlaggedAccounts(Array.isArray(flaggedRes.data.accounts) ? flaggedRes.data.accounts : []);
+      setPayoutRates(Array.isArray(ratesRes.data.rates) ? ratesRes.data.rates : []);
+      setBonusRates(Array.isArray(bonusRes.data.rates) ? bonusRes.data.rates : []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -52,13 +59,51 @@ export default function Settings() {
     }
   };
 
+  const updateRate = (gameType, value) => {
+    setPayoutRates(prev => prev.map(r => r.game_type === gameType ? { ...r, multiplier: value } : r));
+  };
+
+  const savePayoutRates = async () => {
+    setSavingRates(true);
+    try {
+      await api.put('/admin/payout-rates', {
+        rates: payoutRates.map(r => ({ game_type: r.game_type, multiplier: r.multiplier }))
+      });
+      success('Payout rates saved!');
+    } catch (err) {
+      toastError(err.response?.data?.error || 'Failed');
+    } finally {
+      setSavingRates(false);
+    }
+  };
+
+  const updateBonus = (gameType, value) => {
+    setBonusRates(prev => prev.map(r => r.game_type === gameType ? { ...r, bonus_multiplier: value } : r));
+  };
+
+  const saveBonusRates = async () => {
+    setSavingBonus(true);
+    try {
+      await api.put('/admin/bonus-rates', {
+        rates: bonusRates.map(r => ({ game_type: r.game_type, bonus_multiplier: r.bonus_multiplier }))
+      });
+      success('Bonus rates saved!');
+    } catch (err) {
+      toastError(err.response?.data?.error || 'Failed');
+    } finally {
+      setSavingBonus(false);
+    }
+  };
+
   if (loading) return <div className="text-center py-10 text-gray-500">Loading...</div>;
 
   // Group settings by category
-  const payoutSettings = settings.filter(s => s.setting_key.startsWith('payout_'));
   const betSettings = settings.filter(s => s.setting_key.startsWith('max_bet_') || s.setting_key === 'min_bet');
   const depositSettings = settings.filter(s => s.setting_key.startsWith('min_deposit') || s.setting_key.startsWith('min_withdraw') || s.setting_key === 'max_withdraw_time_minutes');
   const bonusSettings = settings.filter(s => s.setting_key.includes('bonus') || s.setting_key.includes('referral'));
+
+  const RATE_LABELS = { jodi: 'Jodi', haruf_andar: 'Haruf Andar', haruf_bahar: 'Haruf Bahar', crossing: 'Crossing' };
+  const BONUS_LABELS = { jodi: 'Jodi Bonus', haruf_andar: 'Haruf Andar Bonus', haruf_bahar: 'Haruf Bahar Bonus', crossing: 'Crossing Bonus' };
 
   const renderGroup = (title, items) => (
     <div className="bg-white border p-6">
@@ -84,7 +129,67 @@ export default function Settings() {
 
   return (
     <div className="space-y-6">
-      {renderGroup('Payout Ratios', payoutSettings)}
+      {/* Payout Rates from game_payout_rates table */}
+      {payoutRates.length > 0 && (
+        <div className="bg-white border p-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Payout Multipliers</h3>
+          <div className="space-y-3">
+            {payoutRates.map((r) => (
+              <div key={r.game_type} className="flex flex-col sm:flex-row sm:items-center gap-2">
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-700">{RATE_LABELS[r.game_type] || r.game_type}</p>
+                  <p className="text-xs text-gray-400">Multiplier applied to winning bets</p>
+                </div>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="1"
+                  value={r.multiplier}
+                  onChange={(e) => updateRate(r.game_type, e.target.value)}
+                  className="w-full sm:w-40 px-3 py-2 border text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+                />
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-end mt-4">
+            <button onClick={savePayoutRates} disabled={savingRates}
+              className="px-6 py-2 bg-primary-600 text-white hover:bg-primary-700 font-medium disabled:opacity-50 text-sm">
+              {savingRates ? 'Saving...' : 'Save Payout Rates'}
+            </button>
+          </div>
+        </div>
+      )}
+      {/* Bonus Multipliers from game_bonus_rates table */}
+      {bonusRates.length > 0 && (
+        <div className="bg-white border p-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Bonus Multipliers</h3>
+          <p className="text-xs text-gray-400 mb-3">Win = bet × payout × bonus. Set to 1.00 to disable bonus.</p>
+          <div className="space-y-3">
+            {bonusRates.map((r) => (
+              <div key={r.game_type} className="flex flex-col sm:flex-row sm:items-center gap-2">
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-700">{BONUS_LABELS[r.game_type] || r.game_type}</p>
+                  <p className="text-xs text-gray-400">Extra multiplier on top of payout rate</p>
+                </div>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={r.bonus_multiplier}
+                  onChange={(e) => updateBonus(r.game_type, e.target.value)}
+                  className="w-full sm:w-40 px-3 py-2 border text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+                />
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-end mt-4">
+            <button onClick={saveBonusRates} disabled={savingBonus}
+              className="px-6 py-2 bg-primary-600 text-white hover:bg-primary-700 font-medium disabled:opacity-50 text-sm">
+              {savingBonus ? 'Saving...' : 'Save Bonus Rates'}
+            </button>
+          </div>
+        </div>
+      )}
       {renderGroup('Betting Limits', betSettings)}
       {renderGroup('Deposit & Withdrawal', depositSettings)}
       {renderGroup('Bonus & Referral', bonusSettings)}

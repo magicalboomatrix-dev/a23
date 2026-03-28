@@ -226,16 +226,29 @@ exports.completeProfile = async (req, res, next) => {
     // Handle referral
     if (referrer) {
         const [settings] = await conn.query("SELECT setting_value FROM settings WHERE setting_key = 'referral_bonus'");
-        const bonusAmount = settings.length > 0 ? parseFloat(settings[0].setting_value) : 50;
+        const bonusAmount = settings.length > 0 ? parseFloat(settings[0].setting_value) : 0;
 
-        await conn.query('INSERT INTO referrals (referrer_id, referred_user_id, bonus_amount) VALUES (?, ?, ?)',
-          [referrer.id, userId, bonusAmount]);
+        if (bonusAmount > 0) {
+          await conn.query('INSERT INTO referrals (referrer_id, referred_user_id, bonus_amount) VALUES (?, ?, ?)',
+            [referrer.id, userId, bonusAmount]);
 
-        await conn.query('UPDATE wallets SET bonus_balance = bonus_balance + ? WHERE user_id = ?',
-          [bonusAmount, referrer.id]);
+          // Lock wallet row before updating bonus_balance
+          await conn.query('SELECT balance FROM wallets WHERE user_id = ? FOR UPDATE', [referrer.id]);
+          await conn.query('UPDATE wallets SET bonus_balance = bonus_balance + ? WHERE user_id = ?',
+            [bonusAmount, referrer.id]);
 
-        await conn.query('INSERT INTO bonuses (user_id, type, amount, reference_id) VALUES (?, ?, ?, ?)',
-          [referrer.id, 'referral', bonusAmount, `ref_${userId}`]);
+          await conn.query('INSERT INTO bonuses (user_id, type, amount, reference_id) VALUES (?, ?, ?, ?)',
+            [referrer.id, 'referral', bonusAmount, `ref_${userId}`]);
+
+          // Record in wallet_transactions ledger
+          const [[walletRow]] = await conn.query('SELECT balance FROM wallets WHERE user_id = ?', [referrer.id]);
+          await conn.query(
+            `INSERT INTO wallet_transactions
+              (user_id, type, amount, balance_after, status, reference_type, reference_id, remark)
+             VALUES (?, 'bonus', ?, ?, 'completed', 'bonus', ?, ?)`,
+            [referrer.id, bonusAmount, parseFloat(walletRow.balance), `referral_${userId}`, `Referral bonus for user #${userId}`]
+          );
+        }
     }
 
     await conn.commit();

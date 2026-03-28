@@ -25,6 +25,18 @@ async function recordWalletTransaction(conn, {
   status = 'completed',
   remark = null,
 }) {
+  // Idempotency guard: if this reference was already recorded, return current balance.
+  // The UNIQUE(reference_type, reference_id) constraint prevents double-credits on retry.
+  if (referenceType && referenceId) {
+    const [existing] = await conn.query(
+      'SELECT id, balance_after FROM wallet_transactions WHERE reference_type = ? AND reference_id = ? LIMIT 1',
+      [referenceType, referenceId]
+    );
+    if (existing.length > 0) {
+      return parseFloat(existing[0].balance_after);
+    }
+  }
+
   const wallet = await ensureWalletRow(conn, userId);
   const currentBalance = parseFloat(wallet.balance || 0);
   const parsedAmount = parseFloat(amount || 0);

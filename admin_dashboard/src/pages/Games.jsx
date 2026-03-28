@@ -9,6 +9,22 @@ function getLocalDateInputValue(referenceDate = new Date()) {
   return `${year}-${month}-${day}`;
 }
 
+function formatResultDate(dateVal) {
+  if (!dateVal) return '';
+  if (typeof dateVal === 'string') return dateVal.slice(0, 10);
+  return new Date(dateVal).toISOString().slice(0, 10);
+}
+
+function getResultLabel(game) {
+  if (!game.result_number || !game.result_date) return null;
+  const today = getLocalDateInputValue();
+  const yesterday = getLocalDateInputValue(new Date(Date.now() - 86400000));
+  const rd = formatResultDate(game.result_date);
+  if (game.is_overnight && rd === yesterday) return "Yesterday's Result";
+  if (rd === today) return "Today's Result";
+  return 'Result';
+}
+
 export default function Games() {
   const [games, setGames] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -229,15 +245,45 @@ export default function Games() {
           <div key={g.id} className={`bg-white border p-5 ${!g.is_active ? 'opacity-60' : ''}`}>
             <div className="flex justify-between items-start mb-3">
               <h4 className="font-bold text-lg text-gray-800">{g.name}</h4>
-              <span className={`px-2 py-1 text-xs font-medium ${g.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                {g.is_active ? 'Active' : 'Inactive'}
-              </span>
+              <div className="flex gap-1">
+                {g.is_overnight ? (
+                  <span className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700">Overnight</span>
+                ) : null}
+                <span className={`px-2 py-1 text-xs font-medium ${g.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                  {g.is_active ? 'Active' : 'Inactive'}
+                </span>
+              </div>
             </div>
             <div className="text-sm text-gray-600 space-y-1">
               <p>Open: <span className="font-medium">{g.open_time}</span></p>
               <p>Close: <span className="font-medium">{g.close_time}</span></p>
-              {g.result_number && (
-                <p className="text-primary-600 font-bold">Today's Result: {g.result_number}</p>
+              {g.result_number && (() => {
+                const label = getResultLabel(g);
+                const rd = formatResultDate(g.result_date);
+                return (
+                  <>
+                    <p className="text-primary-600 font-bold">{label}: {g.result_number}</p>
+                    <p className="text-xs text-gray-500">Game Date: {rd}</p>
+                    <span className={`inline-block mt-0.5 px-2 py-0.5 text-xs font-medium rounded ${g.is_result_settled ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                      {g.is_result_settled ? 'Settled' : 'Pending settlement'}
+                    </span>
+                  </>
+                );
+              })()}
+              {!g.result_number && g.is_overnight && g.yesterday_result_number && (() => {
+                const rd = formatResultDate(g.yesterday_result_date);
+                return (
+                  <>
+                    <p className="text-primary-600 font-bold">Yesterday's Result: {g.yesterday_result_number}</p>
+                    <p className="text-xs text-gray-500">Game Date: {rd}</p>
+                    <span className={`inline-block mt-0.5 px-2 py-0.5 text-xs font-medium rounded ${g.is_yesterday_result_settled ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                      {g.is_yesterday_result_settled ? 'Settled' : 'Pending settlement'}
+                    </span>
+                  </>
+                );
+              })()}
+              {g.declared_at && (
+                <p className="text-xs text-gray-400">Declared: {new Date(g.declared_at).toLocaleString('en-IN')}</p>
               )}
               {g.pending_bets_count > 0 && (
                 <p className="text-orange-600 font-semibold text-xs">⏳ {g.pending_bets_count} pending bet(s)</p>

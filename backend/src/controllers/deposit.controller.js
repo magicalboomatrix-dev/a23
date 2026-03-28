@@ -446,11 +446,22 @@ exports.approveDeposit = async (req, res, next) => {
         const bonusPercent = parseFloat(bonusSettings[0].setting_value);
         const bonusAmount = (parseFloat(deposit.amount) * bonusPercent) / 100;
 
+        // Lock wallet row before updating bonus_balance
+        await conn.query('SELECT balance FROM wallets WHERE user_id = ? FOR UPDATE', [deposit.user_id]);
         await conn.query('UPDATE wallets SET bonus_balance = bonus_balance + ? WHERE user_id = ?',
           [bonusAmount, deposit.user_id]);
 
         await conn.query('INSERT INTO bonuses (user_id, type, amount, reference_id) VALUES (?, ?, ?, ?)',
           [deposit.user_id, 'first_deposit', bonusAmount, `deposit_${id}`]);
+
+        // Record in wallet_transactions ledger
+        const [[walletRow]] = await conn.query('SELECT balance FROM wallets WHERE user_id = ?', [deposit.user_id]);
+        await conn.query(
+          `INSERT INTO wallet_transactions
+            (user_id, type, amount, balance_after, status, reference_type, reference_id, remark)
+           VALUES (?, 'bonus', ?, ?, 'completed', 'bonus', ?, ?)`,
+          [deposit.user_id, bonusAmount, parseFloat(walletRow.balance), `first_deposit_${id}`, `First deposit bonus ${bonusPercent}%`]
+        );
       }
     }
 
@@ -462,10 +473,24 @@ exports.approveDeposit = async (req, res, next) => {
         const [slabSettings] = await conn.query("SELECT setting_value FROM settings WHERE setting_key = ?", [key]);
         if (slabSettings.length > 0) {
           const slabBonus = parseFloat(slabSettings[0].setting_value);
+
+          // Lock wallet row before updating bonus_balance
+          await conn.query('SELECT balance FROM wallets WHERE user_id = ? FOR UPDATE', [deposit.user_id]);
           await conn.query('UPDATE wallets SET bonus_balance = bonus_balance + ? WHERE user_id = ?',
             [slabBonus, deposit.user_id]);
+
           await conn.query('INSERT INTO bonuses (user_id, type, amount, reference_id) VALUES (?, ?, ?, ?)',
             [deposit.user_id, 'slab', slabBonus, `deposit_${id}_slab_${threshold}`]);
+
+          // Record in wallet_transactions ledger
+          const [[walletRow]] = await conn.query('SELECT balance FROM wallets WHERE user_id = ?', [deposit.user_id]);
+          await conn.query(
+            `INSERT INTO wallet_transactions
+              (user_id, type, amount, balance_after, status, reference_type, reference_id, remark)
+             VALUES (?, 'bonus', ?, ?, 'completed', 'bonus', ?, ?)`,
+            [deposit.user_id, slabBonus, parseFloat(walletRow.balance), `slab_${id}_${threshold}`, `Slab bonus for ₹${threshold}+ deposit`]
+          );
+
           break; // Only apply highest matching slab
         }
       }

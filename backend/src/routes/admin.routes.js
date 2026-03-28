@@ -16,5 +16,9 @@ router.get('/users/:id/detail', authenticate, authorize('admin'), adminControlle
 router.get('/fraud-logs', authenticate, authorize('admin'), adminController.getFraudLogs);
 router.get('/fraud-alerts', authenticate, authorize('admin'), adminController.getFraudAlerts);
 router.get('/dashboard-stats', authenticate, authorize('admin'), adminController.getDashboardStats);
+router.get('/payout-rates', authenticate, authorize('admin'), adminController.getPayoutRates);
+router.put('/payout-rates', authenticate, authorize('admin'), adminController.updatePayoutRates);
+router.get('/bonus-rates', authenticate, authorize('admin'), adminController.getBonusRates);
+router.put('/bonus-rates', authenticate, authorize('admin'), adminController.updateBonusRates);
 
 module.exports = router;

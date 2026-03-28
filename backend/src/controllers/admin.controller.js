@@ -1,5 +1,5 @@
 const pool = require('../config/database');
-const { IST_NOW_SQL, IST_DATE_SQL } = require('../utils/sql-time');
+const { IST_NOW_SQL } = require('../utils/sql-time');
 
 const LARGE_NEW_USER_DEPOSIT_THRESHOLD = 5000;
 const LARGE_NEW_USER_DEPOSIT_MAX_AGE_DAYS = 3;
@@ -500,6 +500,94 @@ exports.getDashboardStats = async (req, res, next) => {
       fraud_attempts_today: fraudToday[0]?.fraud_attempts_today || 0,
       active_moderators: activeModerators[0]?.active_moderators || 0,
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ── Payout Rates ──────────────────────────────────────────────────────
+
+exports.getPayoutRates = async (req, res, next) => {
+  try {
+    const [rates] = await pool.query(
+      'SELECT id, game_type, multiplier, updated_at FROM game_payout_rates ORDER BY game_type'
+    );
+    res.json({ rates });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.updatePayoutRates = async (req, res, next) => {
+  try {
+    const { rates } = req.body;
+    if (!Array.isArray(rates) || rates.length === 0) {
+      return res.status(400).json({ error: 'Rates array required.' });
+    }
+
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+      for (const { game_type, multiplier } of rates) {
+        const mult = parseFloat(multiplier);
+        if (!game_type || isNaN(mult) || mult <= 0) {
+          await conn.rollback();
+          return res.status(400).json({ error: `Invalid rate for "${game_type}".` });
+        }
+        await conn.query(
+          'UPDATE game_payout_rates SET multiplier = ?, updated_by = ?, updated_at = NOW() WHERE game_type = ?',
+          [mult, req.user.id, game_type]
+        );
+      }
+      await conn.commit();
+      res.json({ message: 'Payout rates updated.' });
+    } finally {
+      conn.release();
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ── Bonus Rates ───────────────────────────────────────────────────────
+
+exports.getBonusRates = async (req, res, next) => {
+  try {
+    const [rates] = await pool.query(
+      'SELECT id, game_type, bonus_multiplier, updated_at FROM game_bonus_rates ORDER BY game_type'
+    );
+    res.json({ rates });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.updateBonusRates = async (req, res, next) => {
+  try {
+    const { rates } = req.body;
+    if (!Array.isArray(rates) || rates.length === 0) {
+      return res.status(400).json({ error: 'Rates array required.' });
+    }
+
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+      for (const { game_type, bonus_multiplier } of rates) {
+        const mult = parseFloat(bonus_multiplier);
+        if (!game_type || isNaN(mult) || mult < 0) {
+          await conn.rollback();
+          return res.status(400).json({ error: `Invalid bonus rate for "${game_type}".` });
+        }
+        await conn.query(
+          'UPDATE game_bonus_rates SET bonus_multiplier = ?, updated_by = ?, updated_at = NOW() WHERE game_type = ?',
+          [mult, req.user.id, game_type]
+        );
+      }
+      await conn.commit();
+      res.json({ message: 'Bonus rates updated.' });
+    } finally {
+      conn.release();
+    }
   } catch (error) {
     next(error);
   }
