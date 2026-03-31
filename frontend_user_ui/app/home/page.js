@@ -551,7 +551,7 @@ const HomePage = () => {
               {/* right angled side */}
               <span className="absolute top-0 -right-1.5 h-full w-[clamp(20px,6vw,40px)] bg-[linear-gradient(94deg,#b6842d,#ebda8d_55%,#b7862f)] skew-x-25 sm:-right-2.5"></span>
               <p className="relative z-10 whitespace-nowrap tracking-wide">
-                SATTA KING RECORD CHART
+                 KING RECORD CHART
               </p>
             </h2>
           </div>
@@ -587,20 +587,7 @@ const HomePage = () => {
               Check <span className="arw">→</span>
             </button>
           </div>
-          {(() => {
-            const allNames = (games ?? []).map((g) => g.name);
-            const half = Math.ceil(allNames.length / 2);
-            const firstHalf = allNames.slice(0, half);
-            const secondHalf = allNames.slice(half);
-            return secondHalf.length > 0 ? (
-              <div>
-                <MonthlyChart data={monthlyData} gameNames={firstHalf} />
-                <MonthlyChart data={monthlyData} gameNames={secondHalf} />
-              </div>
-            ) : (
-              <MonthlyChart data={monthlyData} gameNames={firstHalf} />
-            );
-          })()}
+          <MonthlyChart data={monthlyData} gameNames={(games ?? []).map((game) => game.name)} />
         </div>
       </section>
     </div>

@@ -66,7 +66,7 @@ const ChartPage = () => {
               <span className="absolute top-0 -right-1.5 h-full w-[clamp(20px,6vw,40px)] bg-[linear-gradient(94deg,#b6842d,#ebda8d_55%,#b7862f)] skew-x-25 sm:-right-2.5"></span>
 
               <p className="relative z-10 whitespace-nowrap tracking-wide">
-                Satta Record Chart {selectedYear}
+                 Record Chart {selectedYear}
               </p>
             </h2>
           </div>

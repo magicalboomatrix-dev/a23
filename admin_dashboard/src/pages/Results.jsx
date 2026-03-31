@@ -28,7 +28,7 @@ function AdminMonthlyChart({ data }) {
 
   return (
     <div>
-      <div className="head-title topround text-center"><h2 className="title-text"><b>SATTA KING MONTHLY CHART</b></h2></div>
+      <div className="head-title topround text-center"><h2 className="title-text"><b> KING MONTHLY CHART</b></h2></div>
       <div className="table-inner">
         <table className="chart-table">
           <thead>

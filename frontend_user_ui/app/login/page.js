@@ -27,7 +27,7 @@ const LoginPage = () => {
                 <b>Welcome to A23 Satta</b>
               </h1>
               <p className="pb-2.5 text-center text-[#444]">
-                Login to A23 Satta and unlock exciting satta matka <br /> games
+                Login to A23 Satta and unlock exciting  matka <br /> games
                 instant results and real winning opportunities.
               </p>
 

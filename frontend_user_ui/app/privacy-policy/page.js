@@ -1,8 +1,8 @@
 import Link from 'next/link'
 
 export const metadata = {
-  title: 'Privacy Policy – A23Satta',
-  description: 'Read the Privacy Policy for A23Satta.com to understand how we collect, use, and protect your personal information.',
+  title: 'Privacy Policy – A23 Satta',
+  description: 'Read the Privacy Policy for A23 Satta.com to understand how we collect, use, and protect your personal information.',
 }
 
 export default function PrivacyPolicy() {
@@ -198,8 +198,8 @@ export default function PrivacyPolicy() {
             </ul>
             <p className="text-sm leading-relaxed">
               You may exercise these rights by contacting us at{' '}
-              <a href="mailto:support@a23satta.com" className="font-semibold text-[#c8960c] underline underline-offset-2">
-                support@a23satta.com
+              <a href="mailto:support@A23 Satta.com" className="font-semibold text-[#c8960c] underline underline-offset-2">
+                support@A23 Satta.com
               </a>
               .
             </p>
@@ -238,13 +238,13 @@ export default function PrivacyPolicy() {
             <div className="space-y-1">
               <p className="flex items-center gap-2 text-sm">
                 <span>📧</span>
-                <a href="mailto:support@a23satta.com" className="font-semibold text-[#c8960c] underline underline-offset-2">
-                  support@a23satta.com
+                <a href="mailto:support@A23 Satta.com" className="font-semibold text-[#c8960c] underline underline-offset-2">
+                  support@A23 Satta.com
                 </a>
               </p>
               <p className="flex items-center gap-2 text-sm">
                 <span>🌐</span>
-                <span className="font-semibold text-[#c8960c]">https://www.a23satta.com</span>
+                <span className="font-semibold text-[#c8960c]">https://www.A23 Satta.com</span>
               </p>
             </div>
           </section>

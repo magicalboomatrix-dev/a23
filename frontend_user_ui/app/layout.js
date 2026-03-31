@@ -18,7 +18,7 @@ const monaSans = Mona_Sans({
 });
 
 export const metadata = {
-  title: "A23Satta",
+  title: "A23 Satta",
   description: "A23 Satta user application",
   manifest: "/manifest.json",
 };
@@ -37,7 +37,7 @@ export default function RootLayout({ children }) {
       <head>
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#000000" />
-        <link rel="apple-touch-icon" href="/icons/a23_icon_192.png" />
+        <link rel="apple-touch-icon" href="/icons/A23 Satta_icon_192.png" />
       </head>
 
       <body

@@ -1,8 +1,8 @@
 import Link from 'next/link'
 
 export const metadata = {
-  title: 'Terms and Conditions – A23Satta',
-  description: 'Read the Terms and Conditions for using A23Satta.com.',
+  title: 'Terms and Conditions – A23 Satta',
+  description: 'Read the Terms and Conditions for using A23 Satta.com.',
 }
 
 export default function TermsAndConditions() {
@@ -241,13 +241,13 @@ export default function TermsAndConditions() {
             <div className="space-y-1">
               <p className="flex items-center gap-2 text-sm">
                 <span>📧</span>
-                <a href="mailto:support@a23satta.com" className="font-semibold text-[#c8960c] underline underline-offset-2">
-                  support@a23satta.com
+                <a href="mailto:support@A23 Satta.com" className="font-semibold text-[#c8960c] underline underline-offset-2">
+                  support@A23 Satta.com
                 </a>
               </p>
               <p className="flex items-center gap-2 text-sm">
                 <span>🌐</span>
-                <span className="font-semibold text-[#c8960c]">https://www.a23satta.com</span>
+                <span className="font-semibold text-[#c8960c]">https://www.A23 Satta.com</span>
               </p>
             </div>
           </section>
