@@ -139,5 +139,6 @@ export const customAdsAPI = {
 // Notifications
 export const notificationAPI = {
   my: () => request('/notifications/my'),
+  recent: () => request('/notifications/recent'),
   markRead: (id) => request(`/notifications/${id}/read`, { method: 'PUT' }),
 };
