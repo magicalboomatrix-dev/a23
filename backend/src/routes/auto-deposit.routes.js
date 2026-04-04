@@ -45,4 +45,10 @@ router.get('/admin/stats', authenticate, authorize('admin'), autoDepositControll
 // Manual order expiry trigger
 router.post('/admin/expire-orders', authenticate, authorize('admin'), autoDepositController.triggerExpireOrders);
 
+// Admin cancel a pending order
+router.post('/admin/orders/:id/cancel', authenticate, authorize('admin'), autoDepositController.adminCancelOrder);
+
+// Admin manually credit a pending order (when auto-match failed)
+router.post('/admin/orders/:id/credit', authenticate, authorize('admin'), autoDepositController.adminCreditOrder);
+
 module.exports = router;

@@ -5,10 +5,11 @@
 
 const pool = require('../config/database');
 const crypto = require('crypto');
-const { ORDER_EXPIRY_MINUTES, getDepositLimits, expirePendingOrders } = require('../services/auto-deposit-matcher');
+const { ORDER_EXPIRY_MINUTES, getDepositLimits, expirePendingOrders, applyDepositBonuses } = require('../services/auto-deposit-matcher');
 const { resolveUpiForUser } = require('../services/upi-resolver');
 const { buildUpiLink, generateQrDataUri } = require('../services/qr-generator');
 const { clampPagination } = require('../utils/pagination');
+const { recordWalletTransaction } = require('../utils/wallet-ledger');
 
 /**
  * Generate a short unique order reference (e.g., "RM7X3K9P")
@@ -431,6 +432,157 @@ exports.getStats = async (req, res, next) => {
  * POST /api/auto-deposit/admin/expire-orders
  * Admin manually triggers order expiry cleanup
  */
+/**
+ * POST /api/auto-deposit/admin/orders/:id/cancel
+ * Admin cancels any pending deposit order on behalf of the user.
+ */
+exports.adminCancelOrder = async (req, res, next) => {
+  const conn = await pool.getConnection();
+  try {
+    const { id } = req.params;
+    const adminId = req.user.id;
+
+    await conn.beginTransaction();
+
+    const [rows] = await conn.query(
+      "SELECT id, user_id, amount, status FROM pending_deposit_orders WHERE id = ? LIMIT 1 FOR UPDATE",
+      [id]
+    );
+
+    if (rows.length === 0) {
+      await conn.rollback();
+      return res.status(404).json({ error: 'Order not found.' });
+    }
+
+    if (rows[0].status !== 'pending') {
+      await conn.rollback();
+      return res.status(409).json({ error: `Order is already ${rows[0].status} and cannot be cancelled.` });
+    }
+
+    await conn.query(
+      "UPDATE pending_deposit_orders SET status = 'cancelled' WHERE id = ?",
+      [id]
+    );
+
+    await conn.query(
+      `INSERT INTO auto_deposit_logs (order_id, user_id, action, details)
+       VALUES (?, ?, 'admin_cancelled', ?)`,
+      [id, rows[0].user_id, JSON.stringify({ admin_id: adminId, amount: rows[0].amount })]
+    );
+
+    await conn.commit();
+    res.json({ message: 'Order cancelled successfully.' });
+  } catch (error) {
+    await conn.rollback();
+    next(error);
+  } finally {
+    conn.release();
+  }
+};
+
+/**
+ * POST /api/auto-deposit/admin/orders/:id/credit
+ * Admin manually credits a pending deposit order when auto-match failed.
+ */
+exports.adminCreditOrder = async (req, res, next) => {
+  const conn = await pool.getConnection();
+  try {
+    const { id } = req.params;
+    const { utr_number } = req.body;
+    const adminId = req.user.id;
+
+    if (!utr_number || !String(utr_number).trim()) {
+      return res.status(400).json({ error: 'UTR / reference number is required for manual credit.' });
+    }
+
+    const utr = String(utr_number).trim();
+
+    await conn.beginTransaction();
+
+    // Load order
+    const [orders] = await conn.query(
+      "SELECT id, user_id, amount FROM pending_deposit_orders WHERE id = ? AND status = 'pending' LIMIT 1 FOR UPDATE",
+      [id]
+    );
+
+    if (orders.length === 0) {
+      await conn.rollback();
+      return res.status(404).json({ error: 'Pending order not found.' });
+    }
+
+    const order = orders[0];
+    const creditAmount = Math.round(parseFloat(order.amount) * 100) / 100;
+
+    // Duplicate UTR guard
+    const [dupUtr] = await conn.query(
+      'SELECT id FROM deposits WHERE utr_number = ? LIMIT 1',
+      [utr]
+    );
+    if (dupUtr.length > 0) {
+      await conn.rollback();
+      return res.status(409).json({ error: 'This UTR number has already been used.' });
+    }
+
+    // Idempotency: ensure order not already credited
+    const [dupOrder] = await conn.query(
+      "SELECT id FROM deposits WHERE order_id = ? LIMIT 1",
+      [id]
+    );
+    if (dupOrder.length > 0) {
+      await conn.rollback();
+      return res.status(409).json({ error: 'This order has already been credited.' });
+    }
+
+    // Create deposit record
+    const [depositResult] = await conn.query(
+      `INSERT INTO deposits (user_id, amount, utr_number, order_id, status, approved_by)
+       VALUES (?, ?, ?, ?, 'completed', ?)`,
+      [order.user_id, creditAmount, utr, id, adminId]
+    );
+    const depositId = depositResult.insertId;
+
+    // Credit wallet
+    const newBalance = await recordWalletTransaction(conn, {
+      userId: order.user_id,
+      type: 'deposit',
+      amount: creditAmount,
+      referenceType: 'deposit',
+      referenceId: `deposit_${depositId}`,
+      remark: `Manual deposit credit by admin (UTR: ${utr})`,
+    });
+
+    // Apply bonuses
+    await applyDepositBonuses(conn, { depositId, userId: order.user_id, amount: creditAmount });
+
+    // Mark order as matched
+    await conn.query(
+      "UPDATE pending_deposit_orders SET status = 'matched', matched_deposit_id = ? WHERE id = ?",
+      [depositId, id]
+    );
+
+    // Notify user
+    await conn.query(
+      'INSERT INTO notifications (user_id, type, message) VALUES (?, ?, ?)',
+      [order.user_id, 'deposit', `Your deposit of ₹${creditAmount} has been manually verified and credited by admin. UTR: ${utr}`]
+    );
+
+    // Audit log
+    await conn.query(
+      `INSERT INTO auto_deposit_logs (order_id, deposit_id, user_id, action, details)
+       VALUES (?, ?, ?, 'admin_manual_credit', ?)`,
+      [id, depositId, order.user_id, JSON.stringify({ admin_id: adminId, amount: creditAmount, utr, new_balance: newBalance })]
+    );
+
+    await conn.commit();
+    res.json({ message: `₹${creditAmount} credited successfully.`, deposit_id: depositId, new_balance: newBalance });
+  } catch (error) {
+    await conn.rollback();
+    next(error);
+  } finally {
+    conn.release();
+  }
+};
+
 exports.triggerExpireOrders = async (req, res, next) => {
   try {
     const expired = await expirePendingOrders();

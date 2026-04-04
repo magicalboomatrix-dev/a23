@@ -110,7 +110,41 @@ export default function AutoDeposits() {
     return () => clearInterval(interval);
   }, [loadStats]);
 
-  const handleExpireOrders = async () => {
+  const [actionModal, setActionModal] = useState(null); // { type: 'cancel'|'credit', order }
+  const [utrInput, setUtrInput] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const handleAdminCancel = async () => {
+    setActionLoading(true);
+    try {
+      await api.post(`/auto-deposit/admin/orders/${actionModal.order.id}/cancel`);
+      success('Order cancelled successfully.');
+      setActionModal(null);
+      loadPendingOrders();
+      loadStats();
+    } catch (err) {
+      toastError(err.response?.data?.error || 'Failed to cancel order.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleAdminCredit = async () => {
+    if (!utrInput.trim()) { toastError('UTR / reference number is required.'); return; }
+    setActionLoading(true);
+    try {
+      const res = await api.post(`/auto-deposit/admin/orders/${actionModal.order.id}/credit`, { utr_number: utrInput.trim() });
+      success(res.data.message || 'Deposit credited successfully.');
+      setActionModal(null);
+      setUtrInput('');
+      loadPendingOrders();
+      loadStats();
+    } catch (err) {
+      toastError(err.response?.data?.error || 'Failed to credit deposit.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
     try {
       const res = await api.post('/auto-deposit/admin/expire-orders');
       success(`Expired ${res.data.expired_count} orders.`);
@@ -253,6 +287,7 @@ export default function AutoDeposits() {
                   <th className="px-4 py-2 text-left">Deposit ID</th>
                   <th className="px-4 py-2 text-left">Created</th>
                   <th className="px-4 py-2 text-left">Expires</th>
+                  <th className="px-4 py-2 text-left">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-dark-100">
@@ -265,10 +300,28 @@ export default function AutoDeposits() {
                     <td className="px-4 py-2">{order.matched_deposit_id || '-'}</td>
                     <td className="px-4 py-2 text-xs">{fmt(order.created_at)}</td>
                     <td className="px-4 py-2 text-xs">{fmt(order.expires_at)}</td>
+                    <td className="px-4 py-2">
+                      {order.status === 'pending' && (
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => { setActionModal({ type: 'credit', order }); setUtrInput(''); }}
+                            className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                          >
+                            Credit
+                          </button>
+                          <button
+                            onClick={() => setActionModal({ type: 'cancel', order })}
+                            className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      )}
+                    </td>
                   </tr>
                 ))}
                 {pendingOrders.length === 0 && (
-                  <tr><td colSpan="7" className="px-4 py-8 text-center text-dark-400">No orders found.</td></tr>
+                  <tr><td colSpan="8" className="px-4 py-8 text-center text-dark-400">No orders found.</td></tr>
                 )}
               </tbody>
             </table>
@@ -316,6 +369,49 @@ export default function AutoDeposits() {
           </div>
 
           <Pagination pagination={logPagination} page={logPage} setPage={setLogPage} />
+        </div>
+      )}
+
+      {/* Cancel / Credit confirmation modal */}
+      {actionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm mx-4">
+            {actionModal.type === 'cancel' ? (
+              <>
+                <h2 className="text-lg font-bold text-gray-900 mb-2">Cancel Order #{actionModal.order.id}?</h2>
+                <p className="text-sm text-gray-600 mb-4">
+                  This will cancel the pending ₹{Number(actionModal.order.amount).toLocaleString('en-IN')} deposit order for <strong>{actionModal.order.user_name}</strong>. The user will need to create a new order.
+                </p>
+                <div className="flex gap-3">
+                  <button onClick={() => setActionModal(null)} className="flex-1 px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">Back</button>
+                  <button onClick={handleAdminCancel} disabled={actionLoading} className="flex-1 px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-60">
+                    {actionLoading ? 'Cancelling…' : 'Yes, Cancel'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 className="text-lg font-bold text-gray-900 mb-2">Manual Credit — Order #{actionModal.order.id}</h2>
+                <p className="text-sm text-gray-600 mb-3">
+                  Manually credit ₹{Number(actionModal.order.amount).toLocaleString('en-IN')} to <strong>{actionModal.order.user_name}</strong> ({actionModal.order.user_phone}).
+                </p>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">UTR / Reference Number <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  value={utrInput}
+                  onChange={(e) => setUtrInput(e.target.value)}
+                  placeholder="e.g. 412345678901"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+                <div className="flex gap-3">
+                  <button onClick={() => setActionModal(null)} className="flex-1 px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">Back</button>
+                  <button onClick={handleAdminCredit} disabled={actionLoading || !utrInput.trim()} className="flex-1 px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-60">
+                    {actionLoading ? 'Crediting…' : 'Credit Wallet'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>

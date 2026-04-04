@@ -330,4 +330,4 @@ async function expirePendingOrders() {
   return result.affectedRows;
 }
 
-module.exports = { matchAndCreditDeposit, expirePendingOrders, getDepositLimits, ORDER_EXPIRY_MINUTES };
+module.exports = { matchAndCreditDeposit, expirePendingOrders, getDepositLimits, applyDepositBonuses, ORDER_EXPIRY_MINUTES };
