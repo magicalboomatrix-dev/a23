@@ -15,7 +15,7 @@ export function getSocket(token) {
   if (socket) return socket;
 
   const url =
-    process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') ||
+    process.env.NEXT_PUBLIC_API_URL?.replace(/\/api$/, '') ||
     'https://api.a23satta.com';
   socket = io(url, {
     auth: token ? { token } : undefined, // pass explicit token if available

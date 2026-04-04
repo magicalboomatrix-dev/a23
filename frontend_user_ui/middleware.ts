@@ -22,7 +22,7 @@ import type { NextRequest } from 'next/server';
  */
 
 const API_ORIGIN =
-  (process.env.NEXT_PUBLIC_API_URL ?? '').replace('/api', '') ||
+  (process.env.NEXT_PUBLIC_API_URL ?? '').replace(/\/api$/, '') ||
   'https://api.a23satta.com';
 
 function buildCsp(nonce: string, isDev: boolean): string {
