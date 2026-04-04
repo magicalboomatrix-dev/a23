@@ -21,6 +21,8 @@ function isTelegramIp(ip) {
   if (!ip) return false;
   // In development/tunnel mode, skip IP check
   if (process.env.NODE_ENV !== 'production') return true;
+  // If explicitly disabled (e.g. behind Cloudflare), skip IP check
+  if (process.env.TELEGRAM_SKIP_IP_CHECK === 'true') return true;
   const cleaned = ip.replace('::ffff:', '');
   const ipInt = ipToInt(cleaned);
   if (ipInt === 0) return false;
