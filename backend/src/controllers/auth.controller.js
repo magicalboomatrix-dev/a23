@@ -506,3 +506,9 @@ exports.logout = (req, res) => {
   res.clearCookie('token', { path: '/' });
   res.json({ message: 'Logged out.' });
 };
+
+// Return the currently authenticated user (used by admin dashboard to verify session)
+exports.getMe = (req, res) => {
+  const { id, name, phone, role, moderator_id } = req.user;
+  res.json({ user: { id, name, phone, role, moderator_id } });
+};
