@@ -56,7 +56,7 @@ exports.handleWebhook = async (req, res) => {
          VALUES (?, 'parse_error', ?, ?, ?)`,
         [rawText.substring(0, 65000), parsed.error?.substring(0, 490), messageId, chatId]
       );
-      logger.warn('telegram', 'Failed to parse UPI message', { messageId, error: parsed.error });
+      logger.warn('telegram', 'Failed to parse UPI message', { messageId, error: parsed.error, rawText });
       return;
     }
 
