@@ -131,15 +131,23 @@ const authLimiter = createRateLimiter({
 });
 app.use('/api/auth', authLimiter);
 
-// Stricter rate limits for financial endpoints (per IP)
+// Stricter rate limits for financial endpoints (keyed by authenticated user ID, fallback IP)
 const financialLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000,
-  max: 30,
+  max: 60,
   message: { error: 'Too many requests. Please try again later.' },
 });
 app.use('/api/withdraw', financialLimiter);
-app.use('/api/auto-deposit', financialLimiter);
 app.use('/api/bets', financialLimiter);
+// Auto-deposit: only rate-limit mutating actions (order creation / cancellation).
+// Status checks and history reads are excluded so polling doesn't trigger 429s.
+app.use('/api/auto-deposit/order', (req, res, next) => {
+  // GET /order/status/:id — read-only, skip limiter
+  if (req.method === 'GET') return next();
+  return financialLimiter(req, res, next);
+});
+app.use('/api/auto-deposit/orders', (req, res, next) => next()); // history read — skip
+app.use('/api/auto-deposit/admin', (req, res, next) => next()); // admin routes — skip
 
 // Body parsing
 app.use(express.json({ limit: '10mb' }));

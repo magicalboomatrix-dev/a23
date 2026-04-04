@@ -20,6 +20,7 @@ import AutoDeposits from './pages/AutoDeposits';
 import UpiManagement from './pages/UpiManagement';
 import SettlementMonitor from './pages/SettlementMonitor';
 import WalletAudit from './pages/WalletAudit';
+import MyScanner from './pages/MyScanner';
 
 const APP_ROUTES = [
   { index: true, element: <Dashboard /> },
@@ -40,6 +41,7 @@ const APP_ROUTES = [
   { path: 'custom-ads', element: <CustomAds /> },
   { path: 'settlement-monitor', element: <SettlementMonitor /> },
   { path: 'wallet-audit', element: <WalletAudit /> },
+  { path: 'my-scanner', element: <MyScanner /> },
 ];
 
 function ProtectedRoute({ children }) {

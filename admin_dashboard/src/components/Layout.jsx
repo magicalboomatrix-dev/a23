@@ -19,9 +19,11 @@ const navItems = [
   { path: '/wallet-audit', label: 'Wallet Audit', icon: '🔍' },
   { path: '/custom-ads', label: 'Custom Ads', icon: '📢' },
   { path: '/settings', label: 'Settings', icon: '🛠️' },
+  { path: '/my-scanner', label: 'My UPI / Scanner', icon: '📲' },
 ];
 
 const MODERATOR_HIDDEN_LABELS = new Set(['Moderators', 'Games', 'Results', 'Settings', 'Fraud Alerts', 'UPI Management', 'Settlement Monitor', 'Wallet Audit']);
+const ADMIN_HIDDEN_LABELS = new Set(['My UPI / Scanner']);
 
 function isNavItemActive(locationPathname, itemPath) {
   return locationPathname === itemPath || (itemPath !== '/' && locationPathname.startsWith(`${itemPath}/`));
@@ -52,9 +54,8 @@ export default function Layout() {
 
         <nav className="mt-4 px-3 pb-4 flex-1 overflow-y-auto min-h-0">
           {navItems.map((item) => {
-            if (user?.role === 'moderator' && MODERATOR_HIDDEN_LABELS.has(item.label)) {
-              return null;
-            }
+            if (user?.role === 'moderator' && MODERATOR_HIDDEN_LABELS.has(item.label)) return null;
+            if (user?.role === 'admin' && ADMIN_HIDDEN_LABELS.has(item.label)) return null;
             const isActive = isNavItemActive(location.pathname, item.path);
             return (
               <Link

@@ -4,14 +4,14 @@ const rateLimit = require('express-rate-limit');
 const autoDepositController = require('../controllers/auto-deposit.controller');
 const { authenticate, authorize } = require('../middleware/auth.middleware');
 
-// Rate limit: max 10 order creations per 15 minutes per user
+// Rate limit: max 10 order creations per 15 minutes per user (keyed by user ID)
 const orderCreateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
-  keyGenerator: (req) => req.user?.id || req.ip,
+  keyGenerator: (req) => `user:${req.user?.id || req.ip}`,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Too many deposit order requests. Please wait.' },
+  message: { error: 'Too many deposit order requests. Please wait 15 minutes before creating another.' },
 });
 
 // ========== USER ROUTES ==========
