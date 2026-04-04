@@ -5,10 +5,14 @@ const pool = mysql.createPool({
   port: process.env.DB_PORT || 3306,
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'A23 Satta',
+  database: process.env.DB_NAME || 'A23',
   waitForConnections: true,
   connectionLimit: 50,
-  queueLimit: 0,
+  // Cap the internal wait queue at 100 requests.  When the pool is fully
+  // saturated and 100 requests are already queued, new requests fail fast
+  // with a "pool queue limit reached" error instead of piling up silently
+  // and causing cascading latency.
+  queueLimit: 100,
   enableKeepAlive: true,
   keepAliveInitialDelay: 0,
   timezone: '+05:30',

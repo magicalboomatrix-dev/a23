@@ -1,8 +1,8 @@
 import Link from 'next/link'
 
 export const metadata = {
-  title: 'Disclaimer – A23 Satta',
-  description: 'Read the A23 Satta Disclaimer regarding accuracy of information, no professional advice, third-party links, and user responsibilities.',
+  title: 'Disclaimer – A23',
+  description: 'Read the A23 Disclaimer regarding accuracy of information, no professional advice, third-party links, and user responsibilities.',
 }
 
 export default function Disclaimer() {
@@ -23,7 +23,7 @@ export default function Disclaimer() {
           {/* Warning banner */}
           <div className="border-l-4 border-[#c8960c] bg-[#fff9ee] px-4 py-3">
             <p className="text-sm font-semibold leading-relaxed text-[#7a5500]">
-              A23 Satta is for informational and entertainment purposes only. We do not promote or support gambling in any form. Gambling may be illegal in your country or region. Please check and follow your local laws before accessing this site. A23 Satta is not responsible for any loss or damage arising from the use of this information.
+              A23 is for informational and entertainment purposes only. We do not promote or support gambling in any form. Gambling may be illegal in your country or region. Please check and follow your local laws before accessing this site. A23 is not responsible for any loss or damage arising from the use of this information.
             </p>
           </div>
 
@@ -164,13 +164,13 @@ export default function Disclaimer() {
             <div className="space-y-1">
               <p className="flex items-center gap-2 text-sm">
                 <span>📧</span>
-                <a href="mailto:support@A23 Satta.com" className="font-semibold text-[#c8960c] underline underline-offset-2">
-                  support@A23 Satta.com
+                <a href="mailto:support@A23.com" className="font-semibold text-[#c8960c] underline underline-offset-2">
+                  support@A23.com
                 </a>
               </p>
               <p className="flex items-center gap-2 text-sm">
                 <span>🌐</span>
-                <span className="font-semibold text-[#c8960c]">https://www.A23 Satta.com</span>
+                <span className="font-semibold text-[#c8960c]">https://www.A23.com</span>
               </p>
             </div>
           </section>

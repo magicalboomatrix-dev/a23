@@ -1,4 +1,4 @@
-const CACHE = "a23-cache-v1";
+const CACHE = "A23-cache-v1";
 
 self.addEventListener("install", (event) => {
   console.log("Service Worker installed");

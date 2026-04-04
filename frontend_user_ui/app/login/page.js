@@ -24,10 +24,10 @@ const LoginPage = () => {
             </section>
             <section>
               <h1 className="text-center text-[22px] font-black text-[#111]">
-                <b>Welcome to A23 Satta</b>
+                <b>Welcome to A23</b>
               </h1>
               <p className="pb-2.5 text-center text-[#444]">
-                Login to A23 Satta and unlock exciting  matka <br /> games
+                Login to A23 and unlock exciting  matka <br /> games
                 instant results and real winning opportunities.
               </p>
 

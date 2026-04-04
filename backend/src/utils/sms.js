@@ -26,7 +26,7 @@ function getTwilioConfig() {
     client: twilio(accountSid, authToken),
     from,
     messagingServiceSid,
-    messageTemplate: process.env.TWILIO_OTP_TEMPLATE || 'Your A23 Satta OTP is {{otp}}. Valid for {{expiryMinutes}} minutes.',
+    messageTemplate: process.env.TWILIO_OTP_TEMPLATE || 'Your A23 OTP is {{otp}}. Valid for {{expiryMinutes}} minutes.',
   };
 }
 
