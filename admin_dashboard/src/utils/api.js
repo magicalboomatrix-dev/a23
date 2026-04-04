@@ -22,11 +22,16 @@ const api = axios.create({
 // Authentication is handled exclusively via the HttpOnly cookie sent by
 // withCredentials:true above. No localStorage token read to avoid XSS exposure.
 
-// Handle 401 responses
+// Handle 401 responses — but only redirect when NOT already on the login page
+// to avoid an infinite refresh loop (e.g. the /auth/me session-check on mount
+// returns 401 before the user has logged in).
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    if (
+      error.response?.status === 401 &&
+      window.location.pathname !== '/login'
+    ) {
       localStorage.removeItem('admin_token');
       localStorage.removeItem('admin_user');
       window.location.href = '/login';
