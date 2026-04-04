@@ -8,7 +8,7 @@ const NOTICE_TEXT = 'महत्वपूर्ण सूचना: हम क�
 
 const Header = () => {
   
-  const [openMenu, setOpenMenu] = useState(false);
+
   const [usopen, setusOpen] = useState(false);
   const { isLoggedIn, logout } = useAuth();
   const defaultWallet = { balance: 0, bonus_balance: 0, exposure: 0, available_withdrawal: 0, total: 0 };
@@ -80,13 +80,8 @@ const Header = () => {
     <div className="sticky top-0 z-40 mx-auto w-full max-w-107.5 bg-black text-white shadow-[0_8px_24px_rgba(0,0,0,0.24)]">
       <header>
         <div className="flex items-center justify-between px-2 py-1.5">
-          <div className="flex items-center gap-4">
-            <button type="button" className="text-white" onClick={() => setOpenMenu(true)} aria-label="Open menu">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
-            </button>
-            <div className="flex items-center">
-              <Link href="/"><img src="/images/logo.png" alt="Winbuzz" className="h-8 w-auto" /></Link>
-            </div>
+          <div className="flex items-center">
+            <Link href="/"><img src="/images/logo.png" alt="Winbuzz" className="h-8 w-auto" /></Link>
           </div>
           <div className="flex items-center gap-2.5">
             <button type="button" className="relative bg-[#b88422] px-2.5 py-1.5" onClick={toggleNotifications} aria-label="Open notifications">
@@ -122,31 +117,7 @@ const Header = () => {
         </div>
       </div>
 
-        <div className={`fixed inset-0 z-40 bg-black/40 transition ${openMenu ? 'visible opacity-100' : 'invisible opacity-0'}`} onClick={() => setOpenMenu(false)} />
-        <aside className={`fixed left-0 top-0 z-50 h-full w-72 bg-black px-5 py-6 text-white shadow-[8px_0_24px_rgba(0,0,0,0.35)] transition-transform ${openMenu ? 'translate-x-0' : '-translate-x-full'}`}>
-          <button type="button" className="absolute left-4 top-4 text-xl" onClick={() => setOpenMenu(false)}>✕</button>
-          <div className="mt-8 text-center">
-            <Link href="/"><img src="/images/logo.png" alt="Winbuzz" className="mx-auto h-10 w-auto" /></Link>
-          </div>
-          <ul className="mt-8 space-y-3 text-sm font-semibold text-white/90">
-            {[
-              { label: 'Home', href: '/home' },
-              { label: 'Games', href: '/game-page' },
-              { label: 'My Bets', href: '/my-bets' },
-              { label: 'Wallet', href: '/wallet' },
-              { label: 'Deposit', href: '/deposit' },
-              { label: 'Withdraw', href: '/withdraw' },
-              { label: 'Charts', href: '/chart' },
-              { label: 'Notifications', href: '/notifications' },
-              { label: 'Account Statement', href: '/account-statement' },
-              { label: 'Profit / Loss', href: '/profit-loss' },
-            ].map((item) => (
-              <li key={item.href} className="border border-white/10 px-4 py-3">
-                <Link href={item.href} onClick={() => setOpenMenu(false)}>{item.label}</Link>
-              </li>
-            ))}
-          </ul>
-        </aside>
+
 
         <div className={`fixed inset-0 z-40 bg-black/40 transition ${usopen ? 'visible opacity-100' : 'invisible opacity-0'}`} onClick={() => setusOpen(false)} />
         <div className={`absolute right-0 top-10 z-50  w-55 bg-[rgba(255,255,255,0.95)] p-3 text-black shadow-[0_16px_32px_rgba(0,0,0,0.25)] transition ${usopen ? 'visible translate-y-0 opacity-100' : 'invisible -translate-y-2 opacity-0'}`}>
