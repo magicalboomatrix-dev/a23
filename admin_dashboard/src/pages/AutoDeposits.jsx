@@ -241,6 +241,7 @@ export default function AutoDeposits() {
               </thead>
               <tbody className="divide-y divide-dark-100">
                 {webhookTxns.map((txn) => (
+                  <>
                   <tr key={txn.id} className="hover:bg-dark-50">
                     <td className="px-4 py-2">{txn.id}</td>
                     <td className="px-4 py-2 font-medium">₹{txn.amount ? Number(txn.amount).toLocaleString('en-IN') : '-'}</td>
@@ -249,8 +250,17 @@ export default function AutoDeposits() {
                     <td className="px-4 py-2"><Badge status={txn.status} /></td>
                     <td className="px-4 py-2">{txn.matched_user_name ? `${txn.matched_user_name} (${txn.matched_user_phone})` : '-'}</td>
                     <td className="px-4 py-2 text-xs">{fmt(txn.created_at)}</td>
-                    <td className="px-4 py-2 text-xs text-red-600 max-w-xs truncate">{txn.error_message || ''}</td>
+                    <td className="px-4 py-2 text-xs text-red-600 max-w-xs">
+                      {txn.error_message || ''}
+                      {txn.raw_message && (
+                        <details className="mt-1">
+                          <summary className="cursor-pointer text-blue-600 hover:underline">View raw SMS</summary>
+                          <pre className="mt-1 text-xs bg-gray-100 p-2 rounded whitespace-pre-wrap break-all max-w-xs text-gray-800">{txn.raw_message}</pre>
+                        </details>
+                      )}
+                    </td>
                   </tr>
+                  </>
                 ))}
                 {webhookTxns.length === 0 && (
                   <tr><td colSpan="8" className="px-4 py-8 text-center text-dark-400">No webhook transactions found.</td></tr>

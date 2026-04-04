@@ -14,20 +14,34 @@
 const AMOUNT_PATTERNS = [
   // "Amount: Rs.500" / "Amount: 500" / "Amount = ₹500"
   /Amount\s*[:=]\s*(?:Rs\.?|INR|₹)?\s*([\d,]+(?:\.\d{1,2})?)/i,
-  // "credited by Rs 10.63" (IndusInd bank)
-  /credited\s+by\s+(?:Rs\.?|INR|₹)\s*([\d,]+(?:\.\d{1,2})?)/i,
-  // "Rs.500 credited" / "Rs 500 received" / "INR 500 credited"
-  /(?:Rs\.?|INR|₹)\s*([\d,]+(?:\.\d{1,2})?)\s*(?:credited|received|deposited)/i,
+  // "credited by Rs 10.63" / "credited by INR 10.63" (IndusInd bank)
+  /credited\s+by\s+(?:Rs\.?|INR|₹)?\s*([\d,]+(?:\.\d{1,2})?)/i,
+  // "INR 500 credited" / "Rs.500 credited" / "Rs 500 received"
+  /(?:Rs\.?|INR|₹)\s*([\d,]+(?:\.\d{1,2})?)\s*(?:credited|received|deposited|debited)/i,
   // "received Rs.500" / "received ₹500"
   /received\s*(?:Rs\.?|INR|₹)\s*([\d,]+(?:\.\d{1,2})?)/i,
   // "You received ₹500.00" (GPay)
-  /you\s+received\s*(?:Rs\.?|INR|₹)\s*([\d,]+(?:\.\d{1,2})?)/i,
+  /you\s+received\s*(?:Rs\.?|INR|₹)?\s*([\d,]+(?:\.\d{1,2})?)/i,
   // "Received Rs.500 from" (PhonePe)
-  /Received\s*(?:Rs\.?|INR|₹)\s*([\d,]+(?:\.\d{1,2})?)\s*from/i,
+  /Received\s*(?:Rs\.?|INR|₹)?\s*([\d,]+(?:\.\d{1,2})?)\s*from/i,
   // "Rs 500 received in" (Paytm)
   /(?:Rs\.?|INR|₹)\s*([\d,]+(?:\.\d{1,2})?)\s*received\s+in/i,
   // CRED: "received Rs.10.0 and your updated wallet balance"
   /received\s+(?:Rs\.?|INR|₹)?\s*([\d,]+(?:\.\d{1,2})?)\s+and\s+your/i,
+  // ICICI/HDFC: "transfer of INR 500.00"
+  /transfer\s+of\s+(?:Rs\.?|INR|₹)?\s*([\d,]+(?:\.\d{1,2})?)/i,
+  // "deposited INR 500" / "deposited Rs 500"
+  /deposited\s+(?:Rs\.?|INR|₹)?\s*([\d,]+(?:\.\d{1,2})?)/i,
+  // "credit of Rs 500" / "credit of INR 500"
+  /credit\s+of\s+(?:Rs\.?|INR|₹)?\s*([\d,]+(?:\.\d{1,2})?)/i,
+  // SBI: "Credited with Rs 500"
+  /credited\s+with\s+(?:Rs\.?|INR|₹)?\s*([\d,]+(?:\.\d{1,2})?)/i,
+  // Axis: "sent you Rs 500"
+  /sent\s+you\s+(?:Rs\.?|INR|₹)?\s*([\d,]+(?:\.\d{1,2})?)/i,
+  // "Acct credited INR 500" / "A/c credited"
+  /(?:Acct|A\/c|account)\s+credited\s+(?:Rs\.?|INR|₹)?\s*([\d,]+(?:\.\d{1,2})?)/i,
+  // Kotak/generic: "money received: Rs 500"
+  /money\s+received\s*[:=]?\s*(?:Rs\.?|INR|₹)?\s*([\d,]+(?:\.\d{1,2})?)/i,
 ];
 
 const REFERENCE_PATTERNS = [

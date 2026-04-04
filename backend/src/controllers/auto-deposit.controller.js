@@ -307,6 +307,7 @@ exports.getWebhookTransactions = async (req, res, next) => {
       `SELECT uwt.id, uwt.amount, uwt.reference_number, uwt.payer_name, uwt.txn_time,
               uwt.status, uwt.error_message, uwt.matched_order_id, uwt.matched_deposit_id,
               uwt.created_at,
+              CASE WHEN uwt.status IN ('parse_error','unmatched') THEN uwt.raw_message ELSE NULL END as raw_message,
               u.name as matched_user_name, u.phone as matched_user_phone
        FROM upi_webhook_transactions uwt
        LEFT JOIN pending_deposit_orders pdo ON pdo.id = uwt.matched_order_id
