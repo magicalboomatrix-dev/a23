@@ -52,12 +52,23 @@ export default function ModeratorDetail() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const { toasts, success, error: toastError, dismiss } = useToast();
+  const [scannerForm, setScannerForm] = useState({ upi_id: '', scanner_label: '', scanner_enabled: false });
+  const [scannerEditing, setScannerEditing] = useState(false);
+  const [scannerSaving, setScannerSaving] = useState(false);
 
   const loadDetail = async () => {
     setLoading(true);
     try {
       const res = await api.get(`/admin/moderators/${id}/detail`);
       setData(res.data || null);
+      if (res.data?.moderator) {
+        const m = res.data.moderator;
+        setScannerForm({
+          upi_id: m.upi_id || '',
+          scanner_label: m.scanner_label || '',
+          scanner_enabled: !!m.scanner_enabled,
+        });
+      }
     } catch (error) {
       console.error(error);
       setData(null);
@@ -69,6 +80,25 @@ export default function ModeratorDetail() {
   useEffect(() => {
     loadDetail();
   }, [id]);
+
+  const handleScannerSave = async (e) => {
+    e.preventDefault();
+    setScannerSaving(true);
+    try {
+      await api.put(`/moderators/${id}/scanner`, {
+        upi_id: scannerForm.upi_id.trim(),
+        scanner_label: scannerForm.scanner_label.trim(),
+        scanner_enabled: scannerForm.scanner_enabled,
+      });
+      success('Scanner / UPI updated successfully.');
+      setScannerEditing(false);
+      loadDetail();
+    } catch (err) {
+      toastError(err.response?.data?.error || 'Failed to update scanner.');
+    } finally {
+      setScannerSaving(false);
+    }
+  };
 
   const moderator = data?.moderator;
   const deposits = data?.deposit_transactions || [];
@@ -120,18 +150,79 @@ export default function ModeratorDetail() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="bg-white border p-5 space-y-4">
-          <h4 className="text-lg font-semibold text-gray-800">Scanner</h4>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-600">
-            <div><span className="font-medium text-gray-800">Phone:</span> {moderator.phone}</div>
-            <div><span className="font-medium text-gray-800">Referral:</span> {moderator.referral_code}</div>
-            <div><span className="font-medium text-gray-800">Label:</span> {moderator.scanner_label || '-'}</div>
-            <div><span className="font-medium text-gray-800">Status:</span> {moderator.scanner_enabled ? 'Enabled' : 'Disabled'}</div>
-            <div className="sm:col-span-2 break-all"><span className="font-medium text-gray-800">UPI ID:</span> {upiDetails.full || '-'}</div>
-            <div><span className="font-medium text-gray-800">UPI User:</span> {upiDetails.username || '-'}</div>
-            <div><span className="font-medium text-gray-800">UPI Handle:</span> {upiDetails.handle || '-'}</div>
-            <div><span className="font-medium text-gray-800">UPI Format:</span> {upiDetails.full ? (upiDetails.isValid ? 'Valid' : 'Check format') : '-'}</div>
-            <div><span className="font-medium text-gray-800">Created:</span> {new Date(moderator.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</div>
+          <div className="flex items-center justify-between">
+            <h4 className="text-lg font-semibold text-gray-800">Scanner</h4>
+            <button
+              onClick={() => setScannerEditing((v) => !v)}
+              className="px-3 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700"
+            >
+              {scannerEditing ? 'Cancel' : 'Edit'}
+            </button>
           </div>
+
+          {scannerEditing ? (
+            <form onSubmit={handleScannerSave} className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">UPI ID</label>
+                <input
+                  type="text"
+                  placeholder="e.g. merchant@upi"
+                  value={scannerForm.upi_id}
+                  onChange={(e) => setScannerForm((p) => ({ ...p, upi_id: e.target.value }))}
+                  className="w-full px-3 py-2 border text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                {scannerForm.upi_id && !scannerForm.upi_id.includes('@') && (
+                  <p className="text-xs text-red-500 mt-1">UPI ID must include @handle.</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Scanner Label</label>
+                <input
+                  type="text"
+                  placeholder="Display name for users"
+                  value={scannerForm.scanner_label}
+                  onChange={(e) => setScannerForm((p) => ({ ...p, scanner_label: e.target.value }))}
+                  className="w-full px-3 py-2 border text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="scanner_enabled_admin"
+                  checked={scannerForm.scanner_enabled}
+                  onChange={(e) => setScannerForm((p) => ({ ...p, scanner_enabled: e.target.checked }))}
+                  className="w-4 h-4"
+                />
+                <label htmlFor="scanner_enabled_admin" className="text-sm text-gray-700 cursor-pointer">
+                  Enable scanner (show moderator UPI to users)
+                </label>
+              </div>
+              <button
+                type="submit"
+                disabled={scannerSaving}
+                className="px-4 py-2 bg-green-600 text-white text-sm hover:bg-green-700 disabled:opacity-50"
+              >
+                {scannerSaving ? 'Saving…' : 'Save Scanner Settings'}
+              </button>
+            </form>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-600">
+              <div><span className="font-medium text-gray-800">Phone:</span> {moderator.phone}</div>
+              <div><span className="font-medium text-gray-800">Referral:</span> {moderator.referral_code}</div>
+              <div><span className="font-medium text-gray-800">Label:</span> {moderator.scanner_label || '-'}</div>
+              <div>
+                <span className="font-medium text-gray-800">Status:</span>{' '}
+                <span className={moderator.scanner_enabled ? 'text-green-600 font-semibold' : 'text-red-500'}>
+                  {moderator.scanner_enabled ? 'Enabled' : 'Disabled'}
+                </span>
+              </div>
+              <div className="sm:col-span-2 break-all"><span className="font-medium text-gray-800">UPI ID:</span> {upiDetails.full || <span className="text-red-500 italic">not set</span>}</div>
+              <div><span className="font-medium text-gray-800">UPI User:</span> {upiDetails.username || '-'}</div>
+              <div><span className="font-medium text-gray-800">UPI Handle:</span> {upiDetails.handle || '-'}</div>
+              <div><span className="font-medium text-gray-800">UPI Format:</span> {upiDetails.full ? (upiDetails.isValid ? 'Valid' : 'Check format') : '-'}</div>
+              <div><span className="font-medium text-gray-800">Created:</span> {new Date(moderator.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</div>
+            </div>
+          )}
         </div>
 
         <div className="bg-white border p-5 space-y-3 lg:col-span-2">
