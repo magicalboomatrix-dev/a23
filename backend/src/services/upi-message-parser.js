@@ -42,6 +42,10 @@ const AMOUNT_PATTERNS = [
   /(?:Acct|A\/c|account)\s+credited\s+(?:Rs\.?|INR|₹)?\s*([\d,]+(?:\.\d{1,2})?)/i,
   // Kotak/generic: "money received: Rs 500"
   /money\s+received\s*[:=]?\s*(?:Rs\.?|INR|₹)?\s*([\d,]+(?:\.\d{1,2})?)/i,
+  // IndusInd: "A/C **8321 Credited; INR 10.18 Ref-UPI/..."
+  /Credited[;,]?\s+(?:Rs\.?|INR|₹)\s*([\d,]+(?:\.\d{1,2})?)/i,
+  // Generic: "INR 10.18 Ref" — amount immediately before Ref/UTR marker
+  /(?:Rs\.?|INR|₹)\s*([\d,]+(?:\.\d{1,2})?)\s+Ref[-\s]/i,
 ];
 
 const REFERENCE_PATTERNS = [

@@ -38,7 +38,8 @@ exports.handleWebhook = async (req, res) => {
 
     // Check if this message was already processed (idempotency)
     const [existing] = await pool.query(
-      'SELECT id FROM upi_webhook_transactions WHERE telegram_message_id = ? AND telegram_chat_id = ? LIMIT 1',
+      `SELECT id FROM upi_webhook_transactions
+       WHERE telegram_message_id = ? AND telegram_chat_id = ? AND status != 'parse_error' LIMIT 1`,
       [messageId, chatId]
     );
     if (existing.length > 0) {
@@ -49,11 +50,14 @@ exports.handleWebhook = async (req, res) => {
     const parsed = parseUpiMessage(rawText);
 
     if (!parsed.success) {
-      // Store the unparseable message for debugging
+      // Store the unparseable message for debugging (upsert so retries overwrite the old error row)
       await pool.query(
         `INSERT INTO upi_webhook_transactions
           (raw_message, status, error_message, telegram_message_id, telegram_chat_id)
-         VALUES (?, 'parse_error', ?, ?, ?)`,
+         VALUES (?, 'parse_error', ?, ?, ?)
+         ON DUPLICATE KEY UPDATE
+           raw_message = VALUES(raw_message),
+           error_message = VALUES(error_message)`,
         [rawText.substring(0, 65000), parsed.error?.substring(0, 490), messageId, chatId]
       );
       logger.warn('telegram', 'Failed to parse UPI message', { messageId, error: parsed.error, rawText });
@@ -62,13 +66,23 @@ exports.handleWebhook = async (req, res) => {
 
     const { amount, referenceNumber, payerName, txnTime, orderRef } = parsed.data;
 
-    // Store the parsed transaction
-    const [insertResult] = await pool.query(
-      `INSERT INTO upi_webhook_transactions
-        (raw_message, amount, reference_number, payer_name, txn_time, status, telegram_message_id, telegram_chat_id)
-       VALUES (?, ?, ?, ?, ?, 'received', ?, ?)`,
-      [rawText.substring(0, 65000), amount, referenceNumber, payerName?.substring(0, 140), txnTime?.substring(0, 45), messageId, chatId]
-    );
+    // Store the parsed transaction (guard against duplicate reference_number)
+    let insertResult;
+    try {
+      [insertResult] = await pool.query(
+        `INSERT INTO upi_webhook_transactions
+          (raw_message, amount, reference_number, payer_name, txn_time, status, telegram_message_id, telegram_chat_id)
+         VALUES (?, ?, ?, ?, ?, 'received', ?, ?)`,
+        [rawText.substring(0, 65000), amount, referenceNumber, payerName?.substring(0, 140), txnTime?.substring(0, 45), messageId, chatId]
+      );
+    } catch (insertErr) {
+      // Duplicate reference — already processed, skip silently
+      if (insertErr.code === 'ER_DUP_ENTRY') {
+        logger.info('telegram', 'Skipping duplicate reference number', { referenceNumber, messageId });
+        return;
+      }
+      throw insertErr;
+    }
 
     const webhookTxnId = insertResult.insertId;
 
