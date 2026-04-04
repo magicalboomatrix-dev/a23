@@ -145,6 +145,8 @@ export default function AutoDeposits() {
       setActionLoading(false);
     }
   };
+
+  const handleExpireOrders = async () => {
     try {
       const res = await api.post('/auto-deposit/admin/expire-orders');
       success(`Expired ${res.data.expired_count} orders.`);
