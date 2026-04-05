@@ -21,6 +21,7 @@ import UpiManagement from './pages/UpiManagement';
 import SettlementMonitor from './pages/SettlementMonitor';
 import WalletAudit from './pages/WalletAudit';
 import MyScanner from './pages/MyScanner';
+import HowToPlay from './pages/HowToPlay';
 
 const APP_ROUTES = [
   { index: true, element: <Dashboard /> },
@@ -42,6 +43,7 @@ const APP_ROUTES = [
   { path: 'settlement-monitor', element: <SettlementMonitor /> },
   { path: 'wallet-audit', element: <WalletAudit /> },
   { path: 'my-scanner', element: <MyScanner /> },
+  { path: 'how-to-play', element: <HowToPlay /> },
 ];
 
 function ProtectedRoute({ children }) {

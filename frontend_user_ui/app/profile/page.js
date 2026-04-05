@@ -1,6 +1,6 @@
 'use client'
 import React, { useState, useEffect } from 'react'
-import { User, BarChart2, CreditCard, ChevronRight, Bell, Shield, FileText, Info } from 'lucide-react'
+import { User, BarChart2, CreditCard, ChevronRight, Bell, Shield, FileText, Info, PlayCircle } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { userAPI, notificationAPI } from '../lib/api'
@@ -126,6 +126,15 @@ const Profile = () => {
         <section>
           <h3 className="mb-2 px-1 text-xs font-black uppercase tracking-[0.12em] text-[#777]">Information</h3>
           <div className="divide-y divide-[#f0ece3]">
+            <Link href="/how-to-play" className={menuItemClass}>
+              <div className="flex items-center gap-3 text-sm font-semibold text-[#111]">
+                <div className="flex h-9 w-9 items-center justify-center bg-[#fff4d6]">
+                  <PlayCircle size={20} className="text-[#c8960c]" />
+                </div>
+                <span>How To Play</span>
+              </div>
+              <ChevronRight size={20} className="text-[#b88422]" />
+            </Link>
             <Link href="/privacy-policy" className={menuItemClass}>
               <div className="flex items-center gap-3 text-sm font-semibold text-[#111]">
                 <div className="flex h-9 w-9 items-center justify-center bg-[#fff4d6]">

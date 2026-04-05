@@ -26,6 +26,7 @@ const telegramRoutes = require('./routes/telegram.routes');
 const autoDepositRoutes = require('./routes/auto-deposit.routes');
 const settlementMonitorRoutes = require('./routes/settlement-monitor.routes');
 const walletAuditRoutes = require('./routes/wallet-audit.routes');
+const howToPlayRoutes = require('./routes/how-to-play.routes');
 
 const { errorHandler } = require('./middleware/error.middleware');
 const { expirePendingOrders } = require('./services/auto-deposit-matcher');
@@ -61,6 +62,7 @@ const routeRegistrations = [
   ['/api/auto-deposit', autoDepositRoutes],
   ['/api/settlement-monitor', settlementMonitorRoutes],
   ['/api/wallet-audit', walletAuditRoutes],
+  ['/api/how-to-play', howToPlayRoutes],
 ];
 
 function createRateLimiter({ windowMs, max, message }) {
