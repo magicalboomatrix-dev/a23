@@ -1,5 +1,6 @@
 'use client'
 import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import QRCode from 'react-qr-code'
 import DepositWithdrawBtns from '../components/DepositWithdrawBtns'
 import { autoDepositAPI, userAPI } from '../lib/api'
@@ -27,6 +28,7 @@ function getOrderStatusLabel(status) {
 }
 
 const DepositPage = () => {
+  const router = useRouter();
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -45,6 +47,7 @@ const DepositPage = () => {
   const [showConfirmBtn, setShowConfirmBtn] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [confirmMessage, setConfirmMessage] = useState('');
+  const [delayWarning, setDelayWarning] = useState(false);
   const orderCreatedAtRef = useRef(null);
 
   const fetchHistory = async () => {
@@ -74,6 +77,14 @@ const DepositPage = () => {
         const expiresAt = new Date(order.expires_at).getTime();
         const remaining = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
         if (remaining > 0) {
+          // Derive actual order creation time from expires_at (order window = 10 min)
+          const createdAt = expiresAt - 10 * 60 * 1000;
+          const orderAge = Date.now() - createdAt;
+          orderCreatedAtRef.current = createdAt;
+          if (orderAge >= 90_000) {
+            setShowConfirmBtn(true);
+            setDelayWarning(true);
+          }
           setActiveOrder(order);
           setTimeLeft(remaining);
           setPaymentDetails({
@@ -112,8 +123,7 @@ const DepositPage = () => {
           setActiveOrder(null);
           setPaymentDetails(null);
           setShowConfirmBtn(false);
-          setConfirmMessage('');
-          orderCreatedAtRef.current = null;
+          setConfirmMessage('');          setDelayWarning(false);          orderCreatedAtRef.current = null;
           setError('Payment window expired. If you have already paid, your payment will still be verified automatically within a few minutes. If not credited, please contact support with your transaction reference (UTR).');
           fetchHistory();
           return 0;
@@ -121,9 +131,10 @@ const DepositPage = () => {
         return prev - 1;
       });
 
-      // Show "I Have Paid - Confirm" button after 60 seconds
-      if (orderCreatedAtRef.current && Date.now() - orderCreatedAtRef.current >= 60_000) {
+      // Show "I Have Paid - Confirm" button after 90 seconds
+      if (orderCreatedAtRef.current && Date.now() - orderCreatedAtRef.current >= 90_000) {
         setShowConfirmBtn(true);
+        setDelayWarning(true);
       }
     }, 1000);
 
@@ -147,6 +158,7 @@ const DepositPage = () => {
           setPaymentDetails(null);
           setShowConfirmBtn(false);
           setConfirmMessage('');
+          setDelayWarning(false);
           orderCreatedAtRef.current = null;
           setSuccess(`Deposit of ₹${parseFloat(order.amount).toLocaleString('en-IN')} has been verified and credited!`);
           fetchHistory();
@@ -157,6 +169,7 @@ const DepositPage = () => {
           setPaymentDetails(null);
           setShowConfirmBtn(false);
           setConfirmMessage('');
+          setDelayWarning(false);
           orderCreatedAtRef.current = null;
           if (order.status === 'expired') setError('Order expired. Please try again.');
           fetchHistory();
@@ -187,6 +200,7 @@ const DepositPage = () => {
       setAmount('');
       setShowConfirmBtn(false);
       setConfirmMessage('');
+      setDelayWarning(false);
       orderCreatedAtRef.current = Date.now();
     } catch (err) {
       if (err.message?.includes('already have a pending')) {
@@ -210,6 +224,7 @@ const DepositPage = () => {
       setTimeLeft(0);
       setShowConfirmBtn(false);
       setConfirmMessage('');
+      setDelayWarning(false);
       orderCreatedAtRef.current = null;
     } catch (err) {
       setError(err.message || 'Failed to cancel order');
@@ -229,6 +244,7 @@ const DepositPage = () => {
         setActiveOrder(null);
         setPaymentDetails(null);
         setShowConfirmBtn(false);
+        setDelayWarning(false);
         orderCreatedAtRef.current = null;
         setSuccess(`Deposit of ₹${parseFloat(order.amount).toLocaleString('en-IN')} has been verified and credited!`);
         fetchHistory();
@@ -238,15 +254,15 @@ const DepositPage = () => {
         setActiveOrder(null);
         setPaymentDetails(null);
         setShowConfirmBtn(false);
+        setDelayWarning(false);
         orderCreatedAtRef.current = null;
         if (order.status === 'expired') setError('Order expired. Please try again.');
         fetchHistory();
       } else {
-        // Still pending — show delay message
-        setConfirmMessage(
-          'We are currently experiencing high deposit traffic or temporary bank delays. ' +
-          'Your payment will be verified shortly. Please wait a few minutes.'
-        );
+        // Still pending — redirect to home, matching will happen in background
+        clearInterval(pollRef.current);
+        clearInterval(timerRef.current);
+        router.push('/home');
       }
     } catch {
       setConfirmMessage('Unable to check status. Please wait and try again.');
@@ -340,14 +356,21 @@ const DepositPage = () => {
                   Waiting for payment confirmation...
                 </div>
 
-                {/* Confirm Payment button — appears after 60 seconds */}
+                {/* Delay warning + Confirm button — appears after 90 seconds */}
+                {delayWarning && (
+                  <div className="mt-3 rounded border border-[#f59e0b] bg-[#fffbeb] p-3 text-xs text-[#92400e] leading-relaxed">
+                    <p className="font-semibold text-[#b45309] mb-1">⏳ Payment not detected yet?</p>
+                    <p>If you have already paid, don't worry — your payment may take a few extra minutes to be detected due to bank processing delays.</p>
+                    <p className="mt-1">Click the button below to re-check your payment status.</p>
+                  </div>
+                )}
                 {showConfirmBtn && (
                   <div className="mt-3">
                     <button
                       type="button"
                       onClick={handleConfirmPayment}
                       disabled={confirmLoading}
-                      className="h-10 w-full rounded bg-[#2563eb] text-sm font-semibold text-white hover:bg-[#1d4ed8] disabled:opacity-60"
+                      className="h-10 w-full rounded bg-[#fcd34d] text-sm font-semibold text-white hover:bg-[#fbbf24] disabled:opacity-60"
                     >
                       {confirmLoading ? 'Checking...' : 'I Have Paid – Confirm'}
                     </button>
