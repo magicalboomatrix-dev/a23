@@ -19,20 +19,26 @@ exports.handleWebhook = async (req, res) => {
   try {
     const update = req.body;
 
-    // Only process text messages
-    const message = update?.message;
-    if (!message || !message.text) {
+    // Support both regular messages and channel posts
+    const message = update?.message || update?.channel_post;
+    if (!message) {
+      return;
+    }
+
+    // Extract text from message.text, message.caption (for photo/document forwards),
+    // or forwarded message content — SMS forwarder bots often use caption
+    const rawText = message.text || message.caption;
+    if (!rawText) {
       return;
     }
 
     const chatId = String(message.chat?.id || '');
     const messageId = String(message.message_id || '');
-    const rawText = message.text;
 
     // Only accept messages from the configured chat
     const allowedChatId = process.env.TELEGRAM_CHAT_ID;
     if (allowedChatId && chatId !== String(allowedChatId)) {
-      logger.warn('telegram', 'Message from unauthorized chat', { chatId });
+      logger.warn('telegram', 'Message from unauthorized chat', { chatId, allowedChatId: String(allowedChatId), messageText: rawText?.substring(0, 80) });
       return;
     }
 

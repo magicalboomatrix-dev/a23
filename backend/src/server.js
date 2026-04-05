@@ -29,6 +29,7 @@ const walletAuditRoutes = require('./routes/wallet-audit.routes');
 
 const { errorHandler } = require('./middleware/error.middleware');
 const { expirePendingOrders } = require('./services/auto-deposit-matcher');
+const { startRetryWorker } = require('./services/auto-deposit-retry');
 // Settlement worker runs as a SEPARATE process (src/worker.js).
 // Do NOT import or start auto-settle here — it causes duplicate processing
 // when multiple HTTP server instances are deployed.
@@ -211,6 +212,9 @@ httpServer.listen(PORT, () => {
       logger.error('auto-deposit', 'Order expiry error', err);
     }
   }, PENDING_ORDER_EXPIRY_INTERVAL_MS);
+
+  // Start auto-deposit retry worker (re-matches unmatched webhook transactions every 15s)
+  startRetryWorker();
 });
 
 module.exports = { app, httpServer };

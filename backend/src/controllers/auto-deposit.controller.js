@@ -592,3 +592,177 @@ exports.triggerExpireOrders = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * GET /api/auto-deposit/admin/search-utr/:utr
+ * Search webhook transactions by UTR / reference number.
+ */
+exports.searchByUtr = async (req, res, next) => {
+  try {
+    const utr = String(req.params.utr || '').trim();
+    if (!utr || utr.length < 6) {
+      return res.status(400).json({ error: 'Please provide at least 6 characters of the UTR.' });
+    }
+
+    // Search webhook transactions
+    const [webhookRows] = await pool.query(
+      `SELECT id, reference_number, amount, payer_name, status, raw_message, order_ref, matched_order_id, created_at
+       FROM upi_webhook_transactions
+       WHERE reference_number LIKE ?
+       ORDER BY created_at DESC
+       LIMIT 20`,
+      [`%${utr}%`]
+    );
+
+    // Also search existing deposits
+    const [depositRows] = await pool.query(
+      `SELECT d.id, d.user_id, d.amount, d.utr_number, d.status, d.created_at, u.phone, u.username
+       FROM deposits d
+       LEFT JOIN users u ON u.id = d.user_id
+       WHERE d.utr_number LIKE ?
+       ORDER BY d.created_at DESC
+       LIMIT 20`,
+      [`%${utr}%`]
+    );
+
+    res.json({ webhook_transactions: webhookRows, deposits: depositRows });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /api/auto-deposit/admin/credit-by-utr
+ * Admin credits a user's wallet using an unmatched webhook transaction.
+ * Body: { webhook_transaction_id, user_id }
+ */
+exports.creditByUtr = async (req, res, next) => {
+  const conn = await pool.getConnection();
+  try {
+    const { webhook_transaction_id, user_id } = req.body;
+    const adminId = req.user.id;
+
+    if (!webhook_transaction_id || !user_id) {
+      return res.status(400).json({ error: 'webhook_transaction_id and user_id are required.' });
+    }
+
+    await conn.beginTransaction();
+
+    // Load the webhook transaction
+    const [txnRows] = await conn.query(
+      `SELECT id, reference_number, amount, payer_name, status, matched_order_id
+       FROM upi_webhook_transactions WHERE id = ? FOR UPDATE`,
+      [webhook_transaction_id]
+    );
+
+    if (txnRows.length === 0) {
+      await conn.rollback();
+      return res.status(404).json({ error: 'Webhook transaction not found.' });
+    }
+
+    const txn = txnRows[0];
+
+    if (txn.status === 'matched') {
+      await conn.rollback();
+      return res.status(409).json({ error: 'This transaction has already been matched.' });
+    }
+
+    const creditAmount = Math.round(parseFloat(txn.amount) * 100) / 100;
+    const utr = txn.reference_number;
+
+    if (!creditAmount || creditAmount <= 0) {
+      await conn.rollback();
+      return res.status(400).json({ error: 'Transaction has invalid amount.' });
+    }
+
+    // Verify user exists
+    const [userRows] = await conn.query('SELECT id FROM users WHERE id = ? LIMIT 1', [user_id]);
+    if (userRows.length === 0) {
+      await conn.rollback();
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    // Duplicate UTR guard
+    const [dupUtr] = await conn.query('SELECT id FROM deposits WHERE utr_number = ? LIMIT 1', [utr]);
+    if (dupUtr.length > 0) {
+      await conn.rollback();
+      return res.status(409).json({ error: 'This UTR has already been credited to a deposit.' });
+    }
+
+    // Create deposit record
+    const [depositResult] = await conn.query(
+      `INSERT INTO deposits (user_id, amount, utr_number, status, approved_by)
+       VALUES (?, ?, ?, 'completed', ?)`,
+      [user_id, creditAmount, utr, adminId]
+    );
+    const depositId = depositResult.insertId;
+
+    // Credit wallet
+    const newBalance = await recordWalletTransaction(conn, {
+      userId: user_id,
+      type: 'deposit',
+      amount: creditAmount,
+      referenceType: 'deposit',
+      referenceId: `deposit_${depositId}`,
+      remark: `Admin credit by UTR (UTR: ${utr})`,
+    });
+
+    // Apply bonuses
+    await applyDepositBonuses(conn, { depositId, userId: user_id, amount: creditAmount });
+
+    // Update webhook transaction status
+    await conn.query(
+      "UPDATE upi_webhook_transactions SET status = 'matched', matched_order_id = NULL WHERE id = ?",
+      [webhook_transaction_id]
+    );
+
+    // Notify user
+    await conn.query(
+      'INSERT INTO notifications (user_id, type, message) VALUES (?, ?, ?)',
+      [user_id, 'deposit', `Your deposit of ₹${creditAmount} has been verified and credited. UTR: ${utr}`]
+    );
+
+    // Audit log
+    await conn.query(
+      `INSERT INTO auto_deposit_logs (deposit_id, user_id, action, details)
+       VALUES (?, ?, 'admin_credit_by_utr', ?)`,
+      [depositId, user_id, JSON.stringify({ admin_id: adminId, amount: creditAmount, utr, webhook_transaction_id, new_balance: newBalance })]
+    );
+
+    await conn.commit();
+    res.json({ message: `₹${creditAmount} credited to user #${user_id}.`, deposit_id: depositId, new_balance: newBalance });
+  } catch (error) {
+    await conn.rollback();
+    next(error);
+  } finally {
+    conn.release();
+  }
+};
+
+/**
+ * GET /api/auto-deposit/admin/unmatched-transactions
+ * Fetch unmatched/received webhook transactions for admin review.
+ */
+exports.getUnmatchedTransactions = async (req, res, next) => {
+  try {
+    const { page, limit } = clampPagination(req.query);
+    const offset = (page - 1) * limit;
+
+    const [rows] = await pool.query(
+      `SELECT id, reference_number, amount, payer_name, status, raw_message, order_ref, created_at
+       FROM upi_webhook_transactions
+       WHERE status IN ('unmatched', 'received')
+       ORDER BY created_at DESC
+       LIMIT ? OFFSET ?`,
+      [limit, offset]
+    );
+
+    const [[{ total }]] = await pool.query(
+      "SELECT COUNT(*) as total FROM upi_webhook_transactions WHERE status IN ('unmatched', 'received')"
+    );
+
+    res.json({ transactions: rows, total, page, limit });
+  } catch (error) {
+    next(error);
+  }
+};

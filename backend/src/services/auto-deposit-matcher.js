@@ -9,6 +9,7 @@ const { recordWalletTransaction } = require('../utils/wallet-ledger');
 const logger = require('../utils/logger');
 
 const ORDER_EXPIRY_MINUTES = 10;
+const LATE_MATCH_GRACE_MINUTES = 5; // Allow matching orders expired within this window
 const DEFAULT_MIN_DEPOSIT = 100;
 const DEFAULT_MAX_DEPOSIT = 50000;
 
@@ -83,11 +84,15 @@ async function matchAndCreditDeposit({ amount, referenceNumber, payerName, txnTi
       return { matched: false, reason: 'amount_out_of_range' };
     }
 
-    // 3. Find matching pending order (priority: order_ref → pay_amount → base amount)
+    // 3. Find matching pending order (priority: order_ref → pay_amount)
+    //    Also checks recently-expired orders within a grace window so that
+    //    late-arriving Telegram messages (bank SMS delay) can still be credited.
     let pendingOrders = [];
+    let lateMatch = false;
 
     // 3a. Match by order reference code (most precise)
     if (orderRef) {
+      // First try active pending orders
       const [refMatch] = await conn.query(
         `SELECT id, user_id, amount, pay_amount, order_ref
          FROM pending_deposit_orders
@@ -99,6 +104,24 @@ async function matchAndCreditDeposit({ amount, referenceNumber, payerName, txnTi
         [orderRef]
       );
       pendingOrders = refMatch;
+
+      // Grace window: also match recently-expired orders (within LATE_MATCH_GRACE_MINUTES)
+      if (pendingOrders.length === 0) {
+        const [lateRefMatch] = await conn.query(
+          `SELECT id, user_id, amount, pay_amount, order_ref
+           FROM pending_deposit_orders
+           WHERE status = 'expired'
+             AND order_ref = ?
+             AND expires_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)
+           LIMIT 1
+           FOR UPDATE`,
+          [orderRef, LATE_MATCH_GRACE_MINUTES]
+        );
+        if (lateRefMatch.length > 0) {
+          pendingOrders = lateRefMatch;
+          lateMatch = true;
+        }
+      }
     }
 
     // 3b. Match by unique pay_amount (paise-level)
@@ -115,6 +138,25 @@ async function matchAndCreditDeposit({ amount, referenceNumber, payerName, txnTi
         [amount]
       );
       pendingOrders = amountMatch;
+
+      // Grace window for pay_amount match on recently-expired orders
+      if (pendingOrders.length === 0) {
+        const [lateAmountMatch] = await conn.query(
+          `SELECT id, user_id, amount, pay_amount, order_ref
+           FROM pending_deposit_orders
+           WHERE status = 'expired'
+             AND pay_amount = ?
+             AND expires_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)
+           ORDER BY created_at ASC
+           LIMIT 1
+           FOR UPDATE`,
+          [amount, LATE_MATCH_GRACE_MINUTES]
+        );
+        if (lateAmountMatch.length > 0) {
+          pendingOrders = lateAmountMatch;
+          lateMatch = true;
+        }
+      }
     }
 
     if (pendingOrders.length === 0) {
@@ -188,11 +230,20 @@ async function matchAndCreditDeposit({ amount, referenceNumber, payerName, txnTi
     // 9. Apply bonuses (same logic as manual approval)
     await applyDepositBonuses(conn, { depositId, userId: order.user_id, amount: creditAmount });
 
-    // 10. Update order status
+    // 10. Update order status (works for both 'pending' and late-matched 'expired' orders)
     await conn.query(
       'UPDATE pending_deposit_orders SET status = ?, matched_deposit_id = ?, matched_webhook_id = ? WHERE id = ?',
       ['matched', depositId, webhookTxnId, order.id]
     );
+
+    if (lateMatch) {
+      logger.info('auto-deposit', 'Late payment matched after order expiry (grace period)', {
+        orderId: order.id,
+        userId: order.user_id,
+        amount,
+        referenceNumber,
+      });
+    }
 
     // 11. Update webhook transaction status
     await conn.query(
@@ -330,4 +381,4 @@ async function expirePendingOrders() {
   return result.affectedRows;
 }
 
-module.exports = { matchAndCreditDeposit, expirePendingOrders, getDepositLimits, applyDepositBonuses, ORDER_EXPIRY_MINUTES };
+module.exports = { matchAndCreditDeposit, expirePendingOrders, getDepositLimits, applyDepositBonuses, ORDER_EXPIRY_MINUTES, LATE_MATCH_GRACE_MINUTES };

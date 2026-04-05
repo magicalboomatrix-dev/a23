@@ -51,4 +51,13 @@ router.post('/admin/orders/:id/cancel', authenticate, authorize('admin'), autoDe
 // Admin manually credit a pending order (when auto-match failed)
 router.post('/admin/orders/:id/credit', authenticate, authorize('admin'), autoDepositController.adminCreditOrder);
 
+// Search webhook transactions by UTR
+router.get('/admin/search-utr/:utr', authenticate, authorize('admin'), autoDepositController.searchByUtr);
+
+// Credit a user's wallet from an unmatched webhook transaction
+router.post('/admin/credit-by-utr', authenticate, authorize('admin'), autoDepositController.creditByUtr);
+
+// List unmatched/received webhook transactions
+router.get('/admin/unmatched-transactions', authenticate, authorize('admin'), autoDepositController.getUnmatchedTransactions);
+
 module.exports = router;

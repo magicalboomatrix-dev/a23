@@ -47,6 +47,21 @@ export default function AutoDeposits() {
   const [loading, setLoading] = useState(false);
   const { toasts, success, error: toastError, dismiss } = useToast();
 
+  // UTR Search state
+  const [utrSearchQuery, setUtrSearchQuery] = useState('');
+  const [utrSearchResults, setUtrSearchResults] = useState(null);
+  const [utrSearchLoading, setUtrSearchLoading] = useState(false);
+
+  // Unmatched transactions state
+  const [unmatchedTxns, setUnmatchedTxns] = useState([]);
+  const [unmatchedPage, setUnmatchedPage] = useState(1);
+  const [unmatchedPagination, setUnmatchedPagination] = useState({});
+
+  // Credit-by-UTR modal state
+  const [creditModal, setCreditModal] = useState(null); // { txn }
+  const [creditUserId, setCreditUserId] = useState('');
+  const [creditLoading, setCreditLoading] = useState(false);
+
   const loadStats = useCallback(async () => {
     try {
       const res = await api.get('/auto-deposit/admin/stats');
@@ -99,10 +114,40 @@ export default function AutoDeposits() {
     }
   }, [logPage]);
 
+  const handleUtrSearch = useCallback(async () => {
+    if (!utrSearchQuery.trim() || utrSearchQuery.trim().length < 6) {
+      toastError('Enter at least 6 characters to search.');
+      return;
+    }
+    setUtrSearchLoading(true);
+    try {
+      const res = await api.get(`/auto-deposit/admin/search-utr/${encodeURIComponent(utrSearchQuery.trim())}`);
+      setUtrSearchResults(res.data);
+    } catch (err) {
+      toastError(err.response?.data?.error || 'Search failed.');
+    } finally {
+      setUtrSearchLoading(false);
+    }
+  }, [utrSearchQuery, toastError]);
+
+  const loadUnmatchedTxns = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await api.get('/auto-deposit/admin/unmatched-transactions', { params: { page: unmatchedPage, limit: 20 } });
+      setUnmatchedTxns(res.data.transactions || []);
+      setUnmatchedPagination({ total: res.data.total, totalPages: Math.ceil(res.data.total / res.data.limit) });
+    } catch (err) {
+      console.error('Failed to load unmatched transactions:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [unmatchedPage]);
+
   useEffect(() => { loadStats(); }, [loadStats]);
   useEffect(() => { if (tab === 'webhook') loadWebhookTxns(); }, [tab, loadWebhookTxns]);
   useEffect(() => { if (tab === 'orders') loadPendingOrders(); }, [tab, loadPendingOrders]);
   useEffect(() => { if (tab === 'logs') loadLogs(); }, [tab, loadLogs]);
+  useEffect(() => { if (tab === 'unmatched') loadUnmatchedTxns(); }, [tab, loadUnmatchedTxns]);
 
   // Auto-refresh stats every 10s
   useEffect(() => {
@@ -157,10 +202,32 @@ export default function AutoDeposits() {
     }
   };
 
+  const handleCreditByUtr = async () => {
+    if (!creditUserId.trim()) { toastError('User ID is required.'); return; }
+    setCreditLoading(true);
+    try {
+      const res = await api.post('/auto-deposit/admin/credit-by-utr', {
+        webhook_transaction_id: creditModal.txn.id,
+        user_id: Number(creditUserId.trim()),
+      });
+      success(res.data.message || 'Credited successfully.');
+      setCreditModal(null);
+      setCreditUserId('');
+      loadUnmatchedTxns();
+      loadStats();
+    } catch (err) {
+      toastError(err.response?.data?.error || 'Failed to credit.');
+    } finally {
+      setCreditLoading(false);
+    }
+  };
+
   const tabs = [
     { key: 'stats', label: 'Overview' },
     { key: 'webhook', label: 'UPI Messages' },
     { key: 'orders', label: 'Deposit Orders' },
+    { key: 'unmatched', label: 'Unmatched' },
+    { key: 'utr-search', label: 'UTR Search' },
     { key: 'logs', label: 'Audit Logs' },
   ];
 
@@ -384,6 +451,171 @@ export default function AutoDeposits() {
         </div>
       )}
 
+      {/* Unmatched Transactions Tab */}
+      {tab === 'unmatched' && (
+        <div className="space-y-3">
+          <p className="text-sm text-dark-500">UPI payments received via Telegram that haven't been matched to any deposit order. You can manually credit these to a user.</p>
+          <div className="bg-white rounded-lg shadow overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-dark-50 text-dark-600">
+                <tr>
+                  <th className="px-4 py-2 text-left">ID</th>
+                  <th className="px-4 py-2 text-left">Amount</th>
+                  <th className="px-4 py-2 text-left">UTR / Reference</th>
+                  <th className="px-4 py-2 text-left">Payer</th>
+                  <th className="px-4 py-2 text-left">Status</th>
+                  <th className="px-4 py-2 text-left">Order Ref</th>
+                  <th className="px-4 py-2 text-left">Received</th>
+                  <th className="px-4 py-2 text-left">Raw Message</th>
+                  <th className="px-4 py-2 text-left">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-dark-100">
+                {unmatchedTxns.map((txn) => (
+                  <tr key={txn.id} className="hover:bg-dark-50">
+                    <td className="px-4 py-2">{txn.id}</td>
+                    <td className="px-4 py-2 font-medium">₹{txn.amount ? Number(txn.amount).toLocaleString('en-IN') : '-'}</td>
+                    <td className="px-4 py-2 font-mono text-xs">{txn.reference_number || '-'}</td>
+                    <td className="px-4 py-2">{txn.payer_name || '-'}</td>
+                    <td className="px-4 py-2"><Badge status={txn.status} /></td>
+                    <td className="px-4 py-2 font-mono text-xs">{txn.order_ref || '-'}</td>
+                    <td className="px-4 py-2 text-xs">{fmt(txn.created_at)}</td>
+                    <td className="px-4 py-2 text-xs max-w-[200px]">
+                      {txn.raw_message && (
+                        <details>
+                          <summary className="cursor-pointer text-blue-600 hover:underline">View</summary>
+                          <pre className="mt-1 text-xs bg-gray-100 p-2 rounded whitespace-pre-wrap break-all text-gray-800">{txn.raw_message}</pre>
+                        </details>
+                      )}
+                    </td>
+                    <td className="px-4 py-2">
+                      <button
+                        onClick={() => { setCreditModal({ txn }); setCreditUserId(''); }}
+                        className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                      >
+                        Credit User
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {unmatchedTxns.length === 0 && (
+                  <tr><td colSpan="9" className="px-4 py-8 text-center text-dark-400">No unmatched transactions.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <Pagination pagination={unmatchedPagination} page={unmatchedPage} setPage={setUnmatchedPage} />
+        </div>
+      )}
+
+      {/* UTR Search Tab */}
+      {tab === 'utr-search' && (
+        <div className="space-y-4">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={utrSearchQuery}
+              onChange={(e) => setUtrSearchQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleUtrSearch()}
+              placeholder="Enter UTR / reference number (min 6 chars)"
+              className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
+            <button
+              onClick={handleUtrSearch}
+              disabled={utrSearchLoading || utrSearchQuery.trim().length < 6}
+              className="px-4 py-2 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-60"
+            >
+              {utrSearchLoading ? 'Searching…' : 'Search'}
+            </button>
+          </div>
+
+          {utrSearchResults && (
+            <div className="space-y-4">
+              {/* Webhook transactions matching this UTR */}
+              <div>
+                <h3 className="text-sm font-semibold text-dark-700 mb-2">Webhook Transactions ({utrSearchResults.webhook_transactions?.length || 0})</h3>
+                <div className="bg-white rounded-lg shadow overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-dark-50 text-dark-600">
+                      <tr>
+                        <th className="px-4 py-2 text-left">ID</th>
+                        <th className="px-4 py-2 text-left">Amount</th>
+                        <th className="px-4 py-2 text-left">Reference</th>
+                        <th className="px-4 py-2 text-left">Payer</th>
+                        <th className="px-4 py-2 text-left">Status</th>
+                        <th className="px-4 py-2 text-left">Order Ref</th>
+                        <th className="px-4 py-2 text-left">Time</th>
+                        <th className="px-4 py-2 text-left">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-dark-100">
+                      {(utrSearchResults.webhook_transactions || []).map((txn) => (
+                        <tr key={txn.id} className="hover:bg-dark-50">
+                          <td className="px-4 py-2">{txn.id}</td>
+                          <td className="px-4 py-2 font-medium">₹{txn.amount ? Number(txn.amount).toLocaleString('en-IN') : '-'}</td>
+                          <td className="px-4 py-2 font-mono text-xs">{txn.reference_number || '-'}</td>
+                          <td className="px-4 py-2">{txn.payer_name || '-'}</td>
+                          <td className="px-4 py-2"><Badge status={txn.status} /></td>
+                          <td className="px-4 py-2 font-mono text-xs">{txn.order_ref || '-'}</td>
+                          <td className="px-4 py-2 text-xs">{fmt(txn.created_at)}</td>
+                          <td className="px-4 py-2">
+                            {txn.status !== 'matched' && (
+                              <button
+                                onClick={() => { setCreditModal({ txn }); setCreditUserId(''); }}
+                                className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                              >
+                                Credit User
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                      {(utrSearchResults.webhook_transactions || []).length === 0 && (
+                        <tr><td colSpan="8" className="px-4 py-6 text-center text-dark-400">No webhook transactions found for this UTR.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Deposits matching this UTR */}
+              <div>
+                <h3 className="text-sm font-semibold text-dark-700 mb-2">Deposits ({utrSearchResults.deposits?.length || 0})</h3>
+                <div className="bg-white rounded-lg shadow overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-dark-50 text-dark-600">
+                      <tr>
+                        <th className="px-4 py-2 text-left">Deposit ID</th>
+                        <th className="px-4 py-2 text-left">User</th>
+                        <th className="px-4 py-2 text-left">Amount</th>
+                        <th className="px-4 py-2 text-left">UTR</th>
+                        <th className="px-4 py-2 text-left">Status</th>
+                        <th className="px-4 py-2 text-left">Time</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-dark-100">
+                      {(utrSearchResults.deposits || []).map((d) => (
+                        <tr key={d.id} className="hover:bg-dark-50">
+                          <td className="px-4 py-2">{d.id}</td>
+                          <td className="px-4 py-2">{d.username || d.phone || `#${d.user_id}`}</td>
+                          <td className="px-4 py-2 font-medium">₹{Number(d.amount).toLocaleString('en-IN')}</td>
+                          <td className="px-4 py-2 font-mono text-xs">{d.utr_number}</td>
+                          <td className="px-4 py-2"><Badge status={d.status} /></td>
+                          <td className="px-4 py-2 text-xs">{fmt(d.created_at)}</td>
+                        </tr>
+                      ))}
+                      {(utrSearchResults.deposits || []).length === 0 && (
+                        <tr><td colSpan="6" className="px-4 py-6 text-center text-dark-400">No deposits found for this UTR.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Cancel / Credit confirmation modal */}
       {actionModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -423,6 +655,34 @@ export default function AutoDeposits() {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Credit by UTR modal (for unmatched transactions) */}
+      {creditModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm mx-4">
+            <h2 className="text-lg font-bold text-gray-900 mb-2">Credit Unmatched Payment</h2>
+            <div className="text-sm text-gray-600 mb-3 space-y-1">
+              <p>Amount: <strong>₹{Number(creditModal.txn.amount).toLocaleString('en-IN')}</strong></p>
+              <p>UTR: <span className="font-mono">{creditModal.txn.reference_number || '-'}</span></p>
+              <p>Payer: {creditModal.txn.payer_name || '-'}</p>
+            </div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">User ID <span className="text-red-500">*</span></label>
+            <input
+              type="number"
+              value={creditUserId}
+              onChange={(e) => setCreditUserId(e.target.value)}
+              placeholder="Enter user ID to credit"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-green-500"
+            />
+            <div className="flex gap-3">
+              <button onClick={() => setCreditModal(null)} className="flex-1 px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+              <button onClick={handleCreditByUtr} disabled={creditLoading || !creditUserId.trim()} className="flex-1 px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-60">
+                {creditLoading ? 'Crediting…' : 'Credit Wallet'}
+              </button>
+            </div>
           </div>
         </div>
       )}

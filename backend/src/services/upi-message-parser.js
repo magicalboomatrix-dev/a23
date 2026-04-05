@@ -9,6 +9,8 @@
  *   - GPay: "You received ₹500.00 from SENDER. UPI transaction ID: 412345678901"
  *   - Generic: "Amount: 500\nRef: 412345678901\nFrom: Sender"
  *   - Paytm: "Rs 500 received in Paytm wallet/bank from SENDER. Txn ID: 412345678901"
+ *   - UPI Notification: "Payment of ₹500 received", "Received ₹500 via UPI"
+ *   - BHIM: "₹500 received from SENDER UPI Ref No: 412345678901"
  */
 
 const AMOUNT_PATTERNS = [
@@ -24,10 +26,14 @@ const AMOUNT_PATTERNS = [
   /you\s+received\s*(?:Rs\.?|INR|₹)?\s*([\d,]+(?:\.\d{1,2})?)/i,
   // "Received Rs.500 from" (PhonePe)
   /Received\s*(?:Rs\.?|INR|₹)?\s*([\d,]+(?:\.\d{1,2})?)\s*from/i,
+  // "Received ₹500 via UPI" (notification style)
+  /Received\s*(?:Rs\.?|INR|₹)?\s*([\d,]+(?:\.\d{1,2})?)\s*(?:via|through)\s/i,
   // "Rs 500 received in" (Paytm)
   /(?:Rs\.?|INR|₹)\s*([\d,]+(?:\.\d{1,2})?)\s*received\s+in/i,
   // CRED: "received Rs.10.0 and your updated wallet balance"
   /received\s+(?:Rs\.?|INR|₹)?\s*([\d,]+(?:\.\d{1,2})?)\s+and\s+your/i,
+  // "Payment of ₹500 received" / "Payment of Rs 500 received" (UPI notification)
+  /Payment\s+of\s+(?:Rs\.?|INR|₹)?\s*([\d,]+(?:\.\d{1,2})?)\s*(?:received|credited|successful)/i,
   // ICICI/HDFC: "transfer of INR 500.00"
   /transfer\s+of\s+(?:Rs\.?|INR|₹)?\s*([\d,]+(?:\.\d{1,2})?)/i,
   // "deposited INR 500" / "deposited Rs 500"
@@ -46,6 +52,8 @@ const AMOUNT_PATTERNS = [
   /Credited[;,]?\s+(?:Rs\.?|INR|₹)\s*([\d,]+(?:\.\d{1,2})?)/i,
   // Generic: "INR 10.18 Ref" — amount immediately before Ref/UTR marker
   /(?:Rs\.?|INR|₹)\s*([\d,]+(?:\.\d{1,2})?)\s+Ref[-\s]/i,
+  // Standalone ₹ amount as last resort (e.g., "₹100.37 received")
+  /₹\s*([\d,]+(?:\.\d{1,2})?)/,
 ];
 
 const REFERENCE_PATTERNS = [
