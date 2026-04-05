@@ -39,7 +39,11 @@ const ask = (q) => new Promise(resolve => rl.question(q, resolve));
 
   await client.start({
     phoneNumber:  async () => ask('Enter your phone number (with country code, e.g. +919876543210): '),
-    password:     async () => ask('Enter 2FA password (leave blank if none): '),
+    password:     async () => {
+      const pw = await ask('Enter 2FA password (required if enabled): ');
+      if (!pw || !pw.trim()) throw new Error('2FA password is required for this account. Set it in Telegram → Settings → Privacy → Two-Step Verification, or enter it here.');
+      return pw;
+    },
     phoneCode:    async () => ask('Enter the OTP Telegram sent you: '),
     onError: (err) => console.error('Login error:', err),
   });
