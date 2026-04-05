@@ -85,8 +85,8 @@ export default function Analytics() {
             )}
           </div>
 
-          {/* Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Charts – hidden on mobile */}
+          <div className="hidden md:grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Bar chart - top 20 numbers */}
             {items.length > 0 && (
             <div className="bg-white border p-6">
@@ -170,6 +170,89 @@ export default function Analytics() {
               </div>
             </div>
           )}
+
+          {/* Jantri Grid 00–99 */}
+          {(() => {
+            const lookup = {};
+            items.forEach(item => {
+              const key = String(item.number).padStart(2, '0');
+              lookup[key] = (lookup[key] || 0) + (parseFloat(item.total_amount) || 0);
+            });
+
+            const rows = Array.from({ length: 10 }, (_, r) => {
+              const cells = Array.from({ length: 10 }, (_, c) => {
+                const num = String(r * 10 + c).padStart(2, '0');
+                return { num, amount: lookup[num] || 0 };
+              });
+              const total = cells.reduce((s, cell) => s + cell.amount, 0);
+              return { cells, total };
+            });
+
+            const colTotals = Array(10).fill(0);
+            rows.forEach(row => row.cells.forEach((cell, ci) => { colTotals[ci] += cell.amount; }));
+            const grandTotal = colTotals.reduce((a, b) => a + b, 0);
+
+            return (
+              <div className="bg-white border">
+                {/* Header */}
+                <div className="bg-[#0a1628] text-white px-4 py-3 flex items-center justify-between">
+                  <h3 className="text-sm sm:text-base font-bold tracking-wide">Jantri (00 – 99)</h3>
+                  <span className="text-xs sm:text-sm font-semibold text-yellow-400">
+                    TOTAL: ₹{grandTotal.toLocaleString('en-IN')}
+                  </span>
+                </div>
+
+                {/* Scrollable table */}
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse" style={{ minWidth: 520 }}>
+                    <tbody>
+                      {rows.map((row, ri) => (
+                        <tr key={ri} className={ri % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                          {row.cells.map((cell, ci) => (
+                            <td
+                              key={ci}
+                              className="border border-gray-200 px-0.5 py-1 text-center"
+                              style={{ width: '8.5%' }}
+                            >
+                              <div className="text-[11px] sm:text-xs font-bold text-gray-900 leading-tight">{cell.num}</div>
+                              <div className={`text-[10px] sm:text-[11px] font-semibold leading-tight ${
+                                cell.amount > 0 ? 'text-green-700' : 'text-transparent select-none'
+                              }`}>
+                                {cell.amount > 0 ? cell.amount.toLocaleString('en-IN') : '0'}
+                              </div>
+                            </td>
+                          ))}
+                          <td className="border border-gray-200 px-1 py-1 text-right" style={{ width: '8.5%' }}>
+                            <div className="text-[10px] sm:text-xs font-bold text-red-500 leading-tight">
+                              {row.total > 0 ? row.total.toLocaleString('en-IN') : ''}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+
+                      {/* Column totals */}
+                      <tr className="border-t-2 border-gray-400 bg-gray-100">
+                        {colTotals.map((ct, ci) => (
+                          <td key={ci} className="border border-gray-200 px-0.5 py-1 text-center">
+                            <div className={`text-[10px] sm:text-[11px] font-bold leading-tight ${
+                              ct > 0 ? 'text-red-500' : 'text-transparent select-none'
+                            }`}>
+                              {ct > 0 ? ct.toLocaleString('en-IN') : '0'}
+                            </div>
+                          </td>
+                        ))}
+                        <td className="border border-gray-200 px-1 py-1 text-right">
+                          <div className="text-[10px] sm:text-xs font-bold text-red-600 leading-tight">
+                            {grandTotal > 0 ? grandTotal.toLocaleString('en-IN') : ''}
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })()}
         </>
           );
         })()}

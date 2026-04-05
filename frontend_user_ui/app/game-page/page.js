@@ -531,7 +531,7 @@ function GamePageInner() {
                 rows={5}
                 value={messageText}
                 onChange={e => setMessageText(e.target.value)}
-                placeholder={"12=50\n15=50,88=10,99=20\n12 13 45 34 54 (30)"}
+                placeholder='...'
                 className="w-full resize-none border-2 border-[#e0e0e0] bg-white px-4 py-3 text-sm text-[#1a1a1a] outline-none transition focus:border-[#b88422]"
               />
 
