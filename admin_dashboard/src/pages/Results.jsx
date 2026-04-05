@@ -7,7 +7,7 @@ function formatDayLabel(day, month) {
 }
 
 function formatTimestamp(value) {
-  return value ? new Date(value).toLocaleString('en-IN') : '-';
+  return value ? new Date(value).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '-';
 }
 
 function AdminMonthlyChart({ data }) {

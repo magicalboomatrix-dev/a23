@@ -23,7 +23,7 @@ const WithDrawPage = () => {
 
   const formatDateTime = (value) => {
     if (!value) return '-'
-    return new Date(value).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+    return new Date(value).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
   }
 
   const isWithinWithdrawalWindow = () => {
