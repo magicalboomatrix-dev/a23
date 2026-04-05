@@ -22,11 +22,50 @@ exports.requestWithdraw = async (req, res, next) => {
       return res.status(400).json({ error: 'Amount must be positive.' });
     }
 
-    // Check min withdrawal
-    const [settings] = await pool.query("SELECT setting_value FROM settings WHERE setting_key = 'min_withdraw'");
-    const minWithdraw = settings.length > 0 ? parseFloat(settings[0].setting_value) : 200;
+    // Check min withdrawal and withdrawal time windows
+    const [settings] = await pool.query(
+      "SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('min_withdraw', 'withdrawal_time_windows')"
+    );
+    const settingsMap = {};
+    for (const s of settings) settingsMap[s.setting_key] = s.setting_value;
+
+    const minWithdraw = settingsMap.min_withdraw ? parseFloat(settingsMap.min_withdraw) : 200;
     if (parsedAmount < minWithdraw) {
       return res.status(400).json({ error: `Minimum withdrawal is ₹${minWithdraw}.` });
+    }
+
+    // Validate withdrawal time windows (IST)
+    if (settingsMap.withdrawal_time_windows) {
+      let windows = [];
+      try { windows = JSON.parse(settingsMap.withdrawal_time_windows); } catch (_) { windows = []; }
+      if (Array.isArray(windows) && windows.length > 0) {
+        // Get current time in IST (UTC+5:30)
+        const now = new Date();
+        const istOffset = 5 * 60 + 30; // minutes
+        const istNow = new Date(now.getTime() + istOffset * 60 * 1000);
+        const currentMinutes = istNow.getUTCHours() * 60 + istNow.getUTCMinutes();
+
+        const parseHHMM = (str) => {
+          const [h, m] = String(str).split(':').map(Number);
+          return (h || 0) * 60 + (m || 0);
+        };
+
+        const isAllowed = windows.some((w) => {
+          const start = parseHHMM(w.start);
+          const end = parseHHMM(w.end);
+          return currentMinutes >= start && currentMinutes <= end;
+        });
+
+        if (!isAllowed) {
+          const windowList = windows
+            .map((w) => `${w.start} – ${w.end}`)
+            .join(', ');
+          return res.status(400).json({
+            error: `Withdrawals are only allowed during: ${windowList}. Please try again in the next withdrawal window.`,
+            code: 'OUTSIDE_WITHDRAWAL_WINDOW',
+          });
+        }
+      }
     }
 
     await conn.beginTransaction();

@@ -324,7 +324,8 @@ exports.getUiConfig = async (req, res, next) => {
          'min_withdraw',
          'max_withdraw_time_minutes',
          'first_deposit_bonus_percent',
-         'referral_bonus'
+         'referral_bonus',
+         'withdrawal_time_windows'
        )`
     );
 
@@ -340,6 +341,21 @@ exports.getUiConfig = async (req, res, next) => {
     const firstDepositBonusPercent = Number(settingsMap.first_deposit_bonus_percent || 0);
     const referralBonus = Number(settingsMap.referral_bonus || 0);
 
+    let withdrawalTimeWindows = [];
+    if (settingsMap.withdrawal_time_windows) {
+      try { withdrawalTimeWindows = JSON.parse(settingsMap.withdrawal_time_windows); } catch (_) { withdrawalTimeWindows = []; }
+    }
+    if (!Array.isArray(withdrawalTimeWindows)) withdrawalTimeWindows = [];
+
+    // Default windows if none configured
+    if (withdrawalTimeWindows.length === 0) {
+      withdrawalTimeWindows = [
+        { start: '09:00', end: '11:00' },
+        { start: '16:45', end: '17:20' },
+        { start: '22:00', end: '22:30' },
+      ];
+    }
+
     res.json({
       settings: {
         min_deposit: minDeposit,
@@ -349,6 +365,7 @@ exports.getUiConfig = async (req, res, next) => {
         first_deposit_bonus_percent: firstDepositBonusPercent,
         referral_bonus: referralBonus,
       },
+      withdrawal_time_windows: withdrawalTimeWindows,
       deposit_guidelines: [
         `Minimum deposit amount is Rs ${minDeposit}.`,
         `Maximum deposit amount is Rs ${maxDeposit.toLocaleString('en-IN')}.`,
@@ -363,7 +380,10 @@ exports.getUiConfig = async (req, res, next) => {
         'Bonus wallet balance cannot be withdrawn directly.',
         'Use only your own verified bank account to avoid account review.',
         `Expected withdrawal processing time is up to ${maxWithdrawTimeMinutes} minutes.`,
-      ],
+        withdrawalTimeWindows.length > 0
+          ? `Withdrawal timings: ${withdrawalTimeWindows.map((w) => `${w.start}–${w.end}`).join(', ')}`
+          : '',
+      ].filter(Boolean),
     });
   } catch (error) {
     next(error);

@@ -19,10 +19,29 @@ const WithDrawPage = () => {
   const [submitting, setSubmitting] = useState(false)
   const [toast, setToast] = useState({ message: '', type: 'info' })
   const [withdrawGuidelines, setWithdrawGuidelines] = useState([])
+  const [withdrawalTimeWindows, setWithdrawalTimeWindows] = useState([])
 
   const formatDateTime = (value) => {
     if (!value) return '-'
     return new Date(value).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+  }
+
+  const isWithinWithdrawalWindow = () => {
+    if (!withdrawalTimeWindows || withdrawalTimeWindows.length === 0) return true
+    const now = new Date()
+    // IST = UTC + 5:30
+    const istOffset = 5 * 60 + 30
+    const istNow = new Date(now.getTime() + istOffset * 60 * 1000)
+    const currentMinutes = istNow.getUTCHours() * 60 + istNow.getUTCMinutes()
+    const parseHHMM = (str) => {
+      const [h, m] = String(str).split(':').map(Number)
+      return (h || 0) * 60 + (m || 0)
+    }
+    return withdrawalTimeWindows.some((w) => {
+      const start = parseHHMM(w.start)
+      const end = parseHHMM(w.end)
+      return currentMinutes >= start && currentMinutes <= end
+    })
   }
 
   const fetchData = async () => {
@@ -57,7 +76,12 @@ const WithDrawPage = () => {
 
   useEffect(() => {
     fetchData()
-    userAPI.getUiConfig().then((res) => setWithdrawGuidelines(res.withdraw_guidelines || [])).catch(() => setWithdrawGuidelines([]))
+    userAPI.getUiConfig().then((res) => {
+      setWithdrawGuidelines(res.withdraw_guidelines || [])
+      setWithdrawalTimeWindows(res.withdrawal_time_windows || [])
+    }).catch(() => {
+      setWithdrawGuidelines([])
+    })
   }, [])
 
   const setDefaultAccount = async (accountId) => {
@@ -73,6 +97,16 @@ const WithDrawPage = () => {
 
   const handleWithdraw = async (event) => {
     event.preventDefault()
+
+    // Check withdrawal time window before anything else
+    if (!isWithinWithdrawalWindow()) {
+      const windowList = withdrawalTimeWindows.map((w) => `${w.start} – ${w.end}`).join(', ')
+      setToast({
+        message: `Withdrawals are only allowed during: ${windowList}. Please try again in the next withdrawal window.`,
+        type: 'error',
+      })
+      return
+    }
 
     const parsedAmount = Number(amount)
     if (!selectedAccountId) {
@@ -136,6 +170,15 @@ const WithDrawPage = () => {
         <DepositWithdrawBtns></DepositWithdrawBtns>
 
         <div className="mx-auto w-full max-w-107.5 px-4">
+
+          {/* Withdrawal Time Windows Banner */}
+          {withdrawalTimeWindows.length > 0 && (
+            <div className={`mt-4 border px-3 py-3 text-xs font-medium ${isWithinWithdrawalWindow() ? 'border-green-300 bg-green-50 text-green-800' : 'border-red-300 bg-red-50 text-red-700'}`}>
+              <p className="font-bold mb-1">{isWithinWithdrawalWindow() ? '✓ Withdrawals are open now' : '✕ Withdrawals are currently closed'}</p>
+              <p>Withdrawal timings: {withdrawalTimeWindows.map((w) => `${w.start} – ${w.end}`).join('  |  ')}</p>
+            </div>
+          )}
+
           <section className="mt-4 border border-[#d6b774] bg-white p-4 shadow-[0_12px_28px_rgba(79,52,10,0.08)]">
             {loadingData ? (
               <div className="space-y-3">
