@@ -4,7 +4,11 @@ import React, { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '../lib/AuthContext';
 
+// Unauthenticated-only routes (logged-in users are redirected away)
 const PUBLIC_ROUTES = ['/login', '/login-account'];
+
+// Routes accessible to everyone regardless of auth state (no redirect either way)
+const OPEN_ROUTES = ['/download'];
 
 function AppSplash({ message }) {
   return (
@@ -32,6 +36,11 @@ export default function AuthGate({ children }) {
     }
 
     const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
+    const isOpenRoute = OPEN_ROUTES.includes(pathname);
+
+    if (isOpenRoute) {
+      return; // accessible to everyone, no redirect
+    }
 
     if (!isLoggedIn && !isPublicRoute) {
       router.replace('/login');
@@ -48,6 +57,11 @@ export default function AuthGate({ children }) {
   }
 
   const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
+  const isOpenRoute = OPEN_ROUTES.includes(pathname);
+
+  if (isOpenRoute) {
+    return children; // always render, no auth check
+  }
 
   if (!isLoggedIn && !isPublicRoute) {
     return <AppSplash message="Redirecting to login..." />;
