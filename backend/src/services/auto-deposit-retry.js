@@ -32,6 +32,9 @@ async function retryUnmatchedTransactions() {
 
     if (rows.length === 0) return;
 
+    logger.info('auto-deposit-retry', `Retry cycle: ${rows.length} transaction(s) to process`);
+
+    let matched = 0;
     for (const txn of rows) {
       try {
         // Re-parse order_ref from the raw message (in case it was missed)
@@ -53,6 +56,7 @@ async function retryUnmatchedTransactions() {
         });
 
         if (result.matched) {
+          matched++;
           logger.info('auto-deposit-retry', 'Retry matched and credited', {
             webhookTxnId: txn.id,
             orderId: result.orderId,
@@ -69,6 +73,10 @@ async function retryUnmatchedTransactions() {
           error: err.message,
         });
       }
+    }
+
+    if (matched > 0) {
+      logger.info('auto-deposit-retry', `Retry cycle complete: ${matched}/${rows.length} matched`);
     }
   } catch (err) {
     logger.error('auto-deposit-retry', 'Retry batch error', err);

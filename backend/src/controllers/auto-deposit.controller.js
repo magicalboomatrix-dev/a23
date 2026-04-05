@@ -536,9 +536,9 @@ exports.adminCreditOrder = async (req, res, next) => {
 
     // Create deposit record
     const [depositResult] = await conn.query(
-      `INSERT INTO deposits (user_id, amount, utr_number, order_id, status, approved_by)
-       VALUES (?, ?, ?, ?, 'completed', ?)`,
-      [order.user_id, creditAmount, utr, id, adminId]
+      `INSERT INTO deposits (user_id, amount, utr_number, order_id, status)
+       VALUES (?, ?, ?, ?, 'completed')`,
+      [order.user_id, creditAmount, utr, id]
     );
     const depositId = depositResult.insertId;
 
@@ -691,9 +691,9 @@ exports.creditByUtr = async (req, res, next) => {
 
     // Create deposit record
     const [depositResult] = await conn.query(
-      `INSERT INTO deposits (user_id, amount, utr_number, status, approved_by)
-       VALUES (?, ?, ?, 'completed', ?)`,
-      [user_id, creditAmount, utr, adminId]
+      `INSERT INTO deposits (user_id, amount, utr_number, status)
+       VALUES (?, ?, ?, 'completed')`,
+      [user_id, creditAmount, utr]
     );
     const depositId = depositResult.insertId;
 

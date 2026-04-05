@@ -19,7 +19,7 @@ const AMOUNT_PATTERNS = [
   // "credited by Rs 10.63" / "credited by INR 10.63" (IndusInd bank)
   /credited\s+by\s+(?:Rs\.?|INR|₹)?\s*([\d,]+(?:\.\d{1,2})?)/i,
   // "INR 500 credited" / "Rs.500 credited" / "Rs 500 received"
-  /(?:Rs\.?|INR|₹)\s*([\d,]+(?:\.\d{1,2})?)\s*(?:credited|received|deposited|debited)/i,
+  /(?:Rs\.?|INR|₹)\s*([\d,]+(?:\.\d{1,2})?)\s*(?:credited|received|deposited)/i,
   // "received Rs.500" / "received ₹500"
   /received\s*(?:Rs\.?|INR|₹)\s*([\d,]+(?:\.\d{1,2})?)/i,
   // "You received ₹500.00" (GPay)
@@ -98,12 +98,27 @@ const TIME_PATTERNS = [
 // Matches in context like "Pay RM7X3K9P", "Deposit RM7X3K9P", or standalone "RM7X3K9P"
 const ORDER_REF_PATTERN = /\bRM([A-Z0-9]{6})\b/i;
 
+// Messages containing these keywords are OUTGOING / debit transactions — reject immediately.
+const DEBIT_KEYWORDS = /\b(debited|paid|sent|withdrawn|deducted|request|requested|refund(?:ed)?|pay\s+₹|pay\s+Rs|you\s+paid|you\s+sent|you\s+transferred)\b/i;
+
+// At least one of these must appear for the message to be treated as an incoming credit.
+const CREDIT_KEYWORDS = /\b(credited|received|credit|deposited|deposit|payment\s+of|money\s+received)\b/i;
+
 function parseUpiMessage(rawMessage) {
   if (!rawMessage || typeof rawMessage !== 'string') {
     return { success: false, error: 'Empty or invalid message' };
   }
 
   const message = rawMessage.trim();
+
+  // --- Safety filters: reject outgoing / non-credit messages ---
+  if (DEBIT_KEYWORDS.test(message)) {
+    return { success: false, error: 'Message appears to be a debit/outgoing transaction', rawMessage: message };
+  }
+
+  if (!CREDIT_KEYWORDS.test(message)) {
+    return { success: false, error: 'Message does not contain a credit keyword', rawMessage: message };
+  }
 
   // Parse amount (try each pattern in priority order)
   let amount = null;

@@ -72,6 +72,13 @@ exports.handleWebhook = async (req, res) => {
 
     const { amount, referenceNumber, payerName, txnTime, orderRef } = parsed.data;
 
+    // If this message previously failed parsing (parse_error row), remove the stale row
+    // so the new 'received' INSERT succeeds against the (telegram_message_id, telegram_chat_id) UNIQUE key.
+    await pool.query(
+      "DELETE FROM upi_webhook_transactions WHERE telegram_message_id = ? AND telegram_chat_id = ? AND status = 'parse_error'",
+      [messageId, chatId]
+    );
+
     // Store the parsed transaction (guard against duplicate reference_number)
     let insertResult;
     try {
