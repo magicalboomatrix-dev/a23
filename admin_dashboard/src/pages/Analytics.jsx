@@ -73,14 +73,14 @@ export default function Analytics() {
               <div className="bg-green-50 border border-green-200 p-3 sm:p-5">
                 <p className="text-xs sm:text-sm text-green-600">Highest Bet Number</p>
                 <p className="text-xl sm:text-2xl font-bold text-green-700">#{summary.highest_bet.number}</p>
-                <p className="text-xs text-green-500">?{parseFloat(summary.highest_bet.total_amount || 0).toLocaleString()} ({summary.highest_bet.bet_count} bets)</p>
+                <p className="text-xs text-green-500">₹{parseFloat(summary.highest_bet.total_amount || 0).toLocaleString()} ({summary.highest_bet.bet_count} bets)</p>
               </div>
             )}
             {summary.lowest_bet && (
               <div className="bg-red-50 border border-red-200 p-3 sm:p-5">
                 <p className="text-xs sm:text-sm text-red-600">Lowest Bet Number</p>
                 <p className="text-xl sm:text-2xl font-bold text-red-700">#{summary.lowest_bet.number}</p>
-                <p className="text-xs text-red-500">?{parseFloat(summary.lowest_bet.total_amount || 0).toLocaleString()} ({summary.lowest_bet.bet_count} bets)</p>
+                <p className="text-xs text-red-500">₹{parseFloat(summary.lowest_bet.total_amount || 0).toLocaleString()} ({summary.lowest_bet.bet_count} bets)</p>
               </div>
             )}
           </div>
@@ -96,7 +96,7 @@ export default function Analytics() {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="number" tick={{ fontSize: 10 }} />
                   <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip formatter={(val) => `?${parseFloat(val).toLocaleString()}`} />
+                  <Tooltip formatter={(val) => `₹${parseFloat(val).toLocaleString()}`} />
                   <Bar dataKey="total_amount" fill="#eb950e" radius={[4, 4, 0, 0]} name="Total Amount" />
                 </BarChart>
               </ResponsiveContainer>
@@ -122,7 +122,7 @@ export default function Analytics() {
                       <Cell key={i} fill={COLORS[i % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(val) => `?${val.toLocaleString()}`} />
+                  <Tooltip formatter={(val) => `₹${val.toLocaleString()}`} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -147,7 +147,7 @@ export default function Analytics() {
                   {items.map((a) => (
                     <tr key={a.number} className="hover:bg-gray-50">
                       <td className="px-4 py-2 font-mono font-bold">{a.number}</td>
-                      <td className="px-4 py-2 text-right font-medium">?{parseFloat(a.total_amount || 0).toLocaleString()}</td>
+                      <td className="px-4 py-2 text-right font-medium">₹{parseFloat(a.total_amount || 0).toLocaleString()}</td>
                       <td className="px-4 py-2 text-right text-gray-500">{a.bet_count}</td>
                     </tr>
                   ))}

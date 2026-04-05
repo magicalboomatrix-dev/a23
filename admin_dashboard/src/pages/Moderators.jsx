@@ -4,7 +4,7 @@ import api from '../utils/api';
 import { useToast, ToastContainer, useConfirm, ConfirmModal } from '../components/ui';
 
 function formatCurrency(value) {
-  return `?${Number(value || 0).toLocaleString('en-IN')}`;
+  return `₹${Number(value || 0).toLocaleString('en-IN')}`;
 }
 
 export default function Moderators() {

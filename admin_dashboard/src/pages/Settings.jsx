@@ -26,9 +26,9 @@ const EXPECTED_SETTINGS = {
   'Bonus & Referral': [
     { key: 'first_deposit_bonus_percent', label: 'First Deposit Bonus %', description: 'First deposit bonus percentage', default: '10' },
     { key: 'referral_bonus', label: 'Referral Bonus', description: 'Referral bonus amount', default: '50' },
-    { key: 'bonus_slab_2500', label: 'Bonus Slab ?2,500', description: 'Bonus for deposit of ?2,500', default: '100' },
-    { key: 'bonus_slab_5000', label: 'Bonus Slab ?5,000', description: 'Bonus for deposit of ?5,000', default: '250' },
-    { key: 'bonus_slab_10000', label: 'Bonus Slab ?10,000', description: 'Bonus for deposit of ?10,000', default: '500' },
+    { key: 'bonus_slab_2500', label: 'Bonus Slab ₹2,500', description: 'Bonus for deposit of ₹2,500', default: '100' },
+    { key: 'bonus_slab_5000', label: 'Bonus Slab ₹5,000', description: 'Bonus for deposit of ₹5,000', default: '250' },
+    { key: 'bonus_slab_10000', label: 'Bonus Slab ₹10,000', description: 'Bonus for deposit of ₹10,000', default: '500' },
   ],
 };
 

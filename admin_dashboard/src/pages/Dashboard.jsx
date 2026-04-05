@@ -71,15 +71,15 @@ export default function Dashboard() {
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         <StatCard title="Total Users" value={stats?.total_users || 0} color="blue" />
-        <StatCard title="Deposits Today" value={`?${stats?.deposits_today?.total?.toLocaleString() || 0}`} sub={`${stats?.deposits_today?.count || 0} transactions`} color="green" />
-        <StatCard title="Withdrawals Today" value={`?${stats?.withdrawals_today?.total?.toLocaleString() || 0}`} sub={`${stats?.withdrawals_today?.count || 0} transactions`} color="red" />
-        <StatCard title="Bets Today" value={`?${stats?.bets_today?.total?.toLocaleString() || 0}`} sub={`${stats?.bets_today?.count || 0} bets`} color="primary" />
+        <StatCard title="Deposits Today" value={`₹${stats?.deposits_today?.total?.toLocaleString() || 0}`} sub={`${stats?.deposits_today?.count || 0} transactions`} color="green" />
+        <StatCard title="Withdrawals Today" value={`₹${stats?.withdrawals_today?.total?.toLocaleString() || 0}`} sub={`${stats?.withdrawals_today?.count || 0} transactions`} color="red" />
+        <StatCard title="Bets Today" value={`₹${stats?.bets_today?.total?.toLocaleString() || 0}`} sub={`${stats?.bets_today?.count || 0} bets`} color="primary" />
       </div>
 
       {user?.role === 'admin' && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
           <StatCard title="Deposits Today" value={adminStats?.total_deposits_today || 0} color="green" />
-          <StatCard title="Approved Amount Today" value={`?${Number(adminStats?.total_amount_today || 0).toLocaleString('en-IN')}`} color="blue" />
+          <StatCard title="Approved Amount Today" value={`₹${Number(adminStats?.total_amount_today || 0).toLocaleString('en-IN')}`} color="blue" />
           <StatCard title="Fraud Attempts Today" value={adminStats?.fraud_attempts_today || 0} color="red" />
           <StatCard title="Active Moderators" value={adminStats?.active_moderators || 0} color="purple" />
         </div>
@@ -88,7 +88,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-3 gap-2 sm:gap-4">
         <StatCard title="Pending Deposits" value={stats?.pending_deposits || 0} color="yellow" />
         <StatCard title="Pending Withdrawals" value={stats?.pending_withdrawals || 0} color="yellow" />
-        <StatCard title="Total Wallet Balance" value={`?${stats?.total_wallet_balance?.toLocaleString() || 0}`} color="purple" />
+        <StatCard title="Total Wallet Balance" value={`₹${stats?.total_wallet_balance?.toLocaleString() || 0}`} color="purple" />
       </div>
 
       {user?.role === 'admin' && (
@@ -111,7 +111,7 @@ export default function Dashboard() {
               <div key={userRow.id} className=" border border-amber-200 bg-amber-50 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium text-gray-800">{userRow.name}</p>
-                  <p className="text-xs text-gray-600 mt-1">{userRow.phone} � Joined {new Date(userRow.created_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}</p>
+                  <p className="text-xs text-gray-600 mt-1">{userRow.phone} � Joined {new Date(userRow.created_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}</p>
                 </div>
                 <div className="text-xs font-medium text-amber-700 uppercase tracking-wide">Needs Moderator</div>
               </div>
@@ -173,7 +173,7 @@ export default function Dashboard() {
                   <div>
                     <p className="text-sm font-medium text-gray-800">{notification.message}</p>
                     <p className="text-xs text-gray-500 mt-1">
-                      {notification.type} � {new Date(notification.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
+                      {notification.type} � {new Date(notification.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
                     </p>
                   </div>
                   {!notification.is_read && (
@@ -214,7 +214,7 @@ export default function Dashboard() {
                   <td className="px-5 py-3">{bet.user_name}</td>
                   <td className="px-5 py-3">{bet.game_name}</td>
                   <td className="px-5 py-3 capitalize">{bet.type}</td>
-                  <td className="px-5 py-3 text-right font-medium">?{parseFloat(bet.total_amount).toLocaleString()}</td>
+                  <td className="px-5 py-3 text-right font-medium">₹{parseFloat(bet.total_amount).toLocaleString()}</td>
                   <td className="px-5 py-3 text-center">
                     <span className={`px-2 py-1 text-xs font-medium ${
                       bet.status === 'win' ? 'bg-green-100 text-green-700'

@@ -76,7 +76,7 @@ export default function Withdrawals() {
               <textarea
                 className="w-full border border-gray-300 px-3 py-2 text-sm resize-none"
                 rows={3}
-                placeholder="Enter rejection reason…"
+                placeholder="Enter rejection reasonï¿½"
                 value={rejectModal.reason}
                 onChange={(e) => setRejectModal((m) => ({ ...m, reason: e.target.value }))}
               />
@@ -131,7 +131,7 @@ export default function Withdrawals() {
                 <td className="px-4 py-3">{w.id}</td>
                 <td className="px-4 py-3 font-medium">{w.user_name}</td>
                 <td className="px-4 py-3">{w.user_phone}</td>
-                <td className="px-4 py-3 text-right font-semibold text-red-700">?{parseFloat(w.amount).toLocaleString()}</td>
+                <td className="px-4 py-3 text-right font-semibold text-red-700">â‚¹{parseFloat(w.amount).toLocaleString()}</td>
                 <td className="px-4 py-3">{w.bank_name}</td>
                 <td className="px-4 py-3 font-mono text-xs">{w.account_number}</td>
                 <td className="px-4 py-3 font-mono text-xs">{w.ifsc}</td>

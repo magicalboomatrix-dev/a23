@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import api from '../utils/api';
 
 function formatCurrency(value) {
-  return `?${Number(value || 0).toLocaleString('en-IN')}`;
+  return `₹${Number(value || 0).toLocaleString('en-IN')}`;
 }
 
 export default function UserDetail() {

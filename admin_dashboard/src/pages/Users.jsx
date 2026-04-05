@@ -138,8 +138,8 @@ export default function Users() {
                 <td className="px-2 py-2 text-xs">{u.id}</td>
                 <td className="px-2 py-2 text-xs font-medium">{u.name}</td>
                 <td className="px-2 py-2 text-xs">{u.phone}</td>
-                <td className="px-2 py-2 text-xs text-right">?{parseFloat(u.balance || 0).toFixed(0)}</td>
-                <td className="px-2 py-2 text-xs text-right">?{parseFloat(u.bonus_balance || 0).toFixed(0)}</td>
+                <td className="px-2 py-2 text-xs text-right">₹{parseFloat(u.balance || 0).toFixed(0)}</td>
+                <td className="px-2 py-2 text-xs text-right">₹{parseFloat(u.bonus_balance || 0).toFixed(0)}</td>
                 <td className="px-2 py-2 text-xs">{u.moderator_name || '-'}</td>
                 <td className="px-2 py-2 text-xs font-mono">{u.referral_code}</td>
                 <td className="px-2 py-2 text-center">
