@@ -325,12 +325,13 @@ async function applyDepositBonuses(conn, { depositId, userId, amount }) {
         await conn.query('INSERT INTO bonuses (user_id, type, amount, reference_id) VALUES (?, ?, ?, ?)',
           [userId, 'first_deposit', bonusAmount, `deposit_${depositId}`]);
 
-        const [[walletRow]] = await conn.query('SELECT balance FROM wallets WHERE user_id = ?', [userId]);
+        const [[walletRow]] = await conn.query('SELECT balance, bonus_balance FROM wallets WHERE user_id = ?', [userId]);
+        const effectiveBalance = parseFloat(walletRow.balance) + parseFloat(walletRow.bonus_balance);
         await conn.query(
           `INSERT INTO wallet_transactions
             (user_id, type, amount, balance_after, status, reference_type, reference_id, remark)
            VALUES (?, 'bonus', ?, ?, 'completed', 'bonus', ?, ?)`,
-          [userId, bonusAmount, parseFloat(walletRow.balance), `first_deposit_${depositId}`, `First deposit bonus ${bonusPercent}%`]
+          [userId, bonusAmount, effectiveBalance, `first_deposit_${depositId}`, `First deposit bonus ${bonusPercent}%`]
         );
       }
     }
@@ -350,12 +351,13 @@ async function applyDepositBonuses(conn, { depositId, userId, amount }) {
           await conn.query('INSERT INTO bonuses (user_id, type, amount, reference_id) VALUES (?, ?, ?, ?)',
             [userId, 'slab', slabBonus, `deposit_${depositId}_slab_${threshold}`]);
 
-          const [[walletRow]] = await conn.query('SELECT balance FROM wallets WHERE user_id = ?', [userId]);
+          const [[walletRow]] = await conn.query('SELECT balance, bonus_balance FROM wallets WHERE user_id = ?', [userId]);
+          const effectiveBalance = parseFloat(walletRow.balance) + parseFloat(walletRow.bonus_balance);
           await conn.query(
             `INSERT INTO wallet_transactions
               (user_id, type, amount, balance_after, status, reference_type, reference_id, remark)
              VALUES (?, 'bonus', ?, ?, 'completed', 'bonus', ?, ?)`,
-            [userId, slabBonus, parseFloat(walletRow.balance), `slab_${depositId}_${threshold}`, `Slab bonus for ₹${threshold}+ deposit`]
+            [userId, slabBonus, effectiveBalance, `slab_${depositId}_${threshold}`, `Slab bonus for ₹${threshold}+ deposit`]
           );
         }
         break; // Only apply highest matching slab

@@ -80,6 +80,11 @@ function GamePageInner() {
   const [crossAmount, setCrossAmount] = useState('');
   const [crossIncludeJodi, setCrossIncludeJodi] = useState(true); 
   const [crossCombos, setCrossCombos] = useState([]);
+
+  // Message (bulk bet) state
+  const [messageText, setMessageText] = useState('');
+  const [messageBets, setMessageBets] = useState([]);
+  const [messageError, setMessageError] = useState('');
   const [gameInfo, setGameInfo] = useState(null)
   const [countdown, setCountdown] = useState('00:00')
   const [bettingClosed, setBettingClosed] = useState(false)
@@ -253,6 +258,72 @@ function GamePageInner() {
     setCrossCombos(combos);
   };
 
+  // --- Message (bulk bet) parser ---
+  function parseBetMessage(text) {
+    if (!text || !text.trim()) return [];
+    const results = new Map();
+    const lines = text.split(/\n/).map(l => l.trim()).filter(Boolean);
+
+    for (const line of lines) {
+      // Pattern 3: "12 13 45 34 (30)" — multiple numbers, same amount in parens
+      const groupMatch = line.match(/^([\d\s]+)\(\s*(\d+)\s*\)$/);
+      if (groupMatch) {
+        const amt = parseInt(groupMatch[2]);
+        if (amt > 0) {
+          const nums = groupMatch[1].trim().split(/\s+/);
+          for (const n of nums) {
+            const padded = n.padStart(2, '0');
+            if (/^\d{1,2}$/.test(n) && parseInt(n) >= 0 && parseInt(n) <= 99) {
+              results.set(padded, amt);
+            }
+          }
+        }
+        continue;
+      }
+
+      // Pattern 1 & 2: "12=50" or "12=50,15=50,88=10"
+      const segments = line.split(',').map(s => s.trim()).filter(Boolean);
+      for (const seg of segments) {
+        const pairMatch = seg.match(/^(\d{1,2})\s*=\s*(\d+)$/);
+        if (pairMatch) {
+          const num = parseInt(pairMatch[1]);
+          const amt = parseInt(pairMatch[2]);
+          if (num >= 0 && num <= 99 && amt > 0) {
+            results.set(String(num).padStart(2, '0'), amt);
+          }
+        }
+      }
+    }
+    return Array.from(results.entries()).map(([number, amount]) => ({ number, amount }));
+  }
+
+  // Live-parse message text
+  useEffect(() => {
+    const parsed = parseBetMessage(messageText);
+    setMessageBets(parsed);
+    setMessageError('');
+  }, [messageText]);
+
+  const addMessageBets = () => {
+    if (messageBets.length === 0) {
+      setMessageError('Invalid format detected. Please follow supported patterns.');
+      return;
+    }
+    // Merge into savedAmounts (jodi)
+    setSavedAmounts(prev => {
+      const copy = { ...prev };
+      for (const b of messageBets) {
+        copy[b.number] = String(b.amount);
+      }
+      return copy;
+    });
+    setMessageText('');
+    setMessageBets([]);
+    setActiveTab('tab-1');
+  };
+
+  const messageBetsTotal = useMemo(() => messageBets.reduce((s, b) => s + b.amount, 0), [messageBets]);
+
   const getTotal = useCallback(() => {
     let total = 0;
     Object.values(savedAmounts).forEach(v => total += parseInt(v) || 0);
@@ -308,6 +379,8 @@ function GamePageInner() {
       setSavedAmounts({}); setHarufAndar({}); setHarufBahar({}); setCrossCombos([]);
       setCrossDigits('');
       setCrossAmount('');
+      setMessageText('');
+      setMessageBets([]);
 
       const params = new URLSearchParams({
         type: 'bet',
@@ -365,6 +438,7 @@ function GamePageInner() {
             <button type="button" className={tabButtonClass(activeTab === 'tab-1')} onClick={() => setActiveTab('tab-1')}>Jodi</button>
             <button type="button" className={tabButtonClass(activeTab === 'tab-2')} onClick={() => setActiveTab('tab-2')}>Haruf</button>
             <button type="button" className={tabButtonClass(activeTab === 'tab-3')} onClick={() => setActiveTab('tab-3')}>Crossing</button>
+            <button type="button" className={tabButtonClass(activeTab === 'tab-4')} onClick={() => setActiveTab('tab-4')}>Message</button>
           </div>
 
           <div className={activeTab === 'tab-1' ? 'block' : 'hidden'}>
@@ -446,6 +520,63 @@ function GamePageInner() {
                     </div>
                   </div>
                 )}
+            </div>
+          </div>
+
+          {/* MESSAGE TAB — bulk bet entry */}
+          <div className={activeTab === 'tab-4' ? 'block' : 'hidden'}>
+            <div className="p-4">
+              <div className="mb-3 text-sm font-black uppercase tracking-[0.14em] text-[#111]">Bulk Bet Entry</div>
+              <textarea
+                rows={5}
+                value={messageText}
+                onChange={e => setMessageText(e.target.value)}
+                placeholder={"12=50\n15=50,88=10,99=20\n12 13 45 34 54 (30)"}
+                className="w-full resize-none border-2 border-[#e0e0e0] bg-white px-4 py-3 text-sm text-[#1a1a1a] outline-none transition focus:border-[#b88422]"
+              />
+
+              {messageError && <div className="mt-2 text-xs font-semibold text-[#b91c1c]">{messageError}</div>}
+
+              {/* Format guide */}
+              <div className="mt-3 border border-[#f1e7d3] bg-[#fff8e7] p-3">
+                <div className="mb-1 text-[11px] font-black uppercase tracking-[0.14em] text-[#6b5a3a]">Accepted Formats</div>
+                <div className="space-y-1 text-xs text-[#4a3f2f]">
+                  <p>1️⃣ Single bet: <span className="font-mono font-bold">12=50</span></p>
+                  <p>2️⃣ Multiple bets: <span className="font-mono font-bold">12=50,15=50,88=10</span></p>
+                  <p>3️⃣ Same amount: <span className="font-mono font-bold">12 13 45 34 54 (30)</span></p>
+                </div>
+              </div>
+
+              {/* Preview */}
+              {messageBets.length > 0 && (
+                <div className="mt-4 overflow-hidden bg-black">
+                  <div className="flex justify-between bg-[#b88422] px-5 py-2.5">
+                    <span className="text-xs font-black uppercase tracking-[0.14em] text-[#1f1500]">Preview Bets</span>
+                    <span className="text-xs font-black text-[#1f1500]">{messageBets.length} bets</span>
+                  </div>
+                  <div className="max-h-60 overflow-y-auto">
+                    {messageBets.map((b, i) => (
+                      <div key={i} className="flex justify-between border-b border-[#333] px-5 py-2.5 font-bold text-white">
+                        <span>{b.number}</span>
+                        <span>₹{b.amount}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex justify-between bg-[#1a1a1a] px-5 py-3">
+                    <span className="text-sm font-bold text-[#ffd26a]">Total</span>
+                    <span className="text-sm font-bold text-[#ffd26a]">₹{messageBetsTotal}</span>
+                  </div>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={addMessageBets}
+                disabled={bettingClosed || messageBets.length === 0}
+                className={`${primaryButtonClass} mt-4`}
+              >
+                ADD BETS
+              </button>
             </div>
           </div>
         </div>

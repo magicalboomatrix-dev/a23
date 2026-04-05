@@ -29,7 +29,7 @@ function generateOrderRef() {
  * Also ensures no other pending order has the same pay_amount.
  */
 async function generateUniquePayAmount(baseAmount) {
-  for (let attempt = 0; attempt < 10; attempt++) {
+  for (let attempt = 0; attempt < 20; attempt++) {
     const paise = Math.floor(Math.random() * 99) + 1; // 1-99
     const payAmount = parseFloat((Math.floor(baseAmount) + paise / 100).toFixed(2));
     const [existing] = await pool.query(
@@ -38,8 +38,8 @@ async function generateUniquePayAmount(baseAmount) {
     );
     if (existing.length === 0) return payAmount;
   }
-  // Fallback: use base amount (rare edge case)
-  return parseFloat(parseFloat(baseAmount).toFixed(2));
+  // All 99 paise slots occupied for this base amount — reject rather than risk collision
+  throw new Error('Unable to generate unique payment amount. Too many concurrent orders for this amount. Please try again in a moment.');
 }
 
 /**

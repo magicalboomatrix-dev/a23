@@ -99,7 +99,9 @@ const TIME_PATTERNS = [
 const ORDER_REF_PATTERN = /\bRM([A-Z0-9]{6})\b/i;
 
 // Messages containing these keywords are OUTGOING / debit transactions — reject immediately.
-const DEBIT_KEYWORDS = /\b(debited|paid|sent|withdrawn|deducted|request|requested|refund(?:ed)?|pay\s+₹|pay\s+Rs|you\s+paid|you\s+sent|you\s+transferred)\b/i;
+// NOTE: Do NOT add bare "sent" here — it matches legitimate credit messages like
+// "Rs 500 sent by Rahul to your account". Use context-specific patterns instead.
+const DEBIT_KEYWORDS = /\b(debited|paid|withdrawn|deducted|request|requested|pay\s+₹|pay\s+Rs|you\s+paid|you\s+sent|you\s+transferred)\b/i;
 
 // At least one of these must appear for the message to be treated as an incoming credit.
 const CREDIT_KEYWORDS = /\b(credited|received|credit|deposited|deposit|payment\s+of|money\s+received)\b/i;
