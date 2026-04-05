@@ -35,6 +35,7 @@ async function reconcile() {
       SELECT user_id, SUM(amount) AS calculated
       FROM wallet_transactions
       WHERE status = 'completed'
+        AND type != 'bonus'
       GROUP BY user_id
     ) wt ON wt.user_id = w.user_id
   `);

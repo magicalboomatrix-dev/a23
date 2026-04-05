@@ -153,7 +153,7 @@ async function checkStaleJobs() {
  */
 async function checkLedgerDrift() {
   const [[walletSum]] = await pool.query(
-    'SELECT COALESCE(SUM(balance), 0) AS total FROM wallets'
+    'SELECT COALESCE(SUM(balance + bonus_balance), 0) AS total FROM wallets'
   );
   const [[txnSum]] = await pool.query(
     'SELECT COALESCE(SUM(amount), 0) AS total FROM wallet_transactions WHERE status = ?',

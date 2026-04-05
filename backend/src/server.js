@@ -122,7 +122,9 @@ app.use(cors({
       return callback(null, true);
     }
 
-    return callback(new Error('Not allowed by CORS'));
+    const corsErr = new Error('Not allowed by CORS');
+    corsErr.statusCode = 403;
+    return callback(corsErr);
   },
   credentials: true
 }));
