@@ -1,10 +1,10 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import api from '../utils/api';
 import { useToast, ToastContainer } from '../components/ui';
 
 function formatCurrency(value) {
-  return `₹${Number(value || 0).toLocaleString('en-IN')}`;
+  return `?${Number(value || 0).toLocaleString('en-IN')}`;
 }
 
 function formatScannerAuditField(fieldName) {
@@ -202,7 +202,7 @@ export default function ModeratorDetail() {
                 disabled={scannerSaving}
                 className="px-4 py-2 bg-green-600 text-white text-sm hover:bg-green-700 disabled:opacity-50"
               >
-                {scannerSaving ? 'Saving…' : 'Save Scanner Settings'}
+                {scannerSaving ? 'Saving�' : 'Save Scanner Settings'}
               </button>
             </form>
           ) : (

@@ -481,11 +481,27 @@ exports.getDashboardStats = async (req, res, next) => {
 
 // ── Payout Rates ──────────────────────────────────────────────────────
 
+const DEFAULT_PAYOUT_RATES = [
+  { game_type: 'jodi', multiplier: 90 },
+  { game_type: 'haruf_andar', multiplier: 9 },
+  { game_type: 'haruf_bahar', multiplier: 9 },
+  { game_type: 'crossing', multiplier: 90 },
+];
+
 exports.getPayoutRates = async (req, res, next) => {
   try {
-    const [rates] = await pool.query(
+    let [rates] = await pool.query(
       'SELECT id, game_type, multiplier, updated_at FROM game_payout_rates ORDER BY game_type'
     );
+    if (rates.length === 0) {
+      await pool.query(
+        'INSERT IGNORE INTO game_payout_rates (game_type, multiplier) VALUES ?',
+        [DEFAULT_PAYOUT_RATES.map(r => [r.game_type, r.multiplier])]
+      );
+      [rates] = await pool.query(
+        'SELECT id, game_type, multiplier, updated_at FROM game_payout_rates ORDER BY game_type'
+      );
+    }
     res.json({ rates });
   } catch (error) {
     next(error);
@@ -509,8 +525,8 @@ exports.updatePayoutRates = async (req, res, next) => {
           return res.status(400).json({ error: `Invalid rate for "${game_type}".` });
         }
         await conn.query(
-          'UPDATE game_payout_rates SET multiplier = ?, updated_by = ?, updated_at = NOW() WHERE game_type = ?',
-          [mult, req.user.id, game_type]
+          'INSERT INTO game_payout_rates (game_type, multiplier, updated_by) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE multiplier = VALUES(multiplier), updated_by = VALUES(updated_by), updated_at = NOW()',
+          [game_type, mult, req.user.id]
         );
       }
       await conn.commit();
@@ -525,11 +541,27 @@ exports.updatePayoutRates = async (req, res, next) => {
 
 // ── Bonus Rates ───────────────────────────────────────────────────────
 
+const DEFAULT_BONUS_RATES = [
+  { game_type: 'jodi', bonus_multiplier: 0 },
+  { game_type: 'haruf_andar', bonus_multiplier: 0 },
+  { game_type: 'haruf_bahar', bonus_multiplier: 0 },
+  { game_type: 'crossing', bonus_multiplier: 0 },
+];
+
 exports.getBonusRates = async (req, res, next) => {
   try {
-    const [rates] = await pool.query(
+    let [rates] = await pool.query(
       'SELECT id, game_type, bonus_multiplier, updated_at FROM game_bonus_rates ORDER BY game_type'
     );
+    if (rates.length === 0) {
+      await pool.query(
+        'INSERT IGNORE INTO game_bonus_rates (game_type, bonus_multiplier) VALUES ?',
+        [DEFAULT_BONUS_RATES.map(r => [r.game_type, r.bonus_multiplier])]
+      );
+      [rates] = await pool.query(
+        'SELECT id, game_type, bonus_multiplier, updated_at FROM game_bonus_rates ORDER BY game_type'
+      );
+    }
     res.json({ rates });
   } catch (error) {
     next(error);
@@ -553,8 +585,8 @@ exports.updateBonusRates = async (req, res, next) => {
           return res.status(400).json({ error: `Invalid bonus rate for "${game_type}".` });
         }
         await conn.query(
-          'UPDATE game_bonus_rates SET bonus_multiplier = ?, updated_by = ?, updated_at = NOW() WHERE game_type = ?',
-          [mult, req.user.id, game_type]
+          'INSERT INTO game_bonus_rates (game_type, bonus_multiplier, updated_by) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE bonus_multiplier = VALUES(bonus_multiplier), updated_by = VALUES(updated_by), updated_at = NOW()',
+          [game_type, mult, req.user.id]
         );
       }
       await conn.commit();

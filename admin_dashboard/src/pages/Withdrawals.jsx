@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import api from '../utils/api';
 import { useToast, ToastContainer, useConfirm, ConfirmModal } from '../components/ui';
 
@@ -76,7 +76,7 @@ export default function Withdrawals() {
               <textarea
                 className="w-full border border-gray-300 px-3 py-2 text-sm resize-none"
                 rows={3}
-                placeholder="Enter rejection reason…"
+                placeholder="Enter rejection reason�"
                 value={rejectModal.reason}
                 onChange={(e) => setRejectModal((m) => ({ ...m, reason: e.target.value }))}
               />
@@ -131,12 +131,12 @@ export default function Withdrawals() {
                 <td className="px-4 py-3">{w.id}</td>
                 <td className="px-4 py-3 font-medium">{w.user_name}</td>
                 <td className="px-4 py-3">{w.user_phone}</td>
-                <td className="px-4 py-3 text-right font-semibold text-red-700">₹{parseFloat(w.amount).toLocaleString()}</td>
+                <td className="px-4 py-3 text-right font-semibold text-red-700">?{parseFloat(w.amount).toLocaleString()}</td>
                 <td className="px-4 py-3">{w.bank_name}</td>
                 <td className="px-4 py-3 font-mono text-xs">{w.account_number}</td>
                 <td className="px-4 py-3 font-mono text-xs">{w.ifsc}</td>
                 <td className="px-4 py-3 text-center">
-                  {w.is_flagged ? <span className="px-2 py-1 bg-red-100 text-red-700 text-xs font-medium">⚠ Flagged</span> : '-'}
+                  {w.is_flagged ? <span className="px-2 py-1 bg-red-100 text-red-700 text-xs font-medium">? Flagged</span> : '-'}
                 </td>
                 <td className="px-4 py-3 text-center">
                   <span className={`px-2 py-1 text-xs font-medium ${
@@ -171,3 +171,4 @@ export default function Withdrawals() {
     </div>
   );
 }
+

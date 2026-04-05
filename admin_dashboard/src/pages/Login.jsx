@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
@@ -74,3 +74,4 @@ export default function Login() {
     </div>
   );
 }
+

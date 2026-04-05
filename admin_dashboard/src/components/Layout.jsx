@@ -89,29 +89,32 @@ export default function Layout() {
       </aside>
 
       {/* Main content */}
-      <div className="lg:ml-64 min-h-screen">
+      <div className="lg:ml-64 flex flex-col h-screen">
         {/* Top bar */}
-        <header className="bg-white border-b border-gray-300 px-6 py-4 flex items-center justify-between">
+        <header className="shrink-0 z-20 bg-white border-b border-gray-300 px-3 sm:px-6 py-2 sm:py-4 flex items-center justify-between gap-2">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="lg:hidden text-gray-600 hover:text-gray-800"
+            className="lg:hidden text-gray-600 hover:text-gray-800 shrink-0"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
 
-          <h2 className="text-lg font-semibold text-gray-800">
+          <h2 className="text-sm sm:text-lg font-semibold text-gray-800 truncate">
             {getCurrentPageLabel(location.pathname)}
           </h2>
 
-          <div className="text-sm text-gray-500">
+          <div className="hidden sm:block text-sm text-gray-500 shrink-0">
             {new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          </div>
+          <div className="sm:hidden text-xs text-gray-400 shrink-0">
+            {new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
           </div>
         </header>
 
         {/* Page content */}
-        <main className="p-6 overflow-x-hidden bg-gray-100 min-h-[calc(100vh-65px)]">
+        <main className="flex-1 overflow-y-auto overflow-x-auto p-2 sm:p-4 lg:p-6 bg-gray-100 min-w-0">
           <Outlet />
         </main>
       </div>

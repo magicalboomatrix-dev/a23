@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import api from '../utils/api';
 import { useToast, ToastContainer, useConfirm, ConfirmModal } from '../components/ui';
 
@@ -61,7 +61,7 @@ export default function Games() {
       loadGames();
     } catch (err) {
       if (err.response?.status === 409) {
-        setError('Game already exists — try a different name.');
+        setError('Game already exists � try a different name.');
       } else {
         setError(err.response?.data?.error || 'Failed');
       }
@@ -79,7 +79,7 @@ export default function Games() {
       loadGames();
     } catch (err) {
       if (err.response?.status === 409) {
-        setError('Game already exists — try a different name.');
+        setError('Game already exists � try a different name.');
       } else {
         setError(err.response?.data?.error || 'Failed');
       }
@@ -286,7 +286,7 @@ export default function Games() {
                 <p className="text-xs text-gray-400">Declared: {new Date(g.declared_at).toLocaleString('en-IN')}</p>
               )}
               {g.pending_bets_count > 0 && (
-                <p className="text-orange-600 font-semibold text-xs">⏳ {g.pending_bets_count} pending bet(s)</p>
+                <p className="text-orange-600 font-semibold text-xs">? {g.pending_bets_count} pending bet(s)</p>
               )}
             </div>
             <div className="flex gap-2 mt-4">
@@ -328,3 +328,4 @@ export default function Games() {
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import api from '../utils/api';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
@@ -35,14 +35,14 @@ export default function Analytics() {
   return (
     <div className="space-y-6">
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-row gap-3">
         <select value={selectedGame} onChange={(e) => setSelectedGame(e.target.value)}
-          className="px-4 py-2 border focus:ring-2 focus:ring-primary-500 outline-none">
+          className="flex-1 min-w-0 px-2 py-2 border focus:ring-2 focus:ring-primary-500 outline-none text-sm">
           <option value="">All Games</option>
           {games.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
         </select>
         <select value={selectedType} onChange={(e) => setSelectedType(e.target.value)}
-          className="px-4 py-2 border focus:ring-2 focus:ring-primary-500 outline-none">
+          className="flex-1 min-w-0 px-2 py-2 border focus:ring-2 focus:ring-primary-500 outline-none text-sm">
           <option value="">All Types</option>
           <option value="jodi">Jodi</option>
           <option value="haruf_andar">Haruf Andar</option>
@@ -60,32 +60,32 @@ export default function Analytics() {
           return (
         <>
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white border p-5">
-              <p className="text-sm text-gray-500">Numbers with Bets</p>
-              <p className="text-2xl font-bold text-primary-600">{summary.total_numbers_with_bets || 0}</p>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="bg-white border p-3 sm:p-5">
+              <p className="text-xs sm:text-sm text-gray-500">Numbers with Bets</p>
+              <p className="text-xl sm:text-2xl font-bold text-primary-600">{summary.total_numbers_with_bets || 0}</p>
             </div>
-            <div className="bg-white border p-5">
-              <p className="text-sm text-gray-500">Numbers with No Bets</p>
-              <p className="text-2xl font-bold text-gray-600">{noBetNumbers.length}</p>
+            <div className="bg-white border p-3 sm:p-5">
+              <p className="text-xs sm:text-sm text-gray-500">Numbers with No Bets</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-600">{noBetNumbers.length}</p>
             </div>
             {summary.highest_bet && (
-              <div className="bg-green-50 border border-green-200 p-5">
-                <p className="text-sm text-green-600">Highest Bet Number</p>
-                <p className="text-2xl font-bold text-green-700">#{summary.highest_bet.number}</p>
-                <p className="text-xs text-green-500">₹{parseFloat(summary.highest_bet.total_amount || 0).toLocaleString()} ({summary.highest_bet.bet_count} bets)</p>
+              <div className="bg-green-50 border border-green-200 p-3 sm:p-5">
+                <p className="text-xs sm:text-sm text-green-600">Highest Bet Number</p>
+                <p className="text-xl sm:text-2xl font-bold text-green-700">#{summary.highest_bet.number}</p>
+                <p className="text-xs text-green-500">?{parseFloat(summary.highest_bet.total_amount || 0).toLocaleString()} ({summary.highest_bet.bet_count} bets)</p>
               </div>
             )}
             {summary.lowest_bet && (
-              <div className="bg-red-50 border border-red-200 p-5">
-                <p className="text-sm text-red-600">Lowest Bet Number</p>
-                <p className="text-2xl font-bold text-red-700">#{summary.lowest_bet.number}</p>
-                <p className="text-xs text-red-500">₹{parseFloat(summary.lowest_bet.total_amount || 0).toLocaleString()} ({summary.lowest_bet.bet_count} bets)</p>
+              <div className="bg-red-50 border border-red-200 p-3 sm:p-5">
+                <p className="text-xs sm:text-sm text-red-600">Lowest Bet Number</p>
+                <p className="text-xl sm:text-2xl font-bold text-red-700">#{summary.lowest_bet.number}</p>
+                <p className="text-xs text-red-500">?{parseFloat(summary.lowest_bet.total_amount || 0).toLocaleString()} ({summary.lowest_bet.bet_count} bets)</p>
               </div>
             )}
           </div>
 
-          {/* Charts – hidden on mobile */}
+          {/* Charts � hidden on mobile */}
           <div className="hidden md:grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Bar chart - top 20 numbers */}
             {items.length > 0 && (
@@ -96,7 +96,7 @@ export default function Analytics() {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="number" tick={{ fontSize: 10 }} />
                   <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip formatter={(val) => `₹${parseFloat(val).toLocaleString()}`} />
+                  <Tooltip formatter={(val) => `?${parseFloat(val).toLocaleString()}`} />
                   <Bar dataKey="total_amount" fill="#eb950e" radius={[4, 4, 0, 0]} name="Total Amount" />
                 </BarChart>
               </ResponsiveContainer>
@@ -122,7 +122,7 @@ export default function Analytics() {
                       <Cell key={i} fill={COLORS[i % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(val) => `₹${val.toLocaleString()}`} />
+                  <Tooltip formatter={(val) => `?${val.toLocaleString()}`} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -134,7 +134,7 @@ export default function Analytics() {
             <div className="p-5 border-b">
               <h3 className="text-lg font-semibold text-gray-800">All Numbers Breakdown</h3>
             </div>
-            <div className="overflow-x-auto max-h-96">
+            <div className="overflow-x-auto overflow-y-auto max-h-96">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 sticky top-0">
                   <tr>
@@ -147,7 +147,7 @@ export default function Analytics() {
                   {items.map((a) => (
                     <tr key={a.number} className="hover:bg-gray-50">
                       <td className="px-4 py-2 font-mono font-bold">{a.number}</td>
-                      <td className="px-4 py-2 text-right font-medium">₹{parseFloat(a.total_amount || 0).toLocaleString()}</td>
+                      <td className="px-4 py-2 text-right font-medium">?{parseFloat(a.total_amount || 0).toLocaleString()}</td>
                       <td className="px-4 py-2 text-right text-gray-500">{a.bet_count}</td>
                     </tr>
                   ))}
@@ -171,7 +171,7 @@ export default function Analytics() {
             </div>
           )}
 
-          {/* Jantri Grid 00–99 */}
+          {/* Jantri Grid 00�99 */}
           {(() => {
             const lookup = {};
             items.forEach(item => {
@@ -195,61 +195,62 @@ export default function Analytics() {
             return (
               <div className="bg-white border">
                 {/* Header */}
-                <div className="bg-[#0a1628] text-white px-4 py-3 flex items-center justify-between">
-                  <h3 className="text-sm sm:text-base font-bold tracking-wide">Jantri (00 – 99)</h3>
-                  <span className="text-xs sm:text-sm font-semibold text-yellow-400">
-                    TOTAL: ₹{grandTotal.toLocaleString('en-IN')}
+                <div className="bg-[#0a1628] text-white px-2 py-2 flex items-center justify-between">
+                  <h3 className="text-xs font-bold tracking-wide">Jantri (00�99)</h3>
+                  <span className="text-[10px] font-semibold text-yellow-400">
+                    TOTAL: ?{grandTotal.toLocaleString('en-IN')}
                   </span>
                 </div>
 
-                {/* Scrollable table */}
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse" style={{ minWidth: 520 }}>
-                    <tbody>
-                      {rows.map((row, ri) => (
-                        <tr key={ri} className={ri % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                          {row.cells.map((cell, ci) => (
-                            <td
-                              key={ci}
-                              className="border border-gray-200 px-0.5 py-1 text-center"
-                              style={{ width: '8.5%' }}
-                            >
-                              <div className="text-[11px] sm:text-xs font-bold text-gray-900 leading-tight">{cell.num}</div>
-                              <div className={`text-[10px] sm:text-[11px] font-semibold leading-tight ${
-                                cell.amount > 0 ? 'text-green-700' : 'text-transparent select-none'
-                              }`}>
-                                {cell.amount > 0 ? cell.amount.toLocaleString('en-IN') : '0'}
-                              </div>
-                            </td>
-                          ))}
-                          <td className="border border-gray-200 px-1 py-1 text-right" style={{ width: '8.5%' }}>
-                            <div className="text-[10px] sm:text-xs font-bold text-red-500 leading-tight">
-                              {row.total > 0 ? row.total.toLocaleString('en-IN') : ''}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-
-                      {/* Column totals */}
-                      <tr className="border-t-2 border-gray-400 bg-gray-100">
-                        {colTotals.map((ct, ci) => (
-                          <td key={ci} className="border border-gray-200 px-0.5 py-1 text-center">
-                            <div className={`text-[10px] sm:text-[11px] font-bold leading-tight ${
-                              ct > 0 ? 'text-red-500' : 'text-transparent select-none'
+                {/* No scroll � table fills 100% width, 11 equal columns */}
+                <table className="w-full border-collapse table-fixed">
+                  <tbody>
+                    {rows.map((row, ri) => (
+                      <tr key={ri} className={ri % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                        {row.cells.map((cell, ci) => (
+                          <td
+                            key={ci}
+                            className="border border-gray-200 p-0 text-center"
+                            style={{ width: '8.33%' }}
+                          >
+                            <div className="text-[9px] font-bold text-gray-900 leading-tight py-[3px]">{cell.num}</div>
+                            <div className={`text-[8px] font-semibold leading-tight pb-[3px] ${
+                              cell.amount > 0 ? 'text-green-700' : 'text-transparent select-none'
                             }`}>
-                              {ct > 0 ? ct.toLocaleString('en-IN') : '0'}
+                              {cell.amount > 0 ? cell.amount.toLocaleString('en-IN') : '0'}
                             </div>
                           </td>
                         ))}
-                        <td className="border border-gray-200 px-1 py-1 text-right">
-                          <div className="text-[10px] sm:text-xs font-bold text-red-600 leading-tight">
-                            {grandTotal > 0 ? grandTotal.toLocaleString('en-IN') : ''}
+                        <td
+                          className="border border-gray-200 p-0 text-right"
+                          style={{ width: '8.33%' }}
+                        >
+                          <div className="text-[8px] font-bold text-red-500 leading-tight py-[3px] pr-0.5">
+                            {row.total > 0 ? row.total.toLocaleString('en-IN') : ''}
                           </div>
                         </td>
                       </tr>
-                    </tbody>
-                  </table>
-                </div>
+                    ))}
+
+                    {/* Column totals */}
+                    <tr className="border-t-2 border-gray-400 bg-gray-100">
+                      {colTotals.map((ct, ci) => (
+                        <td key={ci} className="border border-gray-200 p-0 text-center">
+                          <div className={`text-[8px] font-bold leading-tight py-[3px] ${
+                            ct > 0 ? 'text-red-500' : 'text-transparent select-none'
+                          }`}>
+                            {ct > 0 ? ct.toLocaleString('en-IN') : '0'}
+                          </div>
+                        </td>
+                      ))}
+                      <td className="border border-gray-200 p-0 text-right">
+                        <div className="text-[8px] font-bold text-red-600 leading-tight py-[3px] pr-0.5">
+                          {grandTotal > 0 ? grandTotal.toLocaleString('en-IN') : ''}
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             );
           })()}
@@ -259,3 +260,4 @@ export default function Analytics() {
     </div>
   );
 }
+

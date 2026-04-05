@@ -245,7 +245,7 @@ export default function AutoDeposits() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-dark-200">
+      <div className="flex gap-1 border-b border-dark-200 overflow-x-auto whitespace-nowrap scrollbar-none">
         {tabs.map((t) => (
           <button
             key={t.key}
@@ -715,3 +715,4 @@ function Pagination({ pagination, page, setPage }) {
     </div>
   );
 }
+
