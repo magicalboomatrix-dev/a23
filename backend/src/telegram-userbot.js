@@ -41,7 +41,8 @@
 require('dotenv').config();
 process.env.TZ = 'Asia/Kolkata';
 
-const { TelegramClient, events } = require('telegram');
+const { TelegramClient } = require('telegram');
+const { NewMessage } = require('telegram/events');
 const { StringSession } = require('telegram/sessions');
 const https = require('https');
 const logger = require('./utils/logger');
@@ -163,7 +164,7 @@ async function startUserbot() {
     } catch (err) {
       logger.error('userbot', 'Error handling message event', { error: err.message });
     }
-  }, new events.NewMessage({}));
+  }, new NewMessage({}));
 
   logger.info('userbot', `Listening for messages in chat ${ALLOWED_CHAT_ID}`);
 
