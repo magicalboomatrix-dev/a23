@@ -171,10 +171,58 @@ export default function Analytics() {
             </div>
           )}
 
-          {/* Jantri Grid 00�99 */}
+          {/* Haruf Grid 0-9 */}
           {(() => {
+            const harufItems = items.filter(item => /^\d$/.test(String(item.number)));
+            if (harufItems.length === 0) return null;
+
+            const harufLookup = {};
+            harufItems.forEach(item => {
+              harufLookup[String(item.number)] = (parseFloat(item.total_amount) || 0);
+            });
+            const digits = Array.from({ length: 10 }, (_, i) => String(i));
+            const harufTotal = digits.reduce((s, d) => s + (harufLookup[d] || 0), 0);
+
+            return (
+              <div className="bg-white border">
+                <div className="bg-[#0a1628] text-white px-2 py-2 flex items-center justify-between">
+                  <h3 className="text-xs font-bold tracking-wide">Haruf (0→9)</h3>
+                  <span className="text-[10px] font-semibold text-yellow-400">
+                    TOTAL: ₹{harufTotal.toLocaleString('en-IN')}
+                  </span>
+                </div>
+                <table className="w-full border-collapse table-fixed">
+                  <tbody>
+                    <tr className="bg-white">
+                      {digits.map(d => {
+                        const amt = harufLookup[d] || 0;
+                        return (
+                          <td key={d} className="border border-gray-200 p-0 text-center" style={{ width: '9.09%' }}>
+                            <div className="text-[9px] font-bold text-gray-900 leading-tight py-[3px]">{d}</div>
+                            <div className={`text-[8px] font-semibold leading-tight pb-[3px] ${amt > 0 ? 'text-green-700' : 'text-transparent select-none'}`}>
+                              {amt > 0 ? amt.toLocaleString('en-IN') : '0'}
+                            </div>
+                          </td>
+                        );
+                      })}
+                      <td className="border border-gray-200 p-0 text-right" style={{ width: '9.09%' }}>
+                        <div className="text-[8px] font-bold text-red-500 leading-tight py-[3px] pr-0.5">
+                          {harufTotal > 0 ? harufTotal.toLocaleString('en-IN') : ''}
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()}
+
+          {/* Jantri Grid 00→99 */}
+          {(() => {
+            const jodiItems = items.filter(item => /^\d{2}$/.test(String(item.number)));
+            if (jodiItems.length === 0 && (selectedType === 'haruf_andar' || selectedType === 'haruf_bahar')) return null;
             const lookup = {};
-            items.forEach(item => {
+            jodiItems.forEach(item => {
               const key = String(item.number).padStart(2, '0');
               lookup[key] = (lookup[key] || 0) + (parseFloat(item.total_amount) || 0);
             });
@@ -196,13 +244,13 @@ export default function Analytics() {
               <div className="bg-white border">
                 {/* Header */}
                 <div className="bg-[#0a1628] text-white px-2 py-2 flex items-center justify-between">
-                  <h3 className="text-xs font-bold tracking-wide">Jantri (00�99)</h3>
+                  <h3 className="text-xs font-bold tracking-wide">Jantri (00→99)</h3>
                   <span className="text-[10px] font-semibold text-yellow-400">
-                    TOTAL: ?{grandTotal.toLocaleString('en-IN')}
+                    TOTAL: ₹{grandTotal.toLocaleString('en-IN')}
                   </span>
                 </div>
 
-                {/* No scroll � table fills 100% width, 11 equal columns */}
+                {/* No scroll — table fills 100% width, 11 equal columns */}
                 <table className="w-full border-collapse table-fixed">
                   <tbody>
                     {rows.map((row, ri) => (
