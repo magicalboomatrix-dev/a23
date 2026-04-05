@@ -426,8 +426,8 @@ export default function MyBetsPage() {
                       </div>
                       <div className="mt-1 text-xs font-semibold text-[#111]">
                         {bet.session_date
-                          ? new Date(bet.session_date + 'T00:00:00').toLocaleDateString('en-IN')
-                          : new Date(bet.created_at).toLocaleDateString("en-IN")}
+                          ? new Date(bet.session_date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })
+                          : new Date(bet.created_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}
                       </div>
                     </div>
                     <div className="bg-[#f7f0e3] flex flex-col justify-center items-center p-2">

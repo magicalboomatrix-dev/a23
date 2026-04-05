@@ -11,9 +11,10 @@ const DEFAULT_WITHDRAWAL_WINDOWS = [
 // All known setting keys used by the backend, grouped by category
 const EXPECTED_SETTINGS = {
   'Betting Limits': [
-    { key: 'max_bet_full', label: 'Max Bet (>90 Min)', description: 'Max bet amount when 60+ min before close', default: '100000' },
-    { key: 'max_bet_30min', label: 'Max Bet (30�90 Min)', description: 'Max bet amount 30-60 min before close', default: '5000' },
-    { key: 'max_bet_last_30', label: 'Max Bet (<30 Min)', description: 'Max bet amount 15-30 min before close', default: '1000' },
+    { key: 'max_bet_full', label: 'Max Bet (>90 Min)', description: 'Max bet amount when 90+ min before close', default: '100000' },
+    { key: 'max_bet_30min', label: 'Max Bet (30–90 Min)', description: 'Max bet amount 30–90 min before close', default: '5000' },
+    { key: 'max_bet_last_30', label: 'Max Bet (15–30 Min)', description: 'Max bet amount 15–30 min before close', default: '1000' },
+    { key: 'max_bet_last_15', label: 'Max Bet (0–15 Min)', description: 'Max bet amount in last 15 min before close', default: '500' },
     { key: 'min_bet', label: 'Minimum Bet Amount', description: 'Minimum bet amount', default: '10' },
   ],
   'Deposit & Withdrawal': [

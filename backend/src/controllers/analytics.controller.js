@@ -100,7 +100,7 @@ exports.getBetAnalytics = async (req, res, next) => {
     const isModerator = req.user.role === 'moderator';
 
     let query = `
-      SELECT bn.number, SUM(bn.amount) as total_amount, COUNT(*) as bet_count
+      SELECT bn.number, b.type, SUM(bn.amount) as total_amount, COUNT(*) as bet_count
       FROM bet_numbers bn
       JOIN bets b ON bn.bet_id = b.id
       JOIN users u ON b.user_id = u.id
@@ -130,7 +130,7 @@ exports.getBetAnalytics = async (req, res, next) => {
       params.push(to);
     }
 
-    query += ' GROUP BY bn.number ORDER BY total_amount DESC';
+    query += ' GROUP BY bn.number, b.type ORDER BY total_amount DESC';
 
     const [analytics] = await pool.query(query, params);
 

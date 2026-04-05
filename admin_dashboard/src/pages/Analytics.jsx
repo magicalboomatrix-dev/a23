@@ -176,41 +176,60 @@ export default function Analytics() {
             const harufItems = items.filter(item => /^\d$/.test(String(item.number)));
             if (harufItems.length === 0) return null;
 
-            const harufLookup = {};
+            const andarLookup = {};
+            const baharLookup = {};
             harufItems.forEach(item => {
-              harufLookup[String(item.number)] = (parseFloat(item.total_amount) || 0);
+              const d = String(item.number);
+              const amt = parseFloat(item.total_amount) || 0;
+              if (item.type === 'haruf_andar') andarLookup[d] = (andarLookup[d] || 0) + amt;
+              else if (item.type === 'haruf_bahar') baharLookup[d] = (baharLookup[d] || 0) + amt;
+              else {
+                // If filtered to a specific type, put in both for display
+                andarLookup[d] = (andarLookup[d] || 0) + amt;
+              }
             });
+
             const digits = Array.from({ length: 10 }, (_, i) => String(i));
-            const harufTotal = digits.reduce((s, d) => s + (harufLookup[d] || 0), 0);
+            const andarTotal = digits.reduce((s, d) => s + (andarLookup[d] || 0), 0);
+            const baharTotal = digits.reduce((s, d) => s + (baharLookup[d] || 0), 0);
+            const grandTotal = andarTotal + baharTotal;
+
+            const renderRow = (label, lookup, rowTotal) => (
+              <tr className="bg-white">
+                <td className="border border-gray-200 p-0 text-center" style={{ width: '7.14%' }}>
+                  <div className="text-[9px] font-black text-blue-700 leading-tight py-[3px]">{label}</div>
+                </td>
+                {digits.map(d => {
+                  const amt = lookup[d] || 0;
+                  return (
+                    <td key={d} className="border border-gray-200 p-0 text-center" style={{ width: '7.14%' }}>
+                      <div className="text-[9px] font-bold text-gray-900 leading-tight py-[3px]">{d}</div>
+                      <div className={`text-[8px] font-semibold leading-tight pb-[3px] ${amt > 0 ? 'text-green-700' : 'text-transparent select-none'}`}>
+                        {amt > 0 ? amt.toLocaleString('en-IN') : '0'}
+                      </div>
+                    </td>
+                  );
+                })}
+                <td className="border border-gray-200 p-0 text-right" style={{ width: '7.14%' }}>
+                  <div className="text-[8px] font-bold text-red-500 leading-tight py-[3px] pr-0.5">
+                    {rowTotal > 0 ? rowTotal.toLocaleString('en-IN') : ''}
+                  </div>
+                </td>
+              </tr>
+            );
 
             return (
               <div className="bg-white border">
                 <div className="bg-[#0a1628] text-white px-2 py-2 flex items-center justify-between">
                   <h3 className="text-xs font-bold tracking-wide">Haruf (0→9)</h3>
                   <span className="text-[10px] font-semibold text-yellow-400">
-                    TOTAL: ₹{harufTotal.toLocaleString('en-IN')}
+                    TOTAL: ₹{grandTotal.toLocaleString('en-IN')}
                   </span>
                 </div>
                 <table className="w-full border-collapse table-fixed">
                   <tbody>
-                    <tr className="bg-white">
-                      {digits.map(d => {
-                        const amt = harufLookup[d] || 0;
-                        return (
-                          <td key={d} className="border border-gray-200 p-0 text-center" style={{ width: '9.09%' }}>
-                            <div className="text-[9px] font-bold text-gray-900 leading-tight py-[3px]">{d}</div>
-                            <div className={`text-[8px] font-semibold leading-tight pb-[3px] ${amt > 0 ? 'text-green-700' : 'text-transparent select-none'}`}>
-                              {amt > 0 ? amt.toLocaleString('en-IN') : '0'}
-                            </div>
-                          </td>
-                        );
-                      })}
-                      <td className="border border-gray-200 p-0 text-right" style={{ width: '9.09%' }}>
-                        <div className="text-[8px] font-bold text-red-500 leading-tight py-[3px] pr-0.5">
-                          {harufTotal > 0 ? harufTotal.toLocaleString('en-IN') : ''}
-                        </div>
-                      </td>
-                    </tr>
+                    {renderRow('A', andarLookup, andarTotal)}
+                    {renderRow('B', baharLookup, baharTotal)}
                   </tbody>
                 </table>
               </div>

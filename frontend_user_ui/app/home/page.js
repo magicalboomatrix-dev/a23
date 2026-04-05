@@ -478,7 +478,16 @@ const HomePage = () => {
                 </div>
               )}
               {!gamesLoading &&
-                (games ?? []).map((game) => {
+                [...(games ?? [])].sort((a, b) => {
+                  const now = new Date(Date.now() + serverOffsetMs);
+                  const aPlay = getGameAvailability(a, now).canPlay;
+                  const bPlay = getGameAvailability(b, now).canPlay;
+                  if (aPlay !== bPlay) return aPlay ? -1 : 1;
+                  // Within each group, sort by close time ascending
+                  const [ah, am] = (a.close_time || '').split(':').map(Number);
+                  const [bh, bm] = (b.close_time || '').split(':').map(Number);
+                  return (ah * 60 + am) - (bh * 60 + bm);
+                }).map((game) => {
                   const availability = getGameAvailability(game, new Date(Date.now() + serverOffsetMs));
                   return (
                     <div

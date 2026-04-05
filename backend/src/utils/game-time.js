@@ -143,12 +143,13 @@ function resolveGameWindow(game, now = new Date()) {
  * Returns { allowed, reason?, minutesLeft?, maxBet? }
  * maxBet is determined from the settings map provided.
  *
- * settingsMap keys: min_bet, max_bet_full, max_bet_30min, max_bet_last_30
+ * settingsMap keys: min_bet, max_bet_full, max_bet_30min, max_bet_last_30, max_bet_last_15
  *
  * Tiers:
- *   > 90 min before close → max_bet_full   (full limit)
+ *   > 90 min before close → max_bet_full    (full limit)
  *   30–90 min             → max_bet_30min   (medium limit)
- *   < 30 min              → max_bet_last_30 (low limit)
+ *   15–30 min             → max_bet_last_30 (low limit)
+ *   0–15 min              → max_bet_last_15 (final limit)
  *   after close           → blocked
  */
 function canPlaceBet(game, settingsMap = {}, now = new Date()) {
@@ -171,7 +172,8 @@ function canPlaceBet(game, settingsMap = {}, now = new Date()) {
   // If the caller didn't load settings, reject the bet rather than guess.
   const hasLimits = settingsMap.max_bet_full != null
     || settingsMap.max_bet_30min != null
-    || settingsMap.max_bet_last_30 != null;
+    || settingsMap.max_bet_last_30 != null
+    || settingsMap.max_bet_last_15 != null;
 
   if (!hasLimits) {
     return { allowed: false, reason: 'Betting limits not configured. Contact admin.' };
@@ -182,8 +184,10 @@ function canPlaceBet(game, settingsMap = {}, now = new Date()) {
     maxBet = settingsMap.max_bet_full ?? settingsMap.max_bet_30min;
   } else if (minutesLeft > 30) {
     maxBet = settingsMap.max_bet_30min ?? settingsMap.max_bet_last_30;
+  } else if (minutesLeft > 15) {
+    maxBet = settingsMap.max_bet_last_30 ?? settingsMap.max_bet_last_15;
   } else {
-    maxBet = settingsMap.max_bet_last_30 ?? settingsMap.max_bet_30min;
+    maxBet = settingsMap.max_bet_last_15 ?? settingsMap.max_bet_last_30;
   }
 
   const minBet = settingsMap.min_bet ?? 10;

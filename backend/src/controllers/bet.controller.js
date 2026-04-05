@@ -101,7 +101,7 @@ exports.placeBet = async (req, res, next) => {
 
     // Check time-based betting constraints using the game-time utility
     const [settings] = await conn.query(
-      "SELECT setting_key, setting_value FROM settings WHERE setting_key LIKE 'max_bet_%' OR setting_key = 'min_bet'"
+      "SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('max_bet_full','max_bet_30min','max_bet_last_30','max_bet_last_15','min_bet')"
     );
     const settingsMap = {};
     for (const s of settings) {
