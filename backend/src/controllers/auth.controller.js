@@ -3,7 +3,6 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { sendOtpSms } = require('../utils/sms');
 const { getPhoneCandidates, toE164Phone } = require('../utils/phone');
-const { IST_NOW_SQL } = require('../utils/sql-time');
 
 const MAX_MPIN_ATTEMPTS = 5;
 const MPIN_BLOCK_MINUTES = 30;
@@ -132,7 +131,7 @@ exports.verifyOTP = async (req, res, next) => {
     }
 
     const [otpRecords] = await pool.query(
-      `SELECT * FROM otps WHERE phone IN (?) AND purpose = ? AND is_used = 0 AND expires_at > ${IST_NOW_SQL} ORDER BY id DESC LIMIT 1`,
+      `SELECT * FROM otps WHERE phone IN (?) AND purpose = ? AND is_used = 0 AND expires_at > UTC_TIMESTAMP() ORDER BY id DESC LIMIT 1`,
       [phoneCandidates, purpose]
     );
 
