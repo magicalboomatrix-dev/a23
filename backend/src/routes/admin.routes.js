@@ -12,7 +12,7 @@ router.get('/flagged-accounts', authenticate, authorize('admin'), adminControlle
 router.get('/moderator-stats', authenticate, authorize('admin'), adminController.getModeratorStats);
 router.get('/moderator-stats/:id/transactions', authenticate, authorize('admin'), adminController.getModeratorTransactions);
 router.get('/moderators/:id/detail', authenticate, authorize('admin'), adminController.getModeratorDetail);
-router.get('/users/:id/detail', authenticate, authorize('admin'), adminController.getUserDetail);
+router.get('/users/:id/detail', authenticate, authorize('admin', 'moderator'), adminController.getUserDetail);
 router.get('/fraud-logs', authenticate, authorize('admin'), adminController.getFraudLogs);
 router.get('/fraud-alerts', authenticate, authorize('admin'), adminController.getFraudAlerts);
 router.get('/dashboard-stats', authenticate, authorize('admin'), adminController.getDashboardStats);

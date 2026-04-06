@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../utils/api';
+import { useAuth } from '../context/AuthContext';
 import { useToast, ToastContainer } from '../components/ui';
 
 export default function Users() {
+  const { user: authUser } = useAuth();
+  const isAdmin = authUser?.role === 'admin';
   const [users, setUsers] = useState([]);
   const [moderators, setModerators] = useState([]);
   const [pagination, setPagination] = useState({});
@@ -16,8 +19,8 @@ export default function Users() {
   const { toasts, success, error: toastError, dismiss } = useToast();
 
   useEffect(() => {
-    loadModerators();
-  }, []);
+    if (isAdmin) loadModerators();
+  }, [isAdmin]);
 
   useEffect(() => {
     loadUsers();
@@ -36,20 +39,22 @@ export default function Users() {
     setLoading(true);
     try {
       const params = { search, page, limit: 15, role: 'user' };
-      if (moderatorFilter !== 'all') {
+      if (isAdmin && moderatorFilter !== 'all') {
         params.moderator_id = moderatorFilter;
       }
 
       const res = await api.get('/admin/users', { params });
       setUsers(Array.isArray(res.data.users) ? res.data.users : []);
       setPagination(res.data.pagination || {});
-      setSelectedModerators((current) => {
-        const next = { ...current };
-        for (const user of res.data.users || []) {
-          next[user.id] = user.moderator_id ? String(user.moderator_id) : '';
-        }
-        return next;
-      });
+      if (isAdmin) {
+        setSelectedModerators((current) => {
+          const next = { ...current };
+          for (const user of res.data.users || []) {
+            next[user.id] = user.moderator_id ? String(user.moderator_id) : '';
+          }
+          return next;
+        });
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -99,22 +104,26 @@ export default function Users() {
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           className="flex-1 min-w-0 px-2 py-2 border text-sm focus:ring-2 focus:ring-primary-500 outline-none"
         />
-        <select
-          value={moderatorFilter}
-          onChange={(e) => { setModeratorFilter(e.target.value); setPage(1); }}
-          className="flex-1 min-w-0 px-2 py-2 border bg-white text-sm focus:ring-2 focus:ring-primary-500 outline-none"
-        >
-          <option value="all">All Users</option>
-          <option value="unassigned">No Moderator</option>
-          {moderators.map((moderator) => (
-            <option key={moderator.id} value={String(moderator.id)}>{moderator.name}</option>
-          ))}
-        </select>
+        {isAdmin && (
+          <select
+            value={moderatorFilter}
+            onChange={(e) => { setModeratorFilter(e.target.value); setPage(1); }}
+            className="flex-1 min-w-0 px-2 py-2 border bg-white text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+          >
+            <option value="all">All Users</option>
+            <option value="unassigned">No Moderator</option>
+            {moderators.map((moderator) => (
+              <option key={moderator.id} value={String(moderator.id)}>{moderator.name}</option>
+            ))}
+          </select>
+        )}
       </div>
 
-      <div className="bg-blue-50 border border-blue-100 p-4 text-sm text-blue-900">
-        Users created with a moderator referral code are now auto-assigned to that moderator. This screen lets admin find unassigned users and assign them manually.
-      </div>
+      {isAdmin && (
+        <div className="bg-blue-50 border border-blue-100 p-4 text-sm text-blue-900">
+          Users created with a moderator referral code are now auto-assigned to that moderator. This screen lets admin find unassigned users and assign them manually.
+        </div>
+      )}
 
       {/* Table */}
       <div className="bg-white border overflow-x-auto">
@@ -155,31 +164,35 @@ export default function Users() {
                     >
                       Details
                     </Link>
-                    <select
-                      value={selectedModerators[u.id] || ''}
-                      onChange={(e) => setSelectedModerators((current) => ({ ...current, [u.id]: e.target.value }))}
-                      className="w-full px-1 py-0.5 border text-xs bg-white"
-                    >
-                      <option value="">Select Mod</option>
-                      {moderators.map((moderator) => (
-                        <option key={moderator.id} value={String(moderator.id)}>{moderator.name}</option>
-                      ))}
-                    </select>
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => assignModerator(u.id)}
-                        disabled={!selectedModerators[u.id] || assigningUserId === u.id}
-                        className="px-2 py-0.5 text-xs font-medium bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50"
-                      >
-                        {assigningUserId === u.id ? '...' : 'Assign'}
-                      </button>
-                      <button
-                        onClick={() => toggleBlock(u.id, u.is_blocked)}
-                        className={`px-2 py-0.5 text-xs font-medium ${u.is_blocked ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-red-600 text-white hover:bg-red-700'}`}
-                      >
-                        {u.is_blocked ? 'Unblock' : 'Block'}
-                      </button>
-                    </div>
+                    {isAdmin && (
+                      <>
+                        <select
+                          value={selectedModerators[u.id] || ''}
+                          onChange={(e) => setSelectedModerators((current) => ({ ...current, [u.id]: e.target.value }))}
+                          className="w-full px-1 py-0.5 border text-xs bg-white"
+                        >
+                          <option value="">Select Mod</option>
+                          {moderators.map((moderator) => (
+            <option key={moderator.id} value={String(moderator.id)}>{moderator.name}</option>
+                          ))}
+                        </select>
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => assignModerator(u.id)}
+                            disabled={!selectedModerators[u.id] || assigningUserId === u.id}
+                            className="px-2 py-0.5 text-xs font-medium bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50"
+                          >
+                            {assigningUserId === u.id ? '...' : 'Assign'}
+                          </button>
+                          <button
+                            onClick={() => toggleBlock(u.id, u.is_blocked)}
+                            className={`px-2 py-0.5 text-xs font-medium ${u.is_blocked ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-red-600 text-white hover:bg-red-700'}`}
+                          >
+                            {u.is_blocked ? 'Unblock' : 'Block'}
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </td>
               </tr>

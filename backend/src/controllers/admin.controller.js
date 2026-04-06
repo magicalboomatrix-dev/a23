@@ -263,6 +263,19 @@ exports.getModeratorDetail = async (req, res, next) => {
 exports.getUserDetail = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const isModerator = req.user.role === 'moderator';
+
+    // Moderators may only view details of users assigned to them
+    if (isModerator) {
+      const [ownership] = await pool.query(
+        "SELECT id FROM users WHERE id = ? AND role = 'user' AND moderator_id = ? LIMIT 1",
+        [id, req.user.id]
+      );
+      if (ownership.length === 0) {
+        return res.status(403).json({ error: 'Access denied. User not assigned to you.' });
+      }
+    }
+
     const [[userRows], [deposits], [withdrawals], [walletTransactions], [bets], [bonuses], [bankAccounts], [notifications]] = await Promise.all([
       pool.query(`
         SELECT u.id, u.name, u.phone, u.referral_code, u.is_blocked, u.created_at, u.updated_at,

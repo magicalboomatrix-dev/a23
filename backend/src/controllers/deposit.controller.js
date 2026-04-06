@@ -18,9 +18,14 @@ const { clampPagination } = require('../utils/pagination');
 exports.getAllDeposits = async (req, res, next) => {
   try {
     const { page, limit, offset } = clampPagination(req.query);
+    const isModerator = req.user.role === 'moderator';
+
+    const whereClause = isModerator ? 'WHERE u.moderator_id = ?' : '';
+    const countParams = isModerator ? [req.user.id] : [];
 
     const [countResult] = await pool.query(
-      'SELECT COUNT(*) as total FROM deposits'
+      `SELECT COUNT(*) as total FROM deposits d JOIN users u ON d.user_id = u.id ${whereClause}`,
+      countParams
     );
 
     const [deposits] = await pool.query(
@@ -30,9 +35,10 @@ exports.getAllDeposits = async (req, res, next) => {
               u.name AS user_name, u.phone AS user_phone
        FROM deposits d
        JOIN users u ON d.user_id = u.id
+       ${whereClause}
        ORDER BY d.created_at DESC
        LIMIT ? OFFSET ?`,
-      [limit, offset]
+      [...countParams, limit, offset]
     );
 
     res.json({
