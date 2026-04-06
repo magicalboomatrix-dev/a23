@@ -111,6 +111,9 @@ exports.getBetAnalytics = async (req, res, next) => {
     if (isModerator) {
       query += ' AND u.moderator_id = ?';
       params.push(req.user.id);
+    } else if (req.user.role === 'admin' && req.query.moderator_id) {
+      query += ' AND u.moderator_id = ?';
+      params.push(req.query.moderator_id);
     }
 
     if (game_id) {

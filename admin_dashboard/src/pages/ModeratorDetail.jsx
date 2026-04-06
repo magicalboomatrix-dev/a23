@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import api from '../utils/api';
 import { useToast, ToastContainer } from '../components/ui';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 function formatCurrency(value) {
   return `₹${Number(value || 0).toLocaleString('en-IN')}`;
@@ -60,6 +61,13 @@ export default function ModeratorDetail() {
   const [pwShowNew, setPwShowNew] = useState(false);
   const [pwShowConfirm, setPwShowConfirm] = useState(false);
 
+  // Jantri state
+  const [games, setGames] = useState([]);
+  const [jantriGame, setJantriGame] = useState('');
+  const [jantriType, setJantriType] = useState('');
+  const [jantriAnalytics, setJantriAnalytics] = useState(null);
+  const [jantriLoading, setJantriLoading] = useState(false);
+
   const loadDetail = async () => {
     setLoading(true);
     try {
@@ -84,6 +92,31 @@ export default function ModeratorDetail() {
   useEffect(() => {
     loadDetail();
   }, [id]);
+
+  // Load games once
+  useEffect(() => {
+    api.get('/games').then(res => setGames(Array.isArray(res.data.games) ? res.data.games : [])).catch(console.error);
+  }, []);
+
+  // Load jantri analytics whenever filters or moderator id changes
+  const loadJantri = async () => {
+    setJantriLoading(true);
+    try {
+      const params = { moderator_id: id };
+      if (jantriGame) params.game_id = jantriGame;
+      if (jantriType) params.type = jantriType;
+      const res = await api.get('/analytics/bets', { params });
+      setJantriAnalytics(res.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setJantriLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (id) loadJantri();
+  }, [id, jantriGame, jantriType]);
 
   const handleScannerSave = async (e) => {
     e.preventDefault();
@@ -477,6 +510,184 @@ export default function ModeratorDetail() {
           </div>
         </form>
       </div>
+
+      {/* ── Jantri Section ──────────────────────────────────────── */}
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <h4 className="text-lg font-semibold text-gray-800">Bet Jantri (This Moderator's Users)</h4>
+          <div className="flex flex-row gap-2">
+            <select
+              value={jantriGame}
+              onChange={(e) => setJantriGame(e.target.value)}
+              className="flex-1 min-w-0 px-2 py-2 border focus:ring-2 focus:ring-primary-500 outline-none text-sm"
+            >
+              <option value="">All Games</option>
+              {games.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+            </select>
+            <select
+              value={jantriType}
+              onChange={(e) => setJantriType(e.target.value)}
+              className="flex-1 min-w-0 px-2 py-2 border focus:ring-2 focus:ring-primary-500 outline-none text-sm"
+            >
+              <option value="">All Types</option>
+              <option value="jodi">Jodi</option>
+              <option value="haruf_andar">Haruf Andar</option>
+              <option value="haruf_bahar">Haruf Bahar</option>
+              <option value="crossing">Crossing</option>
+            </select>
+          </div>
+        </div>
+
+        {jantriLoading && <div className="text-center py-6 text-gray-500 text-sm">Loading jantri...</div>}
+
+        {jantriAnalytics && !jantriLoading && (() => {
+          const items = Array.isArray(jantriAnalytics.analytics) ? jantriAnalytics.analytics : [];
+
+          // ── Haruf Grid 0–9 ─────────────────────────────────────
+          const harufSection = (() => {
+            const harufItems = items.filter(item => /^\d$/.test(String(item.number)));
+            if (harufItems.length === 0) return null;
+
+            const andarLookup = {};
+            const baharLookup = {};
+            harufItems.forEach(item => {
+              const d = String(item.number);
+              const amt = parseFloat(item.total_amount) || 0;
+              if (item.type === 'haruf_andar') andarLookup[d] = (andarLookup[d] || 0) + amt;
+              else if (item.type === 'haruf_bahar') baharLookup[d] = (baharLookup[d] || 0) + amt;
+              else andarLookup[d] = (andarLookup[d] || 0) + amt;
+            });
+
+            const digits = Array.from({ length: 10 }, (_, i) => String(i));
+            const andarTotal = digits.reduce((s, d) => s + (andarLookup[d] || 0), 0);
+            const baharTotal = digits.reduce((s, d) => s + (baharLookup[d] || 0), 0);
+            const grandTotal = andarTotal + baharTotal;
+
+            const renderRow = (label, lookup, rowTotal) => (
+              <tr className="bg-white">
+                <td className="border border-gray-200 p-0 text-center" style={{ width: '7.14%' }}>
+                  <div className="text-[9px] font-black text-blue-700 leading-tight py-[3px]">{label}</div>
+                </td>
+                {digits.map(d => {
+                  const amt = lookup[d] || 0;
+                  return (
+                    <td key={d} className="border border-gray-200 p-0 text-center" style={{ width: '7.14%' }}>
+                      <div className="text-[9px] font-bold text-gray-900 leading-tight py-[3px]">{d}</div>
+                      <div className={`text-[8px] font-semibold leading-tight pb-[3px] ${amt > 0 ? 'text-green-700' : 'text-transparent select-none'}`}>
+                        {amt > 0 ? amt.toLocaleString('en-IN') : '0'}
+                      </div>
+                    </td>
+                  );
+                })}
+                <td className="border border-gray-200 p-0 text-right" style={{ width: '7.14%' }}>
+                  <div className="text-[8px] font-bold text-red-500 leading-tight py-[3px] pr-0.5">
+                    {rowTotal > 0 ? rowTotal.toLocaleString('en-IN') : ''}
+                  </div>
+                </td>
+              </tr>
+            );
+
+            return (
+              <div className="bg-white border">
+                <div className="bg-[#0a1628] text-white px-2 py-2 flex items-center justify-between">
+                  <h3 className="text-xs font-bold tracking-wide">Haruf (0→9)</h3>
+                  <span className="text-[10px] font-semibold text-yellow-400">
+                    TOTAL: ₹{grandTotal.toLocaleString('en-IN')}
+                  </span>
+                </div>
+                <table className="w-full border-collapse table-fixed">
+                  <tbody>
+                    {renderRow('A', andarLookup, andarTotal)}
+                    {renderRow('B', baharLookup, baharTotal)}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })();
+
+          // ── Jantri Grid 00–99 ──────────────────────────────────
+          const jantriSection = (() => {
+            const jodiItems = items.filter(item => /^\d{2}$/.test(String(item.number)));
+            if (jodiItems.length === 0 && (jantriType === 'haruf_andar' || jantriType === 'haruf_bahar')) return null;
+            const lookup = {};
+            jodiItems.forEach(item => {
+              const key = String(item.number).padStart(2, '0');
+              lookup[key] = (lookup[key] || 0) + (parseFloat(item.total_amount) || 0);
+            });
+
+            const rows = Array.from({ length: 10 }, (_, r) => {
+              const cells = Array.from({ length: 10 }, (_, c) => {
+                const num = String(r * 10 + c).padStart(2, '0');
+                return { num, amount: lookup[num] || 0 };
+              });
+              const total = cells.reduce((s, cell) => s + cell.amount, 0);
+              return { cells, total };
+            });
+
+            const colTotals = Array(10).fill(0);
+            rows.forEach(row => row.cells.forEach((cell, ci) => { colTotals[ci] += cell.amount; }));
+            const grandTotal = colTotals.reduce((a, b) => a + b, 0);
+
+            return (
+              <div className="bg-white border">
+                <div className="bg-[#0a1628] text-white px-2 py-2 flex items-center justify-between">
+                  <h3 className="text-xs font-bold tracking-wide">Jantri (00→99)</h3>
+                  <span className="text-[10px] font-semibold text-yellow-400">
+                    TOTAL: ₹{grandTotal.toLocaleString('en-IN')}
+                  </span>
+                </div>
+                <table className="w-full border-collapse table-fixed">
+                  <tbody>
+                    {rows.map((row, ri) => (
+                      <tr key={ri} className={ri % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                        {row.cells.map((cell, ci) => (
+                          <td key={ci} className="border border-gray-200 p-0 text-center" style={{ width: '8.33%' }}>
+                            <div className="text-[9px] font-bold text-gray-900 leading-tight py-[3px]">{cell.num}</div>
+                            <div className={`text-[8px] font-semibold leading-tight pb-[3px] ${cell.amount > 0 ? 'text-green-700' : 'text-transparent select-none'}`}>
+                              {cell.amount > 0 ? cell.amount.toLocaleString('en-IN') : '0'}
+                            </div>
+                          </td>
+                        ))}
+                        <td className="border border-gray-200 p-0 text-right" style={{ width: '8.33%' }}>
+                          <div className="text-[8px] font-bold text-red-500 leading-tight py-[3px] pr-0.5">
+                            {row.total > 0 ? row.total.toLocaleString('en-IN') : ''}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    <tr className="border-t-2 border-gray-400 bg-gray-100">
+                      {colTotals.map((ct, ci) => (
+                        <td key={ci} className="border border-gray-200 p-0 text-center">
+                          <div className={`text-[8px] font-bold leading-tight py-[3px] ${ct > 0 ? 'text-red-500' : 'text-transparent select-none'}`}>
+                            {ct > 0 ? ct.toLocaleString('en-IN') : '0'}
+                          </div>
+                        </td>
+                      ))}
+                      <td className="border border-gray-200 p-0 text-right">
+                        <div className="text-[8px] font-bold text-red-600 leading-tight py-[3px] pr-0.5">
+                          {grandTotal > 0 ? grandTotal.toLocaleString('en-IN') : ''}
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            );
+          })();
+
+          if (!harufSection && !jantriSection) {
+            return <div className="bg-white border p-6 text-center text-sm text-gray-400">No bet data for this moderator's users</div>;
+          }
+
+          return (
+            <>
+              {harufSection}
+              {jantriSection}
+            </>
+          );
+        })()}
+      </div>
+      {/* ── End Jantri Section ──────────────────────────────────── */}
 
       <ToastContainer toasts={toasts} dismiss={dismiss} />
     </div>
