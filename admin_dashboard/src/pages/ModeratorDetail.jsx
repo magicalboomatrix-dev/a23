@@ -55,6 +55,10 @@ export default function ModeratorDetail() {
   const [scannerForm, setScannerForm] = useState({ upi_id: '', scanner_label: '', scanner_enabled: false });
   const [scannerEditing, setScannerEditing] = useState(false);
   const [scannerSaving, setScannerSaving] = useState(false);
+  const [pwForm, setPwForm] = useState({ newPassword: '', confirmPassword: '' });
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwShowNew, setPwShowNew] = useState(false);
+  const [pwShowConfirm, setPwShowConfirm] = useState(false);
 
   const loadDetail = async () => {
     setLoading(true);
@@ -97,6 +101,28 @@ export default function ModeratorDetail() {
       toastError(err.response?.data?.error || 'Failed to update scanner.');
     } finally {
       setScannerSaving(false);
+    }
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    if (pwForm.newPassword.length < 6) {
+      toastError('Password must be at least 6 characters.');
+      return;
+    }
+    if (pwForm.newPassword !== pwForm.confirmPassword) {
+      toastError('Passwords do not match.');
+      return;
+    }
+    setPwSaving(true);
+    try {
+      await api.put(`/moderators/${id}`, { password: pwForm.newPassword });
+      success('Password changed successfully.');
+      setPwForm({ newPassword: '', confirmPassword: '' });
+    } catch (err) {
+      toastError(err.response?.data?.error || 'Failed to change password.');
+    } finally {
+      setPwSaving(false);
     }
   };
 
@@ -377,6 +403,81 @@ export default function ModeratorDetail() {
           {notifications.length === 0 && <div className="text-sm text-gray-400">No notifications</div>}
         </div>
       </div>
+      <div className="bg-white border p-5 space-y-4">
+        <h4 className="text-lg font-semibold text-gray-800">Change Password</h4>
+        <form onSubmit={handleChangePassword} className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg">
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">New Password</label>
+            <div className="relative">
+              <input
+                type={pwShowNew ? 'text' : 'password'}
+                value={pwForm.newPassword}
+                onChange={(e) => setPwForm((p) => ({ ...p, newPassword: e.target.value }))}
+                placeholder="Min. 6 characters"
+                className="w-full px-3 py-2 pr-10 border text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setPwShowNew((v) => !v)}
+                className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-600"
+                tabIndex={-1}
+              >
+                {pwShowNew ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                )}
+              </button>
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">Confirm Password</label>
+            <div className="relative">
+              <input
+                type={pwShowConfirm ? 'text' : 'password'}
+                value={pwForm.confirmPassword}
+                onChange={(e) => setPwForm((p) => ({ ...p, confirmPassword: e.target.value }))}
+                placeholder="Repeat password"
+                className="w-full px-3 py-2 pr-10 border text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setPwShowConfirm((v) => !v)}
+                className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-600"
+                tabIndex={-1}
+              >
+                {pwShowConfirm ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                )}
+              </button>
+            </div>
+          </div>
+          <div className="sm:col-span-2">
+            <button
+              type="submit"
+              disabled={pwSaving}
+              className="px-5 py-2 bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50"
+            >
+              {pwSaving ? 'Saving...' : 'Change Password'}
+            </button>
+          </div>
+        </form>
+      </div>
+
       <ToastContainer toasts={toasts} dismiss={dismiss} />
     </div>
   );
