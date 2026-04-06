@@ -500,15 +500,15 @@ exports.adminCreditOrder = async (req, res, next) => {
 
     await conn.beginTransaction();
 
-    // Load order
+    // Load order — allow crediting pending OR expired orders
     const [orders] = await conn.query(
-      "SELECT id, user_id, amount FROM pending_deposit_orders WHERE id = ? AND status = 'pending' LIMIT 1 FOR UPDATE",
+      "SELECT id, user_id, amount, status FROM pending_deposit_orders WHERE id = ? AND status IN ('pending','expired') LIMIT 1 FOR UPDATE",
       [id]
     );
 
     if (orders.length === 0) {
       await conn.rollback();
-      return res.status(404).json({ error: 'Pending order not found.' });
+      return res.status(404).json({ error: 'Order not found or already matched/cancelled.' });
     }
 
     const order = orders[0];
@@ -606,10 +606,13 @@ exports.searchByUtr = async (req, res, next) => {
 
     // Search webhook transactions
     const [webhookRows] = await pool.query(
-      `SELECT id, reference_number, amount, payer_name, status, raw_message, order_ref, matched_order_id, created_at
-       FROM upi_webhook_transactions
-       WHERE reference_number LIKE ?
-       ORDER BY created_at DESC
+      `SELECT uwt.id, uwt.reference_number, uwt.amount, uwt.payer_name, uwt.status,
+              uwt.raw_message, uwt.matched_order_id, uwt.created_at,
+              pdo.order_ref
+       FROM upi_webhook_transactions uwt
+       LEFT JOIN pending_deposit_orders pdo ON pdo.id = uwt.matched_order_id
+       WHERE uwt.reference_number LIKE ?
+       ORDER BY uwt.created_at DESC
        LIMIT 20`,
       [`%${utr}%`]
     );
@@ -749,10 +752,13 @@ exports.getUnmatchedTransactions = async (req, res, next) => {
     const offset = (page - 1) * limit;
 
     const [rows] = await pool.query(
-      `SELECT id, reference_number, amount, payer_name, status, raw_message, order_ref, created_at
-       FROM upi_webhook_transactions
-       WHERE status IN ('unmatched', 'received')
-       ORDER BY created_at DESC
+      `SELECT uwt.id, uwt.reference_number, uwt.amount, uwt.payer_name, uwt.status,
+              uwt.raw_message, uwt.matched_order_id, uwt.created_at,
+              pdo.order_ref
+       FROM upi_webhook_transactions uwt
+       LEFT JOIN pending_deposit_orders pdo ON pdo.id = uwt.matched_order_id
+       WHERE uwt.status IN ('unmatched', 'received')
+       ORDER BY uwt.created_at DESC
        LIMIT ? OFFSET ?`,
       [limit, offset]
     );

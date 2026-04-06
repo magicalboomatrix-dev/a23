@@ -380,7 +380,7 @@ export default function AutoDeposits() {
                     <td className="px-4 py-2 text-xs">{fmt(order.created_at)}</td>
                     <td className="px-4 py-2 text-xs">{fmt(order.expires_at)}</td>
                     <td className="px-4 py-2">
-                      {order.status === 'pending' && (
+                      {(order.status === 'pending' || order.status === 'expired') && (
                         <div className="flex gap-1">
                           <button
                             onClick={() => { setActionModal({ type: 'credit', order }); setUtrInput(''); }}
@@ -388,12 +388,14 @@ export default function AutoDeposits() {
                           >
                             Credit
                           </button>
-                          <button
-                            onClick={() => setActionModal({ type: 'cancel', order })}
-                            className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
-                          >
-                            Cancel
-                          </button>
+                          {order.status === 'pending' && (
+                            <button
+                              onClick={() => setActionModal({ type: 'cancel', order })}
+                              className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                            >
+                              Cancel
+                            </button>
+                          )}
                         </div>
                       )}
                     </td>

@@ -26,6 +26,8 @@ const AMOUNT_PATTERNS = [
   /you\s+received\s*(?:Rs\.?|INR|₹)?\s*([\d,]+(?:\.\d{1,2})?)/i,
   // "Received Rs.500 from" (PhonePe)
   /Received\s*(?:Rs\.?|INR|₹)?\s*([\d,]+(?:\.\d{1,2})?)\s*from/i,
+  // "Received 90.00 Rupees From" (some wallet/UPI apps where currency word follows amount)
+  /Received\s+([\d,]+(?:\.\d{1,2})?)\s+Rupees?\s+From/i,
   // "Received ₹500 via UPI" (notification style)
   /Received\s*(?:Rs\.?|INR|₹)?\s*([\d,]+(?:\.\d{1,2})?)\s*(?:via|through)\s/i,
   // "Rs 500 received in" (Paytm)
