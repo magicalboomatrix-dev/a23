@@ -116,9 +116,8 @@ export default function Withdrawals() {
               <th className="text-left px-4 py-3 font-medium text-gray-600">User</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Phone</th>
               <th className="text-right px-4 py-3 font-medium text-gray-600">Amount</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Bank</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Account</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">IFSC</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">Method</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">Payment Info</th>
               <th className="text-center px-4 py-3 font-medium text-gray-600">Flagged</th>
               <th className="text-center px-4 py-3 font-medium text-gray-600">Status</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Date</th>
@@ -126,36 +125,57 @@ export default function Withdrawals() {
             </tr>
           </thead>
           <tbody className="divide-y">
-            {withdrawals.map((w) => (
-              <tr key={w.id} className={`hover:bg-gray-50 ${w.is_flagged ? 'bg-red-50' : ''}`}>
-                <td className="px-4 py-3">{w.id}</td>
-                <td className="px-4 py-3 font-medium">{w.user_name}</td>
-                <td className="px-4 py-3">{w.user_phone}</td>
-                <td className="px-4 py-3 text-right font-semibold text-red-700">₹{parseFloat(w.amount).toLocaleString()}</td>
-                <td className="px-4 py-3">{w.bank_name}</td>
-                <td className="px-4 py-3 font-mono text-xs">{w.account_number}</td>
-                <td className="px-4 py-3 font-mono text-xs">{w.ifsc}</td>
-                <td className="px-4 py-3 text-center">
-                  {w.is_flagged ? <span className="px-2 py-1 bg-red-100 text-red-700 text-xs font-medium">? Flagged</span> : '-'}
-                </td>
-                <td className="px-4 py-3 text-center">
-                  <span className={`px-2 py-1 text-xs font-medium ${
-                    w.status === 'approved' ? 'bg-green-100 text-green-700'
-                      : w.status === 'rejected' ? 'bg-red-100 text-red-700'
-                      : 'bg-yellow-100 text-yellow-700'
-                  }`}>{w.status}</span>
-                </td>
-                <td className="px-4 py-3 text-gray-500 text-xs">{new Date(w.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</td>
-                {filter === 'pending' && (
-                  <td className="px-4 py-3 text-center space-x-2">
-                    <button onClick={() => approve(w.id)} className="px-3 py-1 bg-green-600 text-white  text-xs hover:bg-green-700">Approve</button>
-                    <button onClick={() => reject(w.id)} className="px-3 py-1 bg-red-600 text-white  text-xs hover:bg-red-700">Reject</button>
+            {withdrawals.map((w) => {
+              const method = w.withdraw_method || 'bank';
+              const isBankFlagged = method === 'bank' && w.is_flagged;
+              let paymentInfo = null;
+              let methodBadge = null;
+              if (method === 'upi') {
+                methodBadge = <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-medium">UPI</span>;
+                paymentInfo = <span className="font-mono text-xs">{w.upi_id || '-'}</span>;
+              } else if (method === 'phone') {
+                methodBadge = <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium">Phone</span>;
+                paymentInfo = <span className="font-mono text-xs">{w.phone_number || '-'}</span>;
+              } else {
+                methodBadge = <span className="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs font-medium">Bank</span>;
+                paymentInfo = (
+                  <span className="text-xs">
+                    <span className="font-medium">{w.bank_name || '-'}</span>
+                    {w.account_number ? <span className="font-mono ml-1">•••{String(w.account_number).slice(-4)}</span> : null}
+                    {w.ifsc ? <span className="text-gray-400 ml-1">({w.ifsc})</span> : null}
+                  </span>
+                );
+              }
+              return (
+                <tr key={w.id} className={`hover:bg-gray-50 ${isBankFlagged ? 'bg-red-50' : ''}`}>
+                  <td className="px-4 py-3">{w.id}</td>
+                  <td className="px-4 py-3 font-medium">{w.user_name}</td>
+                  <td className="px-4 py-3">{w.user_phone}</td>
+                  <td className="px-4 py-3 text-right font-semibold text-red-700">₹{parseFloat(w.amount).toLocaleString()}</td>
+                  <td className="px-4 py-3">{methodBadge}</td>
+                  <td className="px-4 py-3">{paymentInfo}</td>
+                  <td className="px-4 py-3 text-center">
+                    {isBankFlagged ? <span className="px-2 py-1 bg-red-100 text-red-700 text-xs font-medium">⚑ Flagged</span> : '-'}
                   </td>
-                )}
-              </tr>
-            ))}
+                  <td className="px-4 py-3 text-center">
+                    <span className={`px-2 py-1 text-xs font-medium ${
+                      w.status === 'approved' ? 'bg-green-100 text-green-700'
+                        : w.status === 'rejected' ? 'bg-red-100 text-red-700'
+                        : 'bg-yellow-100 text-yellow-700'
+                    }`}>{w.status}</span>
+                  </td>
+                  <td className="px-4 py-3 text-gray-500 text-xs">{new Date(w.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</td>
+                  {filter === 'pending' && (
+                    <td className="px-4 py-3 text-center space-x-2">
+                      <button onClick={() => approve(w.id)} className="px-3 py-1 bg-green-600 text-white text-xs hover:bg-green-700">Approve</button>
+                      <button onClick={() => reject(w.id)} className="px-3 py-1 bg-red-600 text-white text-xs hover:bg-red-700">Reject</button>
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
             {withdrawals.length === 0 && (
-              <tr><td colSpan={11} className="px-4 py-8 text-center text-gray-400">{loading ? 'Loading...' : 'No withdrawals'}</td></tr>
+              <tr><td colSpan={10} className="px-4 py-8 text-center text-gray-400">{loading ? 'Loading...' : 'No withdrawals'}</td></tr>
             )}
           </tbody>
         </table>

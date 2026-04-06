@@ -8,11 +8,20 @@ import Toast from '../components/Toast'
 import { userAPI, walletAPI, withdrawAPI } from '../lib/api'
 import { formatStatusLabel } from '../lib/formatters'
 
+const METHODS = [
+  { key: 'bank', label: 'Bank Account' },
+  { key: 'upi', label: 'UPI ID' },
+  { key: 'phone', label: 'Phone / UPI Number' },
+]
+
 const WithDrawPage = () => {
   const router = useRouter()
   const [bankAccounts, setBankAccounts] = useState([])
   const [history, setHistory] = useState([])
   const [selectedAccountId, setSelectedAccountId] = useState('')
+  const [withdrawMethod, setWithdrawMethod] = useState('bank')
+  const [upiId, setUpiId] = useState('')
+  const [phoneNumber, setPhoneNumber] = useState('')
   const [amount, setAmount] = useState('')
   const [withdrawableAmount, setWithdrawableAmount] = useState(0)
   const [loadingData, setLoadingData] = useState(true)
@@ -109,8 +118,25 @@ const WithDrawPage = () => {
     }
 
     const parsedAmount = Number(amount)
-    if (!selectedAccountId) {
-      setToast({ message: 'Please select one bank account.', type: 'error' })
+
+    if (withdrawMethod === 'bank' && !selectedAccountId) {
+      setToast({ message: 'Please select a bank account.', type: 'error' })
+      return
+    }
+    if (withdrawMethod === 'upi' && !upiId.trim()) {
+      setToast({ message: 'Please enter your UPI ID.', type: 'error' })
+      return
+    }
+    if (withdrawMethod === 'upi' && !/^[a-zA-Z0-9._-]+@[a-zA-Z0-9]+$/.test(upiId.trim())) {
+      setToast({ message: 'Invalid UPI ID format (e.g. name@upi).', type: 'error' })
+      return
+    }
+    if (withdrawMethod === 'phone' && !phoneNumber.replace(/\D/g, '')) {
+      setToast({ message: 'Please enter your phone number.', type: 'error' })
+      return
+    }
+    if (withdrawMethod === 'phone' && phoneNumber.replace(/\D/g, '').length < 10) {
+      setToast({ message: 'Phone number must be at least 10 digits.', type: 'error' })
       return
     }
 
@@ -126,18 +152,34 @@ const WithDrawPage = () => {
 
     setSubmitting(true)
     try {
-      const response = await withdrawAPI.request({ bank_account_id: Number(selectedAccountId), amount: parsedAmount })
-      const selectedBank = bankAccounts.find((account) => String(account.id) === String(selectedAccountId))
+      const payload = { amount: parsedAmount, withdraw_method: withdrawMethod }
+      let methodLabel = '-'
+
+      if (withdrawMethod === 'bank') {
+        payload.bank_account_id = Number(selectedAccountId)
+        const selectedBank = bankAccounts.find((account) => String(account.id) === String(selectedAccountId))
+        methodLabel = selectedBank ? formatBankOption(selectedBank) : '-'
+      } else if (withdrawMethod === 'upi') {
+        payload.upi_id = upiId.trim()
+        methodLabel = `UPI: ${upiId.trim()}`
+      } else if (withdrawMethod === 'phone') {
+        payload.phone_number = phoneNumber.replace(/\D/g, '')
+        methodLabel = `Phone: ${phoneNumber.replace(/\D/g, '')}`
+      }
+
+      const response = await withdrawAPI.request(payload)
       const txId = response?.withdraw?.id
         ? `TXN_WR_${response.withdraw.id}_${Date.now()}`
         : `TXN_WR_${Date.now()}`
 
       setAmount('')
+      setUpiId('')
+      setPhoneNumber('')
       await fetchData()
       const params = new URLSearchParams({
         type: 'withdraw',
         amount: String(parsedAmount),
-        bank: selectedBank ? formatBankOption(selectedBank) : '-',
+        bank: methodLabel,
         tx: txId,
         primary: '/withdraw',
         secondary: '/wallet',
@@ -195,6 +237,24 @@ const WithDrawPage = () => {
 
                 <p className="text-xs text-[#6b5a3a]">Only main wallet balance is withdrawable. Bonus wallet balance cannot be withdrawn directly.</p>
 
+                {/* Withdrawal Method Tabs */}
+                <div className="flex border border-[#d8d1c4] overflow-hidden">
+                  {METHODS.map((m) => (
+                    <button
+                      key={m.key}
+                      type="button"
+                      onClick={() => setWithdrawMethod(m.key)}
+                      className={`flex-1 py-2 text-xs font-semibold transition-colors ${
+                        withdrawMethod === m.key
+                          ? 'bg-[#111] text-white'
+                          : 'bg-[#faf7f0] text-[#6b5a3a] hover:bg-[#f0e8d8]'
+                      }`}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+
                 <input
                   className="h-11 w-full border border-[#d8d1c4] bg-[#faf7f0] px-4 text-sm"
                   type="number"
@@ -206,37 +266,70 @@ const WithDrawPage = () => {
                   required
                 />
 
-                <select
-                  className="h-11 w-full border border-[#d8d1c4] bg-[#faf7f0] px-4 text-sm"
-                  value={selectedAccountId}
-                  onChange={(event) => setSelectedAccountId(event.target.value)}
-                  required
-                >
-                  <option value="">Select Bank Account</option>
-                  {bankAccounts.map((account) => (
-                    <option key={account.id} value={account.id}>
-                      {formatBankOption(account)}
-                    </option>
-                  ))}
-                </select>
+                {/* Bank Account */}
+                {withdrawMethod === 'bank' && (
+                  <>
+                    <select
+                      className="h-11 w-full border border-[#d8d1c4] bg-[#faf7f0] px-4 text-sm"
+                      value={selectedAccountId}
+                      onChange={(event) => setSelectedAccountId(event.target.value)}
+                      required
+                    >
+                      <option value="">Select Bank Account</option>
+                      {bankAccounts.map((account) => (
+                        <option key={account.id} value={account.id}>
+                          {formatBankOption(account)}
+                        </option>
+                      ))}
+                    </select>
 
-                {selectedAccountId && (
-                  <button
-                    type="button"
-                    className="h-10 w-full border border-[#d8d1c4] bg-white text-xs font-semibold text-[#111]"
-                    onClick={() => setDefaultAccount(Number(selectedAccountId))}
-                  >
-                    Set Selected Account as Default ★
-                  </button>
+                    {selectedAccountId && (
+                      <button
+                        type="button"
+                        className="h-10 w-full border border-[#d8d1c4] bg-white text-xs font-semibold text-[#111]"
+                        onClick={() => setDefaultAccount(Number(selectedAccountId))}
+                      >
+                        Set Selected Account as Default ★
+                      </button>
+                    )}
+                  </>
                 )}
 
-                <button className="h-11 w-full bg-[#111] text-sm font-semibold text-white" type="submit" disabled={submitting || bankAccounts.length === 0}>
+                {/* UPI ID */}
+                {withdrawMethod === 'upi' && (
+                  <input
+                    className="h-11 w-full border border-[#d8d1c4] bg-[#faf7f0] px-4 text-sm"
+                    type="text"
+                    placeholder="Enter UPI ID (e.g. name@upi)"
+                    value={upiId}
+                    onChange={(e) => setUpiId(e.target.value)}
+                    required
+                  />
+                )}
+
+                {/* Phone */}
+                {withdrawMethod === 'phone' && (
+                  <input
+                    className="h-11 w-full border border-[#d8d1c4] bg-[#faf7f0] px-4 text-sm"
+                    type="tel"
+                    placeholder="Enter 10-digit Phone / UPI Number"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 13))}
+                    required
+                  />
+                )}
+
+                <button
+                  className="h-11 w-full bg-[#111] text-sm font-semibold text-white disabled:opacity-60"
+                  type="submit"
+                  disabled={submitting || (withdrawMethod === 'bank' && bankAccounts.length === 0)}
+                >
                   {submitting ? 'Submitting...' : 'Submit Withdrawal Request'}
                 </button>
               </form>
             )}
 
-            {!loadingData && bankAccounts.length === 0 && (
+            {!loadingData && withdrawMethod === 'bank' && bankAccounts.length === 0 && (
               <p className="pt-2.5 text-center text-sm text-[#666]">No bank accounts added yet.</p>
             )}
 
@@ -273,7 +366,16 @@ const WithDrawPage = () => {
                         {formatStatusLabel(withdrawItem.status)}
                       </span>
                     </div>
-                    <div className="mt-1 text-[11px] text-[#6b5a3a]">{withdrawItem.bank_name || 'Bank'} • {withdrawItem.account_number || '-'}</div>
+                    {/* Payment method info */}
+                    {(!withdrawItem.withdraw_method || withdrawItem.withdraw_method === 'bank') && (
+                      <div className="mt-1 text-[11px] text-[#6b5a3a]">{withdrawItem.bank_name || 'Bank'} • {withdrawItem.account_number || '-'}</div>
+                    )}
+                    {withdrawItem.withdraw_method === 'upi' && (
+                      <div className="mt-1 text-[11px] text-[#6b5a3a]">UPI • {withdrawItem.upi_id || '-'}</div>
+                    )}
+                    {withdrawItem.withdraw_method === 'phone' && (
+                      <div className="mt-1 text-[11px] text-[#6b5a3a]">Phone • {withdrawItem.phone_number || '-'}</div>
+                    )}
 
                     <div className="mt-3 space-y-2 text-xs">
                       <div className="flex items-center gap-2">

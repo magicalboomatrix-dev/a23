@@ -5,16 +5,47 @@ const { clampPagination } = require('../utils/pagination');
 exports.requestWithdraw = async (req, res, next) => {
   const conn = await pool.getConnection();
   try {
-    const { bank_id, bank_account_id, amount } = req.body;
-    let resolvedBankId = bank_id || bank_account_id;
+    const { bank_id, bank_account_id, amount, withdraw_method, upi_id, phone_number } = req.body;
+    const method = withdraw_method || 'bank';
 
-    if (!resolvedBankId) {
-      const [users] = await conn.query('SELECT default_bank_account_id FROM users WHERE id = ? LIMIT 1', [req.user.id]);
-      resolvedBankId = users[0]?.default_bank_account_id || null;
+    if (!['bank', 'upi', 'phone'].includes(method)) {
+      return res.status(400).json({ error: 'Invalid withdrawal method.' });
     }
 
-    if (!resolvedBankId || !amount) {
-      return res.status(400).json({ error: 'Bank account and amount are required.' });
+    let resolvedBankId = null;
+    let cleanedUpi = null;
+    let cleanedPhone = null;
+
+    if (method === 'bank') {
+      resolvedBankId = bank_id || bank_account_id;
+      if (!resolvedBankId) {
+        const [users] = await conn.query('SELECT default_bank_account_id FROM users WHERE id = ? LIMIT 1', [req.user.id]);
+        resolvedBankId = users[0]?.default_bank_account_id || null;
+      }
+      if (!resolvedBankId) {
+        return res.status(400).json({ error: 'Bank account is required.' });
+      }
+    } else if (method === 'upi') {
+      if (!upi_id || !upi_id.trim()) {
+        return res.status(400).json({ error: 'UPI ID is required.' });
+      }
+      if (!/^[a-zA-Z0-9._-]+@[a-zA-Z0-9]+$/.test(upi_id.trim())) {
+        return res.status(400).json({ error: 'Invalid UPI ID format (e.g. name@upi).' });
+      }
+      cleanedUpi = upi_id.trim();
+    } else if (method === 'phone') {
+      if (!phone_number || !phone_number.trim()) {
+        return res.status(400).json({ error: 'Phone number is required.' });
+      }
+      const digits = phone_number.replace(/\D/g, '');
+      if (digits.length < 10 || digits.length > 13) {
+        return res.status(400).json({ error: 'Invalid phone number. Must be 10 digits.' });
+      }
+      cleanedPhone = digits;
+    }
+
+    if (!amount) {
+      return res.status(400).json({ error: 'Amount is required.' });
     }
 
     const parsedAmount = parseFloat(amount);
@@ -39,9 +70,8 @@ exports.requestWithdraw = async (req, res, next) => {
       let windows = [];
       try { windows = JSON.parse(settingsMap.withdrawal_time_windows); } catch (_) { windows = []; }
       if (Array.isArray(windows) && windows.length > 0) {
-        // Get current time in IST (UTC+5:30)
         const now = new Date();
-        const istOffset = 5 * 60 + 30; // minutes
+        const istOffset = 5 * 60 + 30;
         const istNow = new Date(now.getTime() + istOffset * 60 * 1000);
         const currentMinutes = istNow.getUTCHours() * 60 + istNow.getUTCMinutes();
 
@@ -57,9 +87,7 @@ exports.requestWithdraw = async (req, res, next) => {
         });
 
         if (!isAllowed) {
-          const windowList = windows
-            .map((w) => `${w.start} – ${w.end}`)
-            .join(', ');
+          const windowList = windows.map((w) => `${w.start} – ${w.end}`).join(', ');
           return res.status(400).json({
             error: `Withdrawals are only allowed during: ${windowList}. Please try again in the next withdrawal window.`,
             code: 'OUTSIDE_WITHDRAWAL_WINDOW',
@@ -70,26 +98,25 @@ exports.requestWithdraw = async (req, res, next) => {
 
     await conn.beginTransaction();
 
-    // Verify bank account belongs to user
-    const [banks] = await conn.query(
-      'SELECT * FROM bank_accounts WHERE id = ? AND user_id = ?',
-      [resolvedBankId, req.user.id]
-    );
-    if (banks.length === 0) {
-      await conn.rollback();
-      return res.status(404).json({ error: 'Bank account not found.' });
+    if (method === 'bank') {
+      // Verify bank account belongs to user
+      const [banks] = await conn.query(
+        'SELECT * FROM bank_accounts WHERE id = ? AND user_id = ?',
+        [resolvedBankId, req.user.id]
+      );
+      if (banks.length === 0) {
+        await conn.rollback();
+        return res.status(404).json({ error: 'Bank account not found.' });
+      }
+      if (banks[0].is_flagged) {
+        await conn.rollback();
+        return res.status(400).json({ error: 'This bank account is flagged. Contact support.' });
+      }
     }
 
-    if (banks[0].is_flagged) {
-      await conn.rollback();
-      return res.status(400).json({ error: 'This bank account is flagged. Contact support.' });
-    }
-
-    // Check available balance (bet amounts are already deducted at placement)
+    // Check available balance
     const [wallets] = await conn.query('SELECT balance FROM wallets WHERE user_id = ? FOR UPDATE', [req.user.id]);
     const balance = parseFloat(wallets[0].balance);
-
-    // Pending withdrawals are already deducted from wallet balance at request time.
     const availableWithdrawal = balance;
 
     if (parsedAmount > availableWithdrawal) {
@@ -101,11 +128,11 @@ exports.requestWithdraw = async (req, res, next) => {
 
     // Create withdraw request
     const [result] = await conn.query(
-      'INSERT INTO withdraw_requests (user_id, bank_id, amount) VALUES (?, ?, ?)',
-      [req.user.id, resolvedBankId, parsedAmount]
+      'INSERT INTO withdraw_requests (user_id, bank_id, withdraw_method, upi_id, phone_number, amount) VALUES (?, ?, ?, ?, ?, ?)',
+      [req.user.id, resolvedBankId || null, method, cleanedUpi, cleanedPhone, parsedAmount]
     );
 
-    const newBalance = await recordWalletTransaction(conn, {
+    await recordWalletTransaction(conn, {
       userId: req.user.id,
       type: 'withdraw',
       amount: -parsedAmount,
@@ -138,9 +165,11 @@ exports.getWithdrawHistory = async (req, res, next) => {
     );
 
     const [withdrawals] = await pool.query(`
-      SELECT wr.*, ba.account_number, ba.bank_name, ba.account_holder
+      SELECT wr.id, wr.user_id, wr.bank_id, wr.withdraw_method, wr.upi_id, wr.phone_number,
+             wr.amount, wr.status, wr.reject_reason, wr.created_at, wr.updated_at,
+             ba.account_number, ba.bank_name, ba.account_holder
       FROM withdraw_requests wr
-      JOIN bank_accounts ba ON wr.bank_id = ba.id
+      LEFT JOIN bank_accounts ba ON wr.bank_id = ba.id
       WHERE wr.user_id = ?
       ORDER BY wr.created_at DESC LIMIT ? OFFSET ?
     `, [req.user.id, limit, offset]);
@@ -273,11 +302,13 @@ exports.getAllWithdrawals = async (req, res, next) => {
     const { page, limit, offset } = clampPagination(req.query);
 
     let query = `
-      SELECT wr.*, u.name as user_name, u.phone as user_phone,
+      SELECT wr.id, wr.user_id, wr.bank_id, wr.withdraw_method, wr.upi_id, wr.phone_number,
+             wr.amount, wr.status, wr.reject_reason, wr.created_at, wr.updated_at,
+             u.name as user_name, u.phone as user_phone,
              ba.account_number, ba.bank_name, ba.account_holder, ba.ifsc, ba.is_flagged
       FROM withdraw_requests wr
       JOIN users u ON wr.user_id = u.id
-      JOIN bank_accounts ba ON wr.bank_id = ba.id
+      LEFT JOIN bank_accounts ba ON wr.bank_id = ba.id
     `;
     const params = [];
 
