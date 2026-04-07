@@ -40,6 +40,7 @@ function buildCsp(nonce: string, isDev: boolean): string {
     "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com",
     "font-src 'self' https://cdnjs.cloudflare.com",
     "img-src 'self' data: blob: https:",
+    `media-src 'self' ${API_ORIGIN} blob:`,
     "frame-ancestors 'none'",
   ].join('; ');
 }
