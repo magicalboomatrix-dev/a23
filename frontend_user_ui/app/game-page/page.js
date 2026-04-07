@@ -499,7 +499,7 @@ function GamePageInner() {
                 
                 <div className="mb-3 mt-3 flex items-center gap-2">
                   <input type="checkbox" id="cj" checked={crossIncludeJodi} onChange={() => setCrossIncludeJodi(!crossIncludeJodi)} />
-                  <label htmlFor="cj" className="font-bold text-black">with jodi</label>
+                  <label htmlFor="cj" className="font-bold text-black">with joda</label>
                 </div>
 
                 <button type="button" onClick={generateCrossCombos} className={primaryButtonClass} disabled={bettingClosed}>Generate Crossing</button>

@@ -129,15 +129,24 @@ exports.placeBet = async (req, res, next) => {
       }
     }
 
-    // Check wallet balance
-    const [wallets] = await conn.query('SELECT balance FROM wallets WHERE user_id = ? FOR UPDATE', [req.user.id]);
+    // Check wallet balance (balance + bonus_balance)
+    // 10% of bet comes from bonus_balance, 90% from balance.
+    // If bonus_balance is insufficient for 10%, use what's available and rest from balance.
+    const [wallets] = await conn.query('SELECT balance, bonus_balance FROM wallets WHERE user_id = ? FOR UPDATE', [req.user.id]);
     if (wallets.length === 0) {
       await conn.rollback();
       return res.status(400).json({ error: 'Wallet not found.' });
     }
 
     const currentBalance = parseFloat(wallets[0].balance);
-    if (currentBalance < totalAmount) {
+    const currentBonus = parseFloat(wallets[0].bonus_balance || 0);
+
+    // Calculate bonus portion: 10% of bet, capped at available bonus
+    const idealBonusPortion = Math.round(totalAmount * 0.10 * 100) / 100;
+    const bonusUsed = Math.min(idealBonusPortion, currentBonus);
+    const balanceUsed = Math.round((totalAmount - bonusUsed) * 100) / 100;
+
+    if (currentBalance < balanceUsed) {
       await conn.rollback();
       return res.status(400).json({ error: 'Insufficient balance.' });
     }
@@ -161,13 +170,18 @@ exports.placeBet = async (req, res, next) => {
       [betNumberRows]
     );
 
+    // Deduct bonus portion from bonus_balance
+    if (bonusUsed > 0) {
+      await conn.query('UPDATE wallets SET bonus_balance = bonus_balance - ? WHERE user_id = ?', [bonusUsed, req.user.id]);
+    }
+
     const newBalance = await recordWalletTransaction(conn, {
       userId: req.user.id,
       type: 'bet',
-      amount: -totalAmount,
+      amount: -balanceUsed,
       referenceType: 'bet',
       referenceId: `bet_${betId}`,
-      remark: `${type} bet on ${game.name}`,
+      remark: `${type} bet on ${game.name}${bonusUsed > 0 ? ` (₹${bonusUsed} from bonus)` : ''}`,
     });
 
     await conn.commit();

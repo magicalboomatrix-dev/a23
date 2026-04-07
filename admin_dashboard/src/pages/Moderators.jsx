@@ -137,6 +137,8 @@ export default function Moderators() {
               <th className="text-left px-4 py-3 font-medium text-gray-600">Phone</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Referral Code</th>
               <th className="text-center px-4 py-3 font-medium text-gray-600">Users</th>
+              <th className="text-center px-4 py-3 font-medium text-gray-600">Referrals</th>
+              <th className="text-right px-4 py-3 font-medium text-gray-600">Ref Amount</th>
               <th className="text-center px-4 py-3 font-medium text-gray-600">Status</th>
               <th className="text-center px-4 py-3 font-medium text-gray-600">Actions</th>
             </tr>
@@ -149,6 +151,8 @@ export default function Moderators() {
                 <td className="px-4 py-3">{m.phone}</td>
                 <td className="px-4 py-3 font-mono text-xs">{m.referral_code}</td>
                 <td className="px-4 py-3 text-center">{m.user_count}</td>
+                <td className="px-4 py-3 text-center">{m.referral_count || 0}</td>
+                <td className="px-4 py-3 text-right text-green-700 font-medium">₹{parseFloat(m.referral_amount || 0).toLocaleString('en-IN')}</td>
                 <td className="px-4 py-3 text-center">
                   <span className={`px-2 py-1 text-xs font-medium ${m.is_blocked ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
                     {m.is_blocked ? 'Blocked' : 'Active'}
@@ -171,7 +175,7 @@ export default function Moderators() {
               </tr>
             ))}
             {moderators.length === 0 && (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">{loading ? 'Loading...' : 'No moderators'}</td></tr>
+              <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-400">{loading ? 'Loading...' : 'No moderators'}</td></tr>
             )}
           </tbody>
         </table>

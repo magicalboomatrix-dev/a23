@@ -167,7 +167,9 @@ exports.listModerators = async (req, res, next) => {
     const [moderators] = await pool.query(`
           SELECT u.id, u.name, u.phone, u.referral_code, u.upi_id,
              u.scanner_label, u.scanner_enabled, u.is_blocked, u.created_at,
-             (SELECT COUNT(*) FROM users WHERE moderator_id = u.id) as user_count
+             (SELECT COUNT(*) FROM users WHERE moderator_id = u.id) as user_count,
+             (SELECT COUNT(*) FROM referrals WHERE referrer_id = u.id) as referral_count,
+             (SELECT COALESCE(SUM(bonus_amount), 0) FROM referrals WHERE referrer_id = u.id) as referral_amount
           FROM users u
           WHERE u.role = 'moderator' AND u.is_deleted = 0
       ORDER BY u.created_at DESC

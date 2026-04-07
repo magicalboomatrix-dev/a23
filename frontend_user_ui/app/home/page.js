@@ -392,10 +392,14 @@ const HomePage = () => {
                   <p className="mt-2 text-3xl font-bold text-gray-200">
                     {resultItem.result_number}
                   </p>
-                ) : (
+                ) : resultItem.status === 'waiting' ? (
                   <div className="mt-2 text-4xl">
-                    <img src="/images/d.gif" alt="Locked" />
+                    <img src="/images/d.gif" alt="Waiting" />
                   </div>
+                ) : (
+                  <p className="mt-2 text-2xl font-bold text-yellow-400 animate-pulse">
+                    Awaiting Result...
+                  </p>
                 )}
                 {/* Time */}
                 <p className="mt-2 text-sm font-semibold text-gray-300">
