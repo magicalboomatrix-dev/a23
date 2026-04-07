@@ -130,7 +130,7 @@ const Header = () => {
             <div className="mb-3 flex items-center justify-between text-[13px] leading-4"><span>Bonus</span><strong>{wallet.bonus_balance?.toFixed(2) || '0.00'}</strong></div>
             <div className="flex items-center justify-between text-[13px] leading-4"><span>Available Withdrawal</span><strong>{wallet.available_withdrawal?.toFixed(2) || '0.00'}</strong></div>
           </div>
-          <button type="button" className="my-3 block w-full bg-[#c9972b] px-4 py-2 text-sm font-semibold text-white">Refer and Earn</button>
+          <Link href="/referrals" className="my-3 block w-full bg-[#c9972b] px-4 py-2 text-center text-sm font-semibold text-white">Refer and Earn</Link>
           <ul className="border-t border-[#b88831] pt-2 text-sm font-semibold">
             <li><Link href="/account-statement" className='flex items-center gap-2 border-b border-[#eee] px-2 py-2'><i className="fa fa-university"></i> Account Statement</Link></li>
             <li><Link href="/profit-loss" className='flex items-center gap-2 border-b border-[#eee] px-2 py-2'><i className="fa fa-cog"></i> Betting Profit & Loss</Link></li>

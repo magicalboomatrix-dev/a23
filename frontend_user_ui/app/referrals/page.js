@@ -24,6 +24,7 @@ export default function ReferralsPage() {
       setReferrals(res.referrals || [])
       setReferralCode(res.referral_code || '')
       setMyReferral(res.my_referral || null)
+      setMyReferral(res.my_referral || null)
     } catch (err) {
       console.error('[referrals] fetch error:', err)
     } finally {
