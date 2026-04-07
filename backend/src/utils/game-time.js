@@ -76,26 +76,44 @@ function calculateGameDatetimes(game, resultDate) {
 }
 
 /**
- * Compute the result_date for a game given "now" (IST).
+ * Compute the result_date (= session close date) for the CURRENT session
+ * that a user would be betting into at time "now".
  *
  * result_date = DATE(close_time) — the date the session CLOSES on.
  *
- * Normal game (close_time > open_time, same day):
- *   result_date = today.
+ * Normal game (close_time >= open_time, same day):
+ *   - If now < close_time today → session closes today → result_date = today
+ *   - If now >= close_time today → the current session already closed;
+ *     next session closes tomorrow → result_date = tomorrow
  *
  * Overnight game (close_time < open_time, spans midnight):
- *   - Evening side: now >= open_time → session closes tomorrow
+ *   - Evening side (now >= open_time): session closes tomorrow
  *     → result_date = tomorrow
- *   - Early-morning side: now < open_time → session closes today
+ *   - Early-morning side (now < close_time): session closes today
  *     → result_date = today
+ *   - Between close and open (gap period): next session closes tomorrow
+ *     → result_date = tomorrow
  */
 function getResultDate(game, now = new Date()) {
+  const close = parseTime(game.close_time);
+
   if (!isOvernightGame(game)) {
-    return formatDate(now);
+    // Normal same-day game
+    const closeToday = dateAtTime(now, close);
+    if (now < closeToday) {
+      // Current session still open — closes today
+      return formatDate(now);
+    }
+    // Session already closed — next session closes tomorrow
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return formatDate(tomorrow);
   }
 
+  // Overnight game
   const open = parseTime(game.open_time);
   const openToday = dateAtTime(now, open);
+  const closeToday = dateAtTime(now, close);
 
   if (now >= openToday) {
     // Evening side — the session will close tomorrow
@@ -103,8 +121,14 @@ function getResultDate(game, now = new Date()) {
     tomorrow.setDate(tomorrow.getDate() + 1);
     return formatDate(tomorrow);
   }
-  // Early-morning side — the session closes today
-  return formatDate(now);
+  if (now < closeToday) {
+    // Early-morning side — the session closes today
+    return formatDate(now);
+  }
+  // Gap period between close and open — next session closes tomorrow
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return formatDate(tomorrow);
 }
 
 /**

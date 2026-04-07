@@ -17,12 +17,7 @@ function formatResultDate(dateVal) {
 
 function getResultLabel(game) {
   if (!game.result_number || !game.result_date) return null;
-  const today = getLocalDateInputValue();
-  const yesterday = getLocalDateInputValue(new Date(Date.now() - 86400000));
-  const rd = formatResultDate(game.result_date);
-  if (game.is_overnight && rd === yesterday) return "Yesterday's Result";
-  if (rd === today) return "Today's Result";
-  return 'Result';
+  return `Result (${formatResultDate(game.result_date)})`;
 }
 
 export default function Games() {
@@ -61,7 +56,7 @@ export default function Games() {
       loadGames();
     } catch (err) {
       if (err.response?.status === 409) {
-        setError('Game already exists — try a different name.');
+        setError('Game already exists ï¿½ try a different name.');
       } else {
         setError(err.response?.data?.error || 'Failed');
       }
@@ -79,7 +74,7 @@ export default function Games() {
       loadGames();
     } catch (err) {
       if (err.response?.status === 409) {
-        setError('Game already exists — try a different name.');
+        setError('Game already exists ï¿½ try a different name.');
       } else {
         setError(err.response?.data?.error || 'Failed');
       }
@@ -257,27 +252,24 @@ export default function Games() {
             <div className="text-sm text-gray-600 space-y-1">
               <p>Open: <span className="font-medium">{g.open_time}</span></p>
               <p>Close: <span className="font-medium">{g.close_time}</span></p>
+              <p className="text-xs text-gray-500">Session Date: {g.current_session_date || formatResultDate(g.result_date)}</p>
               {g.result_number && (() => {
                 const label = getResultLabel(g);
-                const rd = formatResultDate(g.result_date);
                 return (
                   <>
                     <p className="text-primary-600 font-bold">{label}: {g.result_number}</p>
-                    <p className="text-xs text-gray-500">Game Date: {rd}</p>
                     <span className={`inline-block mt-0.5 px-2 py-0.5 text-xs font-medium rounded ${g.is_result_settled ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
                       {g.is_result_settled ? 'Settled' : 'Pending settlement'}
                     </span>
                   </>
                 );
               })()}
-              {!g.result_number && g.is_overnight && g.yesterday_result_number && (() => {
-                const rd = formatResultDate(g.yesterday_result_date);
+              {!g.result_number && g.last_result_number && (() => {
                 return (
                   <>
-                    <p className="text-primary-600 font-bold">Yesterday's Result: {g.yesterday_result_number}</p>
-                    <p className="text-xs text-gray-500">Game Date: {rd}</p>
-                    <span className={`inline-block mt-0.5 px-2 py-0.5 text-xs font-medium rounded ${g.is_yesterday_result_settled ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                      {g.is_yesterday_result_settled ? 'Settled' : 'Pending settlement'}
+                    <p className="text-primary-600 font-bold">Last Result ({formatResultDate(g.last_result_date)}): {g.last_result_number}</p>
+                    <span className={`inline-block mt-0.5 px-2 py-0.5 text-xs font-medium rounded ${g.is_last_result_settled ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                      {g.is_last_result_settled ? 'Settled' : 'Pending settlement'}
                     </span>
                   </>
                 );
@@ -290,7 +282,7 @@ export default function Games() {
               )}
             </div>
             <div className="flex gap-2 mt-4">
-              <button onClick={() => { setShowResult(g.id); setError(''); }}
+              <button onClick={() => { setShowResult(g.id); setResultForm({ result_number: '', result_date: g.current_session_date || getLocalDateInputValue() }); setError(''); }}
                 className="flex-1 px-3 py-2 bg-primary-600 text-white text-xs font-medium hover:bg-primary-700">
                 Declare Result
               </button>
