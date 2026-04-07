@@ -1,6 +1,6 @@
 const pool = require('../config/database');
 const XLSX = require('xlsx');
-const { isResultVisible, getResultDate, resolveGameWindow } = require('../utils/game-time');
+const { isResultVisible, getResultDate, resolveGameWindow, formatDate } = require('../utils/game-time');
 const { escapeLike } = require('../utils/pagination');
 const redis = require('../services/redis.service');
 const eventBus = require('../utils/event-bus');
@@ -245,9 +245,13 @@ exports.getLiveResults = async (req, res, next) => {
     const now = new Date();
 
     // 2. For each game compute the correct result_date and close datetime.
+    //    getResultDate returns the *next betting session* date, which after
+    //    close_time jumps to tomorrow.  For live-result display we need the
+    //    date of the session that just closed (today), so we derive the
+    //    result_date from resolveGameWindow's closeDatetime.
     const gamesWithDates = gameRows.map((g) => {
-      const resultDate = getResultDate(g, now);
       const { closeDatetime } = resolveGameWindow(g, now);
+      const resultDate = formatDate(closeDatetime);
       return { ...g, resultDate, closeDatetime };
     });
 
