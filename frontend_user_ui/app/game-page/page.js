@@ -237,12 +237,12 @@ function GamePageInner() {
     setHarufPopup(false);
   };
 
-  // --- Crossing Logic ---
-  const generateCrossCombos = () => {
-    if (bettingClosed) return
-    const raw = crossDigits.replace(/\D/g, '').slice(0, 7); 
+  // --- Crossing Logic (auto-generate on input change) ---
+  useEffect(() => {
+    if (bettingClosed) { setCrossCombos([]); return; }
+    const raw = crossDigits.replace(/\D/g, '').slice(0, 7);
     const amt = parseInt(crossAmount);
-    if (!raw || raw.length < 2 || !amt) return;
+    if (!raw || raw.length < 2 || !amt) { setCrossCombos([]); return; }
 
     const uniqueDigits = [...new Set(raw.split(''))];
     const combos = [];
@@ -256,7 +256,7 @@ function GamePageInner() {
       }
     }
     setCrossCombos(combos);
-  };
+  }, [crossDigits, crossAmount, crossIncludeJodi, bettingClosed]);
 
   // --- Message (bulk bet) parser ---
   function parseBetMessage(text) {
@@ -501,8 +501,6 @@ function GamePageInner() {
                   <input type="checkbox" id="cj" checked={crossIncludeJodi} onChange={() => setCrossIncludeJodi(!crossIncludeJodi)} />
                   <label htmlFor="cj" className="font-bold text-black">with joda</label>
                 </div>
-
-                <button type="button" onClick={generateCrossCombos} className={primaryButtonClass} disabled={bettingClosed}>Generate Crossing</button>
 
                 {crossCombos.length > 0 && (
                   <div className="mt-5 overflow-hidden bg-black">
