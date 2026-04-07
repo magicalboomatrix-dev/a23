@@ -4,6 +4,7 @@ const { isResultVisible, getResultDate, resolveGameWindow } = require('../utils/
 const { escapeLike } = require('../utils/pagination');
 const redis = require('../services/redis.service');
 const eventBus = require('../utils/event-bus');
+const { reverseSettlement } = require('../utils/settle-bets');
 
 function normalizeResultNumber(value) {
   const trimmed = String(value ?? '').trim();
@@ -421,6 +422,33 @@ exports.upsertResult = async (req, res, next) => {
       return res.status(404).json({ error: 'Game not found.' });
     }
 
+    // Check if a result already exists and whether it's been settled
+    const [existingResult] = await pool.query(
+      'SELECT id, result_number, is_settled FROM game_results WHERE game_id = ? AND result_date = ? LIMIT 1',
+      [gameId, result_date]
+    );
+
+    const oldResult = existingResult.length > 0 ? existingResult[0] : null;
+    const isRevision = oldResult && oldResult.is_settled && oldResult.result_number !== resultNumber;
+    let reversedCount = 0;
+
+    // If result was already settled and the number is changing, reverse the old settlement
+    if (isRevision) {
+      const conn = await pool.getConnection();
+      try {
+        await conn.beginTransaction();
+        reversedCount = await reverseSettlement(conn, oldResult.id);
+        // Also remove the old settlement_queue entry so a new one can be created
+        await conn.query('DELETE FROM settlement_queue WHERE game_result_id = ?', [oldResult.id]);
+        await conn.commit();
+      } catch (err) {
+        await conn.rollback();
+        throw err;
+      } finally {
+        conn.release();
+      }
+    }
+
     const effectiveDeclaredAt = declared_at || buildDeclaredAt(result_date, game.result_time || game.close_time);
     await pool.query(`
       INSERT INTO game_results (game_id, result_number, result_date, declared_at)
@@ -436,8 +464,7 @@ exports.upsertResult = async (req, res, next) => {
     redis.delPattern('cache:/api/results*').catch(() => {});
     redis.delPattern('cache:/api/games*').catch(() => {});
 
-    // Enqueue settlement job so bets are settled regardless of which admin path declared the result.
-    // INSERT IGNORE is idempotent — if a job already exists for this game_result_id it is silently skipped.
+    // Enqueue settlement job
     const resultId = savedRows[0]?.id || null;
     if (resultId) {
       const resultStr = resultNumber.padStart(2, '0');
@@ -447,16 +474,20 @@ exports.upsertResult = async (req, res, next) => {
          VALUES (?, ?, ?, ?, 'pending')`,
         [resultId, gameId, resultStr, result_date]
       );
-      // Notify real-time subscribers (fire-and-forget)
       eventBus.emit('result_declared', { gameId, resultId, resultDate: result_date, resultNumber: resultStr });
     }
 
+    const message = isRevision
+      ? `Result revised. ${reversedCount} bet(s) reversed and re-queued for settlement.`
+      : 'Result saved successfully.';
+
     res.json({
-      message: 'Result saved successfully.',
+      message,
       resultId,
       game_name: game.name,
       result_number: resultNumber,
       result_date,
+      reversed: isRevision ? reversedCount : undefined,
     });
   } catch (error) {
     next(error);

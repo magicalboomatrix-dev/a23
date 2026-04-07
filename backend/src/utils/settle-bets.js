@@ -169,4 +169,61 @@ async function settleBetsForGame(conn, gameId, resultStr, resultId, game, result
   return settledCount;
 }
 
-module.exports = { settleBetsForGame };
+/**
+ * Reverse a previous settlement for a game result.
+ * Must be called within an existing transaction (conn).
+ *
+ * 1. Finds all bets settled against this game_result_id
+ * 2. For winning bets, deducts the win_amount from wallet
+ * 3. Resets all bets back to 'pending'
+ * 4. Resets game_results.is_settled = 0
+ *
+ * @param {object} conn          - Active DB connection (inside a transaction)
+ * @param {number} gameResultId  - game_results.id
+ * @returns {number} Number of bets reversed.
+ */
+async function reverseSettlement(conn, gameResultId) {
+  // Find all bets settled against this result
+  const [settledBets] = await conn.query(
+    `SELECT id, user_id, win_amount, status, type
+     FROM bets
+     WHERE game_result_id = ? AND status IN ('win', 'loss')`,
+    [gameResultId]
+  );
+
+  if (settledBets.length === 0) return 0;
+
+  // Unique suffix for this reversal to allow multiple revisions
+  const revisionTs = Date.now();
+  let reversedCount = 0;
+
+  for (const bet of settledBets) {
+    // If the bet was a win, deduct the winnings from wallet
+    if (bet.status === 'win' && parseFloat(bet.win_amount) > 0) {
+      const deductAmount = -Math.abs(parseFloat(bet.win_amount));
+      await recordWalletTransaction(conn, {
+        userId: bet.user_id,
+        type: 'adjustment',
+        amount: deductAmount,
+        referenceType: 'bet_reversal',
+        referenceId: `bet_reversal_${bet.id}_${revisionTs}`,
+        remark: `Result revised — reversed ${bet.type} win`,
+      });
+    }
+
+    // Reset bet to pending
+    await conn.query(
+      `UPDATE bets SET status = 'pending', win_amount = 0, game_result_id = NULL, settled_at = NULL WHERE id = ?`,
+      [bet.id]
+    );
+
+    reversedCount++;
+  }
+
+  // Reset the game_results settled flag
+  await conn.query('UPDATE game_results SET is_settled = 0 WHERE id = ?', [gameResultId]);
+
+  return reversedCount;
+}
+
+module.exports = { settleBetsForGame, reverseSettlement };
