@@ -209,6 +209,16 @@ async function reverseSettlement(conn, gameResultId) {
         referenceId: `bet_reversal_${bet.id}_${revisionTs}`,
         remark: `Result revised — reversed ${bet.type} win`,
       });
+
+      // Rename the original wallet_transaction reference_id so the idempotency
+      // guard in recordWalletTransaction won't block re-settlement when the new
+      // result is declared.  The reversal row above preserves full audit trail.
+      await conn.query(
+        `UPDATE wallet_transactions
+            SET reference_id = CONCAT(reference_id, '_reversed_', ?)
+          WHERE reference_type = 'bet' AND reference_id = ?`,
+        [String(revisionTs), `bet_${bet.id}`]
+      );
     }
 
     // Reset bet to pending
