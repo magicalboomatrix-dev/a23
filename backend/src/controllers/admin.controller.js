@@ -184,7 +184,7 @@ exports.getModeratorTransactions = async (req, res, next) => {
 exports.getModeratorDetail = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const [[moderatorRows], [depositTransactions], [assignedUsers], [notifications], [scannerAuditHistory]] = await Promise.all([
+    const [[moderatorRows], [depositTransactions], [assignedUsers], [notifications], [scannerAuditHistory], [referredUsers]] = await Promise.all([
       pool.query(`
         SELECT u.id, u.name, u.phone, u.referral_code, u.upi_id,
                u.scanner_label, u.scanner_enabled, u.is_blocked, u.created_at,
@@ -242,6 +242,14 @@ exports.getModeratorDetail = async (req, res, next) => {
         ORDER BY sal.created_at DESC, sal.id DESC
         LIMIT 100
       `, [id]),
+      pool.query(`
+        SELECT r.id, r.referred_user_id, r.bonus_amount, r.status, r.created_at, r.credited_at,
+               u.name AS user_name, u.phone AS user_phone
+        FROM referrals r
+        JOIN users u ON u.id = r.referred_user_id
+        WHERE r.referrer_id = ?
+        ORDER BY r.created_at DESC
+      `, [id]),
     ]);
 
     if (moderatorRows.length === 0) {
@@ -254,6 +262,7 @@ exports.getModeratorDetail = async (req, res, next) => {
       assigned_users: assignedUsers,
       notifications,
       scanner_audit_history: scannerAuditHistory,
+      referred_users: referredUsers,
     });
   } catch (error) {
     next(error);

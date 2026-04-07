@@ -2,7 +2,16 @@ const pool = require('../config/database');
 const bcrypt = require('bcryptjs');
 
 function generateReferralCode() {
-  return 'MOD' + Math.random().toString(36).substring(2, 8).toUpperCase();
+  // Simple format: M + 5 digits (e.g. M55555, M11111)
+  const digits = Math.floor(10000 + Math.random() * 90000).toString();
+  return 'M' + digits;
+}
+
+function validateReferralCode(code) {
+  const value = String(code || '').trim();
+  if (!value) return { isValid: false, message: 'Referral code is required.' };
+  if (!/^M\d{5}$/.test(value)) return { isValid: false, message: 'Referral code must be M followed by 5 digits (e.g. M55555).' };
+  return { isValid: true, message: '' };
 }
 
 function normalizeScannerEnabled(value) {
@@ -172,7 +181,7 @@ exports.listModerators = async (req, res, next) => {
 exports.updateModerator = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, phone, is_blocked, password, upi_id, scanner_label, scanner_enabled } = req.body;
+    const { name, phone, is_blocked, password, upi_id, scanner_label, scanner_enabled, referral_code } = req.body;
 
     const [moderators] = await pool.query(
       `SELECT id, scanner_enabled FROM users WHERE id = ? AND role = 'moderator' LIMIT 1`,
@@ -184,6 +193,22 @@ exports.updateModerator = async (req, res, next) => {
     }
 
     const currentModerator = moderators[0];
+
+    // Validate referral code if provided
+    if (referral_code !== undefined) {
+      const validation = validateReferralCode(referral_code);
+      if (!validation.isValid) {
+        return res.status(400).json({ error: validation.message });
+      }
+      // Check uniqueness
+      const [existing] = await pool.query(
+        'SELECT id FROM users WHERE referral_code = ? AND id != ?',
+        [referral_code.trim(), id]
+      );
+      if (existing.length > 0) {
+        return res.status(409).json({ error: 'This referral code is already in use.' });
+      }
+    }
 
     if (upi_id !== undefined) {
       const validation = validateUpiId(upi_id);
@@ -218,6 +243,7 @@ exports.updateModerator = async (req, res, next) => {
     if (name) { fields.push('name = ?'); values.push(name); }
     if (phone) { fields.push('phone = ?'); values.push(phone); }
     if (is_blocked !== undefined) { fields.push('is_blocked = ?'); values.push(is_blocked); }
+    if (referral_code !== undefined) { fields.push('referral_code = ?'); values.push(referral_code.trim()); }
     if (upi_id !== undefined) { fields.push('upi_id = ?'); values.push(upi_id ? String(upi_id).trim() : null); }
     if (scanner_label !== undefined) { fields.push('scanner_label = ?'); values.push(scanner_label ? String(scanner_label).trim() : null); }
     if (scanner_enabled !== undefined) { fields.push('scanner_enabled = ?'); values.push(normalizeScannerEnabled(scanner_enabled)); }

@@ -60,6 +60,9 @@ export default function ModeratorDetail() {
   const [pwSaving, setPwSaving] = useState(false);
   const [pwShowNew, setPwShowNew] = useState(false);
   const [pwShowConfirm, setPwShowConfirm] = useState(false);
+  const [refCodeEditing, setRefCodeEditing] = useState(false);
+  const [refCodeValue, setRefCodeValue] = useState('');
+  const [refCodeSaving, setRefCodeSaving] = useState(false);
 
   // Jantri state
   const [games, setGames] = useState([]);
@@ -159,11 +162,31 @@ export default function ModeratorDetail() {
     }
   };
 
+  const handleSaveReferralCode = async () => {
+    const code = refCodeValue.trim();
+    if (!/^M\d{5}$/.test(code)) {
+      toastError('Referral code must be M followed by 5 digits (e.g. M55555).');
+      return;
+    }
+    setRefCodeSaving(true);
+    try {
+      await api.put(`/moderators/${id}`, { referral_code: code });
+      success('Referral code updated.');
+      setRefCodeEditing(false);
+      loadDetail();
+    } catch (err) {
+      toastError(err.response?.data?.error || 'Failed to update referral code.');
+    } finally {
+      setRefCodeSaving(false);
+    }
+  };
+
   const moderator = data?.moderator;
   const deposits = data?.deposit_transactions || [];
   const assignedUsers = data?.assigned_users || [];
   const notifications = data?.notifications || [];
   const scannerAuditHistory = data?.scanner_audit_history || [];
+  const referredUsers = data?.referred_users || [];
   const upiDetails = parseUpiDetails(moderator?.upi_id);
 
 
@@ -267,7 +290,7 @@ export default function ModeratorDetail() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-600">
               <div><span className="font-medium text-gray-800">Phone:</span> {moderator.phone}</div>
-              <div><span className="font-medium text-gray-800">Referral:</span> {moderator.referral_code}</div>
+              <div><span className="font-medium text-gray-800">Referral:</span> <span className="font-mono">{moderator.referral_code}</span></div>
               <div><span className="font-medium text-gray-800">Label:</span> {moderator.scanner_label || '-'}</div>
               <div>
                 <span className="font-medium text-gray-800">Status:</span>{' '}
@@ -294,7 +317,36 @@ export default function ModeratorDetail() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-600">
             <div><span className="font-medium text-gray-800">Name:</span> {moderator.name}</div>
             <div><span className="font-medium text-gray-800">Phone:</span> {moderator.phone}</div>
-            <div><span className="font-medium text-gray-800">Referral Code:</span> {moderator.referral_code}</div>
+            <div><span className="font-medium text-gray-800">Referral Code:</span>{' '}
+              {refCodeEditing ? (
+                <span className="inline-flex items-center gap-1">
+                  <input
+                    type="text"
+                    value={refCodeValue}
+                    onChange={(e) => setRefCodeValue(e.target.value.toUpperCase())}
+                    placeholder="M55555"
+                    maxLength={6}
+                    className="w-24 px-2 py-1 border text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono"
+                  />
+                  <button onClick={handleSaveReferralCode} disabled={refCodeSaving}
+                    className="px-2 py-1 text-xs bg-green-600 text-white hover:bg-green-700 disabled:opacity-50">
+                    {refCodeSaving ? '...' : 'Save'}
+                  </button>
+                  <button onClick={() => setRefCodeEditing(false)}
+                    className="px-2 py-1 text-xs bg-gray-200 text-gray-600 hover:bg-gray-300">
+                    Cancel
+                  </button>
+                </span>
+              ) : (
+                <span>
+                  <span className="font-mono">{moderator.referral_code}</span>
+                  <button onClick={() => { setRefCodeValue(moderator.referral_code || ''); setRefCodeEditing(true); }}
+                    className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-700 hover:bg-blue-200">
+                    Edit
+                  </button>
+                </span>
+              )}
+            </div>
             <div><span className="font-medium text-gray-800">Assigned Users:</span> {moderator.user_count}</div>
             <div><span className="font-medium text-gray-800">Completed Deposits:</span> {moderator.approved_deposit_count} ({formatCurrency(moderator.approved_deposit_amount)})</div>
             <div><span className="font-medium text-gray-800">Total Deposits:</span> {moderator.total_related_deposits}</div>
@@ -375,6 +427,43 @@ export default function ModeratorDetail() {
               ))}
               {assignedUsers.length === 0 && (
                 <tr><td colSpan={4} className="px-4 py-8 text-center text-gray-400">No assigned users</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="bg-white border overflow-x-auto">
+          <div className="px-4 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h4 className="text-lg font-semibold text-gray-800">Referred Users</h4>
+            <span className="text-sm text-gray-500">{referredUsers.length} referrals</span>
+          </div>
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">User</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">Bonus</th>
+                <th className="text-center px-4 py-3 font-medium text-gray-600">Status</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Referred On</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {referredUsers.map((r) => (
+                <tr key={r.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 text-xs text-gray-700">
+                    <Link to={`/users/${r.referred_user_id}`} className="text-blue-600 hover:underline font-medium">{r.user_name}</Link>
+                    <div className="text-gray-500">{r.user_phone}</div>
+                  </td>
+                  <td className="px-4 py-3 text-right text-xs font-semibold text-green-700">{formatCurrency(r.bonus_amount)}</td>
+                  <td className="px-4 py-3 text-center">
+                    <span className={`px-2 py-1 text-xs font-medium ${r.status === 'credited' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {r.status === 'credited' ? 'Credited' : 'Pending'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-xs text-gray-600">{new Date(r.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</td>
+                </tr>
+              ))}
+              {referredUsers.length === 0 && (
+                <tr><td colSpan={4} className="px-4 py-8 text-center text-gray-400">No referred users</td></tr>
               )}
             </tbody>
           </table>

@@ -301,7 +301,7 @@ async function matchAndCreditDeposit({ amount, referenceNumber, payerName, txnTi
 }
 
 /**
- * Apply first-deposit and slab bonuses (mirrored from deposit.controller.js approveDeposit logic)
+ * Apply first-deposit, slab, and pending referral bonuses
  */
 async function applyDepositBonuses(conn, { depositId, userId, amount }) {
   // First deposit bonus
@@ -332,6 +332,43 @@ async function applyDepositBonuses(conn, { depositId, userId, amount }) {
             (user_id, type, amount, balance_after, status, reference_type, reference_id, remark)
            VALUES (?, 'bonus', ?, ?, 'completed', 'bonus', ?, ?)`,
           [userId, bonusAmount, effectiveBalance, `first_deposit_${depositId}`, `First deposit bonus ${bonusPercent}%`]
+        );
+      }
+    }
+  }
+
+  // Credit pending referral bonus to this user on first deposit
+  if (depositCount[0].count === 1) {
+    const [pendingReferrals] = await conn.query(
+      "SELECT id, referrer_id, bonus_amount FROM referrals WHERE referred_user_id = ? AND status = 'pending' LIMIT 1",
+      [userId]
+    );
+
+    if (pendingReferrals.length > 0) {
+      const referral = pendingReferrals[0];
+      const refBonus = parseFloat(referral.bonus_amount);
+
+      if (refBonus > 0) {
+        // Credit bonus to the referred user (the one making the deposit)
+        await conn.query('SELECT balance FROM wallets WHERE user_id = ? FOR UPDATE', [userId]);
+        await conn.query('UPDATE wallets SET bonus_balance = bonus_balance + ? WHERE user_id = ?', [refBonus, userId]);
+
+        await conn.query('INSERT INTO bonuses (user_id, type, amount, reference_id) VALUES (?, ?, ?, ?)',
+          [userId, 'referral', refBonus, `ref_signup_${referral.referrer_id}`]);
+
+        const [[refWalletRow]] = await conn.query('SELECT balance, bonus_balance FROM wallets WHERE user_id = ?', [userId]);
+        const refEffBalance = parseFloat(refWalletRow.balance) + parseFloat(refWalletRow.bonus_balance);
+        await conn.query(
+          `INSERT INTO wallet_transactions
+            (user_id, type, amount, balance_after, status, reference_type, reference_id, remark)
+           VALUES (?, 'bonus', ?, ?, 'completed', 'bonus', ?, ?)`,
+          [userId, refBonus, refEffBalance, `referral_bonus_${referral.id}`, 'Referral signup bonus (credited on first deposit)']
+        );
+
+        // Mark referral as credited
+        await conn.query(
+          "UPDATE referrals SET status = 'credited', credited_at = NOW() WHERE id = ?",
+          [referral.id]
         );
       }
     }

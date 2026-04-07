@@ -24,7 +24,17 @@ exports.getReferrals = async (req, res, next) => {
       ORDER BY r.created_at DESC
     `, [req.user.id]);
 
-    res.json({ referrals, referral_code: req.user.referral_code });
+    // Check if current user has a pending referral bonus (they were referred)
+    const [myReferral] = await pool.query(
+      "SELECT r.id, r.bonus_amount, r.status, u.name as referrer_name FROM referrals r JOIN users u ON r.referrer_id = u.id WHERE r.referred_user_id = ? LIMIT 1",
+      [req.user.id]
+    );
+
+    res.json({
+      referrals,
+      referral_code: req.user.referral_code,
+      my_referral: myReferral[0] || null,
+    });
   } catch (error) {
     next(error);
   }

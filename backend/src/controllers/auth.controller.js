@@ -242,30 +242,17 @@ exports.completeProfile = async (req, res, next) => {
     // Create wallet
     await conn.query('INSERT INTO wallets (user_id, balance, bonus_balance) VALUES (?, 0.00, 0.00)', [userId]);
 
-    // Handle referral
+    // Handle referral — bonus is deferred until the referred user's first deposit
     if (referrer) {
         const [settings] = await conn.query("SELECT setting_value FROM settings WHERE setting_key = 'referral_bonus'");
         const bonusAmount = settings.length > 0 ? parseFloat(settings[0].setting_value) : 0;
 
         if (bonusAmount > 0) {
-          await conn.query('INSERT INTO referrals (referrer_id, referred_user_id, bonus_amount) VALUES (?, ?, ?)',
-            [referrer.id, userId, bonusAmount]);
-
-          // Lock wallet row before updating bonus_balance
-          await conn.query('SELECT balance FROM wallets WHERE user_id = ? FOR UPDATE', [referrer.id]);
-          await conn.query('UPDATE wallets SET bonus_balance = bonus_balance + ? WHERE user_id = ?',
-            [bonusAmount, referrer.id]);
-
-          await conn.query('INSERT INTO bonuses (user_id, type, amount, reference_id) VALUES (?, ?, ?, ?)',
-            [referrer.id, 'referral', bonusAmount, `ref_${userId}`]);
-
-          // Record in wallet_transactions ledger
-          const [[walletRow]] = await conn.query('SELECT balance FROM wallets WHERE user_id = ?', [referrer.id]);
+          // Create referral record with status='pending' — bonus will be credited
+          // to the referred user (not referrer) after their first deposit
           await conn.query(
-            `INSERT INTO wallet_transactions
-              (user_id, type, amount, balance_after, status, reference_type, reference_id, remark)
-             VALUES (?, 'bonus', ?, ?, 'completed', 'bonus', ?, ?)`,
-            [referrer.id, bonusAmount, parseFloat(walletRow.balance), `referral_${userId}`, `Referral bonus for user #${userId}`]
+            'INSERT INTO referrals (referrer_id, referred_user_id, bonus_amount, status) VALUES (?, ?, ?, ?)',
+            [referrer.id, userId, bonusAmount, 'pending']
           );
         }
     }
