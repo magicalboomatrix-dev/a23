@@ -44,11 +44,14 @@ async function loadBonusRates(conn) {
   for (const r of rows) {
     bonus[r.game_type] = parseFloat(r.bonus_multiplier);
   }
+  // Use || 1 (not ?? 1) so that 0 also falls back to 1.
+  // bonus_multiplier = 0 would zero out all payouts — clearly a misconfiguration.
+  // Valid values: 1.00 = no bonus, >1 = extra bonus (e.g. 1.10 = 10% bonus).
   return {
-    jodi: bonus.jodi ?? 1,
-    haruf_andar: bonus.haruf_andar ?? 1,
-    haruf_bahar: bonus.haruf_bahar ?? 1,
-    crossing: bonus.crossing ?? 1,
+    jodi: bonus.jodi || 1,
+    haruf_andar: bonus.haruf_andar || 1,
+    haruf_bahar: bonus.haruf_bahar || 1,
+    crossing: bonus.crossing || 1,
   };
 }
 

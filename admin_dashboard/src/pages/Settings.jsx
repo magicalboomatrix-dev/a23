@@ -273,7 +273,7 @@ export default function Settings() {
         <h3 className="text-sm font-semibold text-gray-800 mb-3">Bonus Multipliers</h3>
         {bonusRates.length > 0 ? (
           <>
-            <p className="text-xs text-gray-400 mb-3">Win = bet � payout � bonus. Set to 1.00 to disable bonus.</p>
+            <p className="text-xs text-gray-400 mb-3">Win = bet × payout × bonus. Set to 1.00 for standard payout (no bonus). Must be ≥ 1.</p>
             <div className="space-y-2">
               {bonusRates.map((r) => (
                 <div key={r.game_type} className="flex items-center gap-2">
@@ -284,7 +284,7 @@ export default function Settings() {
                   <input
                     type="number"
                     step="0.01"
-                    min="0"
+                    min="1"
                     value={r.bonus_multiplier}
                     onChange={(e) => updateBonus(r.game_type, e.target.value)}
                     className="w-20 sm:w-32 px-2 py-1.5 border text-xs focus:ring-2 focus:ring-primary-500 outline-none flex-shrink-0"

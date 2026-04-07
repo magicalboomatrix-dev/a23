@@ -555,10 +555,10 @@ exports.updatePayoutRates = async (req, res, next) => {
 // ── Bonus Rates ───────────────────────────────────────────────────────
 
 const DEFAULT_BONUS_RATES = [
-  { game_type: 'jodi', bonus_multiplier: 0 },
-  { game_type: 'haruf_andar', bonus_multiplier: 0 },
-  { game_type: 'haruf_bahar', bonus_multiplier: 0 },
-  { game_type: 'crossing', bonus_multiplier: 0 },
+  { game_type: 'jodi', bonus_multiplier: 1 },
+  { game_type: 'haruf_andar', bonus_multiplier: 1 },
+  { game_type: 'haruf_bahar', bonus_multiplier: 1 },
+  { game_type: 'crossing', bonus_multiplier: 1 },
 ];
 
 exports.getBonusRates = async (req, res, next) => {
@@ -593,9 +593,9 @@ exports.updateBonusRates = async (req, res, next) => {
       await conn.beginTransaction();
       for (const { game_type, bonus_multiplier } of rates) {
         const mult = parseFloat(bonus_multiplier);
-        if (!game_type || isNaN(mult) || mult < 0) {
+        if (!game_type || isNaN(mult) || mult < 1) {
           await conn.rollback();
-          return res.status(400).json({ error: `Invalid bonus rate for "${game_type}".` });
+          return res.status(400).json({ error: `Invalid bonus rate for "${game_type}". Must be >= 1.00 (1.00 = no bonus).` });
         }
         await conn.query(
           'INSERT INTO game_bonus_rates (game_type, bonus_multiplier, updated_by) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE bonus_multiplier = VALUES(bonus_multiplier), updated_by = VALUES(updated_by), updated_at = NOW()',
