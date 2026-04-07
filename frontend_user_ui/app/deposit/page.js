@@ -43,6 +43,7 @@ const DepositPage = () => {
   const [timeLeft, setTimeLeft] = useState(0);
   const pollRef = useRef(null);
   const timerRef = useRef(null);
+  const qrRef = useRef(null);
   const pollAttemptsRef = useRef(0);
   const [showConfirmBtn, setShowConfirmBtn] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
@@ -271,6 +272,35 @@ const DepositPage = () => {
     }
   };
 
+  const handleDownloadQR = () => {
+    if (!qrRef.current) return;
+    const svg = qrRef.current.querySelector('svg');
+    const img = qrRef.current.querySelector('img');
+    if (svg) {
+      const svgData = new XMLSerializer().serializeToString(svg);
+      const canvas = document.createElement('canvas');
+      canvas.width = 400;
+      canvas.height = 400;
+      const ctx = canvas.getContext('2d');
+      const image = new Image();
+      image.onload = () => {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, 400, 400);
+        ctx.drawImage(image, 0, 0, 400, 400);
+        const link = document.createElement('a');
+        link.download = `QR_${paymentDetails.order_ref || 'deposit'}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      };
+      image.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+    } else if (img) {
+      const link = document.createElement('a');
+      link.download = `QR_${paymentDetails.order_ref || 'deposit'}.png`;
+      link.href = img.src;
+      link.click();
+    }
+  };
+
   const formatTime = (seconds) => {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
@@ -312,7 +342,7 @@ const DepositPage = () => {
 
                   {/* UPI QR Code */}
                   <div className="my-3 flex justify-center">
-                    <div className="rounded-lg bg-white p-3 shadow-md border border-[#e5e7eb]">
+                    <div ref={qrRef} className="rounded-lg bg-white p-3 shadow-md border border-[#e5e7eb]">
                       {paymentDetails.qr_code ? (
                         <img src={paymentDetails.qr_code} alt="UPI QR Code" width={180} height={180} />
                       ) : (
@@ -326,14 +356,14 @@ const DepositPage = () => {
                   </div>
                   <p className="text-center text-[10px] text-[#9a3412] mb-2">Scan QR code with any UPI app</p>
 
-                  {paymentDetails.upi_link && (
-                    <a
-                      href={paymentDetails.upi_link}
-                      className="mt-2 block w-full rounded bg-[#f97316] py-2.5 text-center text-sm font-bold text-white"
-                    >
-                      Pay via UPI App
-                    </a>
-                  )}
+                  <button
+                    type="button"
+                    onClick={handleDownloadQR}
+                    className="mt-2 flex w-full items-center justify-center gap-2 rounded bg-[#f97316] py-2.5 text-sm font-bold text-white"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
+                    Download QR Code
+                  </button>
 
                   <div className="mt-3 flex items-center justify-between">
                     <div className="flex items-center gap-2">
