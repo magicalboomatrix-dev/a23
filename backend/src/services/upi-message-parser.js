@@ -113,7 +113,24 @@ function parseUpiMessage(rawMessage) {
     return { success: false, error: 'Empty or invalid message' };
   }
 
-  const message = rawMessage.trim();
+  // Clean BharatPe noise: remove %nbt%, %NBT%, stray "BharatPe" header lines,
+  // and duplicate lines (BharatPe often repeats the same line twice).
+  let message = rawMessage.trim()
+    .replace(/%nbt%/gi, '')
+    .replace(/^BharatPe\s*/im, '')
+    .trim();
+
+  // Deduplicate repeated lines (BharatPe sends same line twice)
+  const lines = message.split('\n').map(l => l.trim()).filter(Boolean);
+  const seen = new Set();
+  const deduped = [];
+  for (const line of lines) {
+    if (!seen.has(line)) {
+      seen.add(line);
+      deduped.push(line);
+    }
+  }
+  message = deduped.join('\n');
 
   // --- Safety filters: reject outgoing / non-credit messages ---
   if (DEBIT_KEYWORDS.test(message)) {
@@ -152,9 +169,8 @@ function parseUpiMessage(rawMessage) {
     }
   }
 
-  if (!referenceNumber) {
-    return { success: false, error: 'Could not parse reference number. Please forward the bank SMS that contains UTR/Ref number.', rawMessage: message };
-  }
+  // Reference number is optional — BharatPe and some wallet apps don't include UTR.
+  // The caller must generate a synthetic reference when this is null.
 
   // Parse payer name (optional)
   let payerName = null;

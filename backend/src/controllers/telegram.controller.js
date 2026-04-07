@@ -70,7 +70,11 @@ exports.handleWebhook = async (req, res) => {
       return;
     }
 
-    const { amount, referenceNumber, payerName, txnTime, orderRef } = parsed.data;
+    const { amount, referenceNumber: parsedRef, payerName, txnTime, orderRef } = parsed.data;
+
+    // BharatPe and some wallet apps don't include a UTR/Ref number.
+    // Generate a synthetic one from message_id + chat_id so it's unique per message.
+    const referenceNumber = parsedRef || `AUTO-${chatId}-${messageId}`;
 
     // If this message previously failed parsing (parse_error row), remove the stale row
     // so the new 'received' INSERT succeeds against the (telegram_message_id, telegram_chat_id) UNIQUE key.
