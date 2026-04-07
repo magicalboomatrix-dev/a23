@@ -1,6 +1,6 @@
 const pool = require('../config/database');
 const XLSX = require('xlsx');
-const { isResultVisible, getResultDate, resolveGameWindow, formatDate } = require('../utils/game-time');
+const { isResultVisible, getResultDate, resolveGameWindow } = require('../utils/game-time');
 const { escapeLike } = require('../utils/pagination');
 const redis = require('../services/redis.service');
 const eventBus = require('../utils/event-bus');
