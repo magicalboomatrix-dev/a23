@@ -40,17 +40,18 @@ async function main() {
   const missing = [];
 
   for (const bet of wonBets) {
-    // Sum all wallet_transactions for this bet (credits + reversals)
+    // Sum only WIN credits and reversal adjustments for this bet.
+    // Excludes bet placement stake deductions (type='bet') which are unrelated.
     const [[txnResult]] = await pool.query(`
       SELECT COALESCE(SUM(amount), 0) AS net_amount
       FROM wallet_transactions
       WHERE status = 'completed'
         AND (
-          (reference_type = 'bet' AND (reference_id = ? OR reference_id LIKE ?))
+          (type = 'win' AND reference_type = 'bet' AND (reference_id = ? OR reference_id LIKE ? OR reference_id LIKE ?))
           OR
           (reference_type = 'bet_reversal' AND reference_id LIKE ?)
         )
-    `, [`bet_${bet.id}`, `bet_${bet.id}_reversed_%`, `bet_reversal_${bet.id}_%`]);
+    `, [`bet_${bet.id}`, `bet_${bet.id}_reversed_%`, `win_credit_fix_${bet.id}_%`, `bet_reversal_${bet.id}_%`]);
 
     const netCredited = parseFloat(txnResult.net_amount);
     const expectedWin = parseFloat(bet.win_amount);
