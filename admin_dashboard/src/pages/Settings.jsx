@@ -207,23 +207,23 @@ export default function Settings() {
   if (loading) return <div className="text-center py-10 text-gray-500">Loading...</div>;
 
   const renderGroup = (title, items) => (
-    <div className="bg-white border p-6">
-      <h3 className="text-lg font-semibold text-gray-800 mb-4">{title}</h3>
-      <div className="space-y-3">
+    <div className="bg-white border p-3 sm:p-5">
+      <h3 className="text-sm font-semibold text-gray-800 mb-3">{title}</h3>
+      <div className="space-y-2">
         {items.map((s) => (
-          <div key={s.setting_key} className="flex flex-col sm:flex-row sm:items-center gap-2">
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-700">
+          <div key={s.setting_key} className="flex items-center gap-2">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-gray-700 leading-tight">
                 {s.label}
-                {s.isNew && <span className="ml-2 text-[10px] px-1.5 py-0.5 bg-yellow-100 text-yellow-700 font-semibold rounded">NEW</span>}
+                {s.isNew && <span className="ml-1 text-[9px] px-1 py-0.5 bg-yellow-100 text-yellow-700 font-semibold rounded">NEW</span>}
               </p>
-              {s.description && <p className="text-xs text-gray-400">{s.description}</p>}
+              {s.description && <p className="text-[10px] text-gray-400 leading-tight">{s.description}</p>}
             </div>
             <input
               type="text"
               value={s.setting_value}
               onChange={(e) => updateValue(title, s.setting_key, e.target.value)}
-              className="w-full sm:w-40 px-3 py-2 border text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+              className="w-20 sm:w-32 px-2 py-1.5 border text-xs focus:ring-2 focus:ring-primary-500 outline-none flex-shrink-0"
             />
           </div>
         ))}
@@ -234,16 +234,16 @@ export default function Settings() {
   return (
     <div className="space-y-6">
       {/* Payout Rates from game_payout_rates table */}
-      <div className="bg-white border p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Payout Multipliers</h3>
+      <div className="bg-white border p-3 sm:p-5">
+        <h3 className="text-sm font-semibold text-gray-800 mb-3">Payout Multipliers</h3>
         {payoutRates.length > 0 ? (
           <>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {payoutRates.map((r) => (
-                <div key={r.game_type} className="flex flex-col sm:flex-row sm:items-center gap-2">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-700">{RATE_LABELS[r.game_type] || r.game_type}</p>
-                    <p className="text-xs text-gray-400">Multiplier applied to winning bets</p>
+                <div key={r.game_type} className="flex items-center gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-gray-700">{RATE_LABELS[r.game_type] || r.game_type}</p>
+                    <p className="text-[10px] text-gray-400">Multiplier applied to winning bets</p>
                   </div>
                   <input
                     type="number"
@@ -251,14 +251,14 @@ export default function Settings() {
                     min="1"
                     value={r.multiplier}
                     onChange={(e) => updateRate(r.game_type, e.target.value)}
-                    className="w-full sm:w-40 px-3 py-2 border text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+                    className="w-20 sm:w-32 px-2 py-1.5 border text-xs focus:ring-2 focus:ring-primary-500 outline-none flex-shrink-0"
                   />
                 </div>
               ))}
             </div>
-            <div className="flex justify-end mt-4">
+            <div className="flex justify-end mt-3">
               <button onClick={savePayoutRates} disabled={savingRates}
-                className="px-6 py-2 bg-primary-600 text-white hover:bg-primary-700 font-medium disabled:opacity-50 text-sm">
+                className="px-4 py-1.5 bg-primary-600 text-white hover:bg-primary-700 font-medium disabled:opacity-50 text-xs">
                 {savingRates ? 'Saving...' : 'Save Payout Rates'}
               </button>
             </div>
@@ -269,17 +269,17 @@ export default function Settings() {
       </div>
 
       {/* Bonus Multipliers from game_bonus_rates table */}
-      <div className="bg-white border p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Bonus Multipliers</h3>
+      <div className="bg-white border p-3 sm:p-5">
+        <h3 className="text-sm font-semibold text-gray-800 mb-3">Bonus Multipliers</h3>
         {bonusRates.length > 0 ? (
           <>
             <p className="text-xs text-gray-400 mb-3">Win = bet � payout � bonus. Set to 1.00 to disable bonus.</p>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {bonusRates.map((r) => (
-                <div key={r.game_type} className="flex flex-col sm:flex-row sm:items-center gap-2">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-700">{BONUS_LABELS[r.game_type] || r.game_type}</p>
-                    <p className="text-xs text-gray-400">Extra multiplier on top of payout rate</p>
+                <div key={r.game_type} className="flex items-center gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-gray-700">{BONUS_LABELS[r.game_type] || r.game_type}</p>
+                    <p className="text-[10px] text-gray-400">Extra multiplier on top of payout rate</p>
                   </div>
                   <input
                     type="number"
@@ -287,14 +287,14 @@ export default function Settings() {
                     min="0"
                     value={r.bonus_multiplier}
                     onChange={(e) => updateBonus(r.game_type, e.target.value)}
-                    className="w-full sm:w-40 px-3 py-2 border text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+                    className="w-20 sm:w-32 px-2 py-1.5 border text-xs focus:ring-2 focus:ring-primary-500 outline-none flex-shrink-0"
                   />
                 </div>
               ))}
             </div>
-            <div className="flex justify-end mt-4">
+            <div className="flex justify-end mt-3">
               <button onClick={saveBonusRates} disabled={savingBonus}
-                className="px-6 py-2 bg-primary-600 text-white hover:bg-primary-700 font-medium disabled:opacity-50 text-sm">
+                className="px-4 py-1.5 bg-primary-600 text-white hover:bg-primary-700 font-medium disabled:opacity-50 text-xs">
                 {savingBonus ? 'Saving...' : 'Save Bonus Rates'}
               </button>
             </div>
@@ -311,60 +311,57 @@ export default function Settings() {
 
       <div className="flex justify-end">
         <button onClick={saveSettings} disabled={saving}
-          className="px-8 py-3 bg-primary-600 text-white hover:bg-primary-700 font-medium disabled:opacity-50">
+          className="px-5 py-2 bg-primary-600 text-white hover:bg-primary-700 font-medium disabled:opacity-50 text-sm">
           {saving ? 'Saving...' : 'Save All Settings'}
         </button>
       </div>
 
       {/* Withdrawal Time Windows */}
-      <div className="bg-white border p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-1">Withdrawal Time Windows</h3>
-        <p className="text-xs text-gray-400 mb-4">
+      <div className="bg-white border p-3 sm:p-5">
+        <h3 className="text-sm font-semibold text-gray-800 mb-1">Withdrawal Time Windows</h3>
+        <p className="text-[10px] text-gray-400 mb-3">
           Users can only request withdrawals during these time windows (IST). Outside these hours withdrawals will be blocked.
         </p>
-        <div className="space-y-3">
+        <div className="space-y-2">
           {withdrawalWindows.map((w, index) => (
-            <div key={index} className="flex items-center gap-3">
-              <span className="text-sm text-gray-500 w-6">{index + 1}.</span>
-              <div className="flex items-center gap-2 flex-1">
-                <label className="text-xs text-gray-600 whitespace-nowrap">From</label>
-                <input
-                  type="time"
-                  value={w.start}
-                  onChange={(e) => updateWithdrawalWindow(index, 'start', e.target.value)}
-                  className="px-3 py-2 border text-sm focus:ring-2 focus:ring-primary-500 outline-none w-36"
-                />
-                <label className="text-xs text-gray-600 whitespace-nowrap">To</label>
-                <input
-                  type="time"
-                  value={w.end}
-                  onChange={(e) => updateWithdrawalWindow(index, 'end', e.target.value)}
-                  className="px-3 py-2 border text-sm focus:ring-2 focus:ring-primary-500 outline-none w-36"
-                />
-              </div>
+            <div key={index} className="flex items-center gap-1.5">
+              <span className="text-xs text-gray-500 w-4 flex-shrink-0">{index + 1}.</span>
+              <input
+                type="time"
+                value={w.start}
+                onChange={(e) => updateWithdrawalWindow(index, 'start', e.target.value)}
+                className="px-1.5 py-1.5 border text-xs focus:ring-2 focus:ring-primary-500 outline-none flex-1 min-w-0"
+              />
+              <span className="text-xs text-gray-500 flex-shrink-0">To</span>
+              <input
+                type="time"
+                value={w.end}
+                onChange={(e) => updateWithdrawalWindow(index, 'end', e.target.value)}
+                className="px-1.5 py-1.5 border text-xs focus:ring-2 focus:ring-primary-500 outline-none flex-1 min-w-0"
+              />
               <button
                 onClick={() => removeWithdrawalWindow(index)}
-                className="px-3 py-2 border border-red-300 text-red-600 text-xs hover:bg-red-50"
+                className="px-2 py-1.5 border border-red-300 text-red-600 text-[10px] hover:bg-red-50 flex-shrink-0"
               >
-                Remove
+                ✕
               </button>
             </div>
           ))}
         </div>
         {withdrawalWindows.length === 0 && (
-          <p className="text-sm text-amber-600 mt-2">⚠ No time windows set — withdrawals will not be restricted by time.</p>
+          <p className="text-xs text-amber-600 mt-2">⚠ No time windows set — withdrawals will not be restricted by time.</p>
         )}
-        <div className="flex justify-between items-center mt-4">
+        <div className="flex justify-between items-center mt-3">
           <button
             onClick={addWithdrawalWindow}
-            className="px-4 py-2 border border-primary-600 text-primary-600 text-sm hover:bg-primary-50"
+            className="px-3 py-1.5 border border-primary-600 text-primary-600 text-xs hover:bg-primary-50"
           >
-            + Add Time Window
+            + Add Window
           </button>
           <button
             onClick={saveWithdrawalWindows}
             disabled={savingWindows}
-            className="px-6 py-2 bg-primary-600 text-white hover:bg-primary-700 font-medium disabled:opacity-50 text-sm"
+            className="px-4 py-1.5 bg-primary-600 text-white hover:bg-primary-700 font-medium disabled:opacity-50 text-xs"
           >
             {savingWindows ? 'Saving...' : 'Save Withdrawal Windows'}
           </button>
