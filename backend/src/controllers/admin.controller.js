@@ -720,3 +720,71 @@ exports.updateAdminUpi = async (req, res, next) => {
     next(error);
   }
 };
+
+// ── All Referrals (admin overview) ──────────────────────────────
+exports.listReferrals = async (req, res, next) => {
+  try {
+    const { search, status, referrer_type } = req.query;
+    const { page, limit, offset } = clampPagination(req.query);
+
+    let where = '1=1';
+    const params = [];
+
+    if (search) {
+      where += ' AND (referrer.name LIKE ? OR referrer.phone LIKE ? OR referred.name LIKE ? OR referred.phone LIKE ?)';
+      const escaped = `%${escapeLike(search)}%`;
+      params.push(escaped, escaped, escaped, escaped);
+    }
+    if (status === 'pending' || status === 'credited') {
+      where += ' AND r.status = ?';
+      params.push(status);
+    }
+    if (referrer_type === 'moderator') {
+      where += " AND referrer.role = 'moderator'";
+    } else if (referrer_type === 'user') {
+      where += " AND referrer.role = 'user'";
+    }
+
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM referrals r
+      JOIN users referrer ON referrer.id = r.referrer_id
+      JOIN users referred ON referred.id = r.referred_user_id
+      WHERE ${where}
+    `;
+    const [countResult] = await pool.query(countQuery, params);
+    const total = countResult[0]?.total || 0;
+
+    const dataQuery = `
+      SELECT r.id, r.bonus_amount, r.status, r.created_at, r.credited_at,
+             referrer.id AS referrer_id, referrer.name AS referrer_name, referrer.phone AS referrer_phone, referrer.role AS referrer_role,
+             referred.id AS referred_id, referred.name AS referred_name, referred.phone AS referred_phone
+      FROM referrals r
+      JOIN users referrer ON referrer.id = r.referrer_id
+      JOIN users referred ON referred.id = r.referred_user_id
+      WHERE ${where}
+      ORDER BY r.created_at DESC
+      LIMIT ? OFFSET ?
+    `;
+    const [referrals] = await pool.query(dataQuery, [...params, limit, offset]);
+
+    // Summary stats
+    const [stats] = await pool.query(`
+      SELECT
+        COUNT(*) AS total_referrals,
+        SUM(CASE WHEN r.status = 'pending' THEN 1 ELSE 0 END) AS pending_count,
+        SUM(CASE WHEN r.status = 'credited' THEN 1 ELSE 0 END) AS credited_count,
+        COALESCE(SUM(r.bonus_amount), 0) AS total_bonus,
+        COALESCE(SUM(CASE WHEN r.status = 'credited' THEN r.bonus_amount ELSE 0 END), 0) AS credited_bonus,
+        COALESCE(SUM(CASE WHEN r.status = 'pending' THEN r.bonus_amount ELSE 0 END), 0) AS pending_bonus,
+        COALESCE(SUM(CASE WHEN referrer.role = 'moderator' THEN r.bonus_amount ELSE 0 END), 0) AS moderator_bonus,
+        COALESCE(SUM(CASE WHEN referrer.role = 'user' THEN r.bonus_amount ELSE 0 END), 0) AS user_bonus
+      FROM referrals r
+      JOIN users referrer ON referrer.id = r.referrer_id
+    `);
+
+    res.json({ referrals, total, page, limit, stats: stats[0] });
+  } catch (error) {
+    next(error);
+  }
+};

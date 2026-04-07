@@ -22,6 +22,7 @@ import SettlementMonitor from './pages/SettlementMonitor';
 import WalletAudit from './pages/WalletAudit';
 import MyScanner from './pages/MyScanner';
 import HowToPlay from './pages/HowToPlay';
+import Referrals from './pages/Referrals';
 
 const APP_ROUTES = [
   { index: true, element: <Dashboard /> },
@@ -44,6 +45,7 @@ const APP_ROUTES = [
   { path: 'wallet-audit', element: <WalletAudit /> },
   { path: 'my-scanner', element: <MyScanner /> },
   { path: 'how-to-play', element: <HowToPlay /> },
+  { path: 'referrals', element: <Referrals /> },
 ];
 
 function ProtectedRoute({ children }) {
