@@ -170,9 +170,17 @@ exports.placeBet = async (req, res, next) => {
       [betNumberRows]
     );
 
-    // Deduct bonus portion from bonus_balance
+    // Deduct bonus portion from bonus_balance and record in ledger
     if (bonusUsed > 0) {
       await conn.query('UPDATE wallets SET bonus_balance = bonus_balance - ? WHERE user_id = ?', [bonusUsed, req.user.id]);
+      const [[bonusWallet]] = await conn.query('SELECT balance, bonus_balance FROM wallets WHERE user_id = ?', [req.user.id]);
+      const bonusBalanceAfter = parseFloat(bonusWallet.balance) + parseFloat(bonusWallet.bonus_balance);
+      await conn.query(
+        `INSERT INTO wallet_transactions
+          (user_id, type, amount, balance_after, status, reference_type, reference_id, remark)
+         VALUES (?, 'bet', ?, ?, 'completed', 'bet_bonus', ?, ?)`,
+        [req.user.id, -bonusUsed, bonusBalanceAfter, `bet_bonus_${betId}`, `Bonus used for ${type} bet on ${game.name}`]
+      );
     }
 
     const newBalance = await recordWalletTransaction(conn, {
