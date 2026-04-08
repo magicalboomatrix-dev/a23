@@ -13,7 +13,8 @@
     "seed:admin": "node src/database/seedAdmin.js",
     "setup:telegram": "node src/scripts/setup-telegram-webhook.js",
     "gen:telegram-session": "node src/scripts/gen-telegram-session.js",
-    "test:regression": "node src/scripts/regression-test.js"
+    "test:regression": "node src/scripts/regression-test.js",
+    "test:settlement-reconciliation": "node src/scripts/settlement-reconciliation-test.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

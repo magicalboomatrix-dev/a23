@@ -5,6 +5,7 @@ const { escapeLike } = require('../utils/pagination');
 const redis = require('../services/redis.service');
 const eventBus = require('../utils/event-bus');
 const { reverseSettlement } = require('../utils/settle-bets');
+const { reconcileWalletForBet } = require('../utils/bet-reconciliation');
 
 function normalizeResultNumber(value) {
   const trimmed = String(value ?? '').trim();
@@ -431,13 +432,16 @@ exports.upsertResult = async (req, res, next) => {
     const oldResult = existingResult.length > 0 ? existingResult[0] : null;
     const isRevision = oldResult && oldResult.is_settled && oldResult.result_number !== resultNumber;
     let reversedCount = 0;
+    let reversedBetIds = [];
 
     // If result was already settled and the number is changing, reverse the old settlement
     if (isRevision) {
       const conn = await pool.getConnection();
       try {
         await conn.beginTransaction();
-        reversedCount = await reverseSettlement(conn, oldResult.id);
+        const reverseResult = await reverseSettlement(conn, oldResult.id);
+        reversedCount = reverseResult.reversedCount;
+        reversedBetIds = reverseResult.betIds;
         // Also remove the old settlement_queue entry so a new one can be created
         await conn.query('DELETE FROM settlement_queue WHERE game_result_id = ?', [oldResult.id]);
         await conn.commit();
@@ -475,6 +479,12 @@ exports.upsertResult = async (req, res, next) => {
         [resultId, gameId, resultStr, result_date]
       );
       eventBus.emit('result_declared', { gameId, resultId, resultDate: result_date, resultNumber: resultStr });
+    }
+
+    if (isRevision && reversedBetIds.length > 0) {
+      for (const betId of reversedBetIds) {
+        await reconcileWalletForBet(betId);
+      }
     }
 
     const message = isRevision

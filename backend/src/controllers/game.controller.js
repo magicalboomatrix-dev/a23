@@ -1,5 +1,5 @@
 const pool = require('../config/database');
-const { settleBetsForGame } = require('../utils/settle-bets');
+const { settleBetsForGame, reverseSettlement } = require('../utils/settle-bets');
 const { enqueueSettlement } = require('../utils/auto-settle');
 const eventBus = require('../utils/event-bus');
 const redis = require('../services/redis.service');
@@ -260,20 +260,25 @@ exports.declareResult = async (req, res, next) => {
 
     // Insert or update result — declared_at = actual current time
     const [existing] = await conn.query(
-      'SELECT id, is_settled FROM game_results WHERE game_id = ? AND result_date = ?',
+      'SELECT id, is_settled, result_number FROM game_results WHERE game_id = ? AND result_date = ?',
       [id, result_date]
     );
 
     let resultId;
     if (existing.length > 0) {
       resultId = existing[0].id;
-      // Allow re-declaration only if not yet settled
-      if (existing[0].is_settled) {
+      const isRevision = existing[0].is_settled && existing[0].result_number !== resultStr;
+
+      if (isRevision) {
+        await reverseSettlement(conn, resultId);
+        await conn.query('DELETE FROM settlement_queue WHERE game_result_id = ?', [resultId]);
+      } else if (existing[0].is_settled) {
         await conn.rollback();
-        return res.status(409).json({ error: 'Result already settled. Cannot re-declare.' });
+        return res.status(409).json({ error: 'Result already settled with the same number.' });
       }
+
       await conn.query(
-        'UPDATE game_results SET result_number = ?, declared_at = NOW() WHERE id = ?',
+        'UPDATE game_results SET result_number = ?, declared_at = NOW(), is_settled = 0 WHERE id = ?',
         [resultStr, resultId]
       );
     } else {

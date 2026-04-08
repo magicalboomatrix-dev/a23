@@ -1,5 +1,11 @@
 const { recordWalletTransaction } = require('./wallet-ledger');
 const eventBus = require('./event-bus');
+const logger = require('./logger');
+const {
+  getBetCreditSummary,
+  reconcileWalletForBet,
+  renameBetSettlementReferences,
+} = require('./bet-reconciliation');
 
 function maskWinnerName(name) {
   const safe = String(name || '').trim();
@@ -134,33 +140,31 @@ async function settleBetsForGame(conn, gameId, resultStr, resultId, game, result
     );
 
     if (totalWin > 0) {
-      await recordWalletTransaction(conn, {
-        userId: bet.user_id,
-        type: 'win',
-        amount: totalWin,
-        referenceType: 'bet',
-        referenceId: `bet_${betId}`,
+      const reconciliation = await reconcileWalletForBet(conn, betId, {
+        expectedCredit: totalWin,
         remark: `Won on ${bet.type} bet`,
       });
 
-      // Notification sent ONLY to the specific bet owner
-      await conn.query(
-        'INSERT INTO notifications (user_id, type, message) VALUES (?, ?, ?)',
-        [bet.user_id, 'win', `Congratulations! You won \u20b9${totalWin.toLocaleString('en-IN')} on your ${bet.type} bet!`]
-      );
+      if (reconciliation.creditedDelta > 0) {
+        // Notification sent ONLY to the specific bet owner
+        await conn.query(
+          'INSERT INTO notifications (user_id, type, message) VALUES (?, ?, ?)',
+          [bet.user_id, 'win', `Congratulations! You won \u20b9${totalWin.toLocaleString('en-IN')} on your ${bet.type} bet!`]
+        );
 
-      // Emit for the recent-winners ticker (fire-and-forget, outside tx guard is fine
-      // because the event is purely informational and recordWalletTransaction already committed).
-      // userName is masked before emission — raw userId never leaves the server.
-      const maskedName = maskWinnerName(bet.user_name);
-      setImmediate(() => {
-        eventBus.emit('recent_winner', {
-          userName: maskedName,
-          amount: totalWin,
-          betType: bet.type,
-          gameId: bet.game_id,
+        // Emit for the recent-winners ticker (fire-and-forget, outside tx guard is fine
+        // because the event is purely informational and recordWalletTransaction already committed).
+        // userName is masked before emission — raw userId never leaves the server.
+        const maskedName = maskWinnerName(bet.user_name);
+        setImmediate(() => {
+          eventBus.emit('recent_winner', {
+            userName: maskedName,
+            amount: totalWin,
+            betType: bet.type,
+            gameId: bet.game_id,
+          });
         });
-      });
+      }
     }
 
     settledCount++;
@@ -196,29 +200,37 @@ async function reverseSettlement(conn, gameResultId) {
   // Unique suffix for this reversal to allow multiple revisions
   const revisionTs = Date.now();
   let reversedCount = 0;
+  const betIds = [];
 
   for (const bet of settledBets) {
     // If the bet was a win, deduct the winnings from wallet
     if (bet.status === 'win' && parseFloat(bet.win_amount) > 0) {
-      const deductAmount = -Math.abs(parseFloat(bet.win_amount));
-      await recordWalletTransaction(conn, {
-        userId: bet.user_id,
-        type: 'adjustment',
-        amount: deductAmount,
-        referenceType: 'bet_reversal',
-        referenceId: `bet_reversal_${bet.id}_${revisionTs}`,
-        remark: `Result revised — reversed ${bet.type} win`,
-      });
+      const expectedWin = parseFloat(bet.win_amount);
+      const creditSummary = await getBetCreditSummary(conn, bet.id);
+      const netCredited = Math.max(0, creditSummary.netCredited);
 
-      // Rename the original wallet_transaction reference_id so the idempotency
-      // guard in recordWalletTransaction won't block re-settlement when the new
-      // result is declared.  The reversal row above preserves full audit trail.
-      await conn.query(
-        `UPDATE wallet_transactions
-            SET reference_id = CONCAT(reference_id, '_reversed_', ?)
-          WHERE reference_type = 'bet' AND reference_id = ?`,
-        [String(revisionTs), `bet_${bet.id}`]
-      );
+      if (Math.abs(expectedWin - creditSummary.netCredited) >= 0.01) {
+        logger.warn('settle-bets', 'Reverse settlement detected wallet drift', {
+          bet_id: bet.id,
+          user_id: bet.user_id,
+          expected_credit: expectedWin,
+          credited_amount: creditSummary.netCredited,
+          shortfall: Math.round((expectedWin - creditSummary.netCredited) * 100) / 100,
+        });
+      }
+
+      const renamedRows = await renameBetSettlementReferences(conn, bet.id, revisionTs);
+
+      if (netCredited > 0) {
+        await recordWalletTransaction(conn, {
+          userId: bet.user_id,
+          type: 'adjustment',
+          amount: -Math.abs(netCredited),
+          referenceType: 'bet_reversal',
+          referenceId: `bet_reversal_${bet.id}_${revisionTs}`,
+          remark: `Result revised — reversed ${bet.type} win (${renamedRows} credit reference(s) archived)`,
+        });
+      }
     }
 
     // Reset bet to pending
@@ -227,13 +239,14 @@ async function reverseSettlement(conn, gameResultId) {
       [bet.id]
     );
 
+    betIds.push(bet.id);
     reversedCount++;
   }
 
   // Reset the game_results settled flag
   await conn.query('UPDATE game_results SET is_settled = 0 WHERE id = ?', [gameResultId]);
 
-  return reversedCount;
+  return { reversedCount, betIds };
 }
 
 module.exports = { settleBetsForGame, reverseSettlement };
