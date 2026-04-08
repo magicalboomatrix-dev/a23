@@ -9,7 +9,7 @@ const { recordWalletTransaction } = require('../utils/wallet-ledger');
 const logger = require('../utils/logger');
 
 const ORDER_EXPIRY_MINUTES = 10;
-const LATE_MATCH_GRACE_MINUTES = 5; // Allow matching orders expired within this window
+const LATE_MATCH_GRACE_MINUTES = Math.max(5, Number(process.env.AUTO_DEPOSIT_LATE_MATCH_GRACE_MINUTES || 60));
 const DEFAULT_MIN_DEPOSIT = 100;
 const DEFAULT_MAX_DEPOSIT = 50000;
 

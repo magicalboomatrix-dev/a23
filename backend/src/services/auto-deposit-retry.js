@@ -8,12 +8,12 @@
  */
 
 const pool = require('../config/database');
-const { matchAndCreditDeposit } = require('./auto-deposit-matcher');
+const { matchAndCreditDeposit, ORDER_EXPIRY_MINUTES, LATE_MATCH_GRACE_MINUTES } = require('./auto-deposit-matcher');
 const logger = require('../utils/logger');
 
 let retryInterval = null;
 const RETRY_INTERVAL_MS = 10_000; // 10 seconds
-const MAX_AGE_MINUTES = 15; // Only retry recent transactions
+const MAX_AGE_MINUTES = ORDER_EXPIRY_MINUTES + LATE_MATCH_GRACE_MINUTES + 5;
 const BATCH_SIZE = 10; // Process up to 10 at a time
 
 async function retryUnmatchedTransactions() {

@@ -5,7 +5,13 @@
 
 const pool = require('../config/database');
 const crypto = require('crypto');
-const { ORDER_EXPIRY_MINUTES, getDepositLimits, expirePendingOrders, applyDepositBonuses } = require('../services/auto-deposit-matcher');
+const {
+  ORDER_EXPIRY_MINUTES,
+  LATE_MATCH_GRACE_MINUTES,
+  getDepositLimits,
+  expirePendingOrders,
+  applyDepositBonuses,
+} = require('../services/auto-deposit-matcher');
 const { resolveUpiForUser } = require('../services/upi-resolver');
 const { buildUpiLink, generateQrDataUri } = require('../services/qr-generator');
 const { clampPagination } = require('../utils/pagination');
@@ -33,13 +39,22 @@ async function generateUniquePayAmount(baseAmount) {
     const paise = Math.floor(Math.random() * 99) + 1; // 1-99
     const payAmount = parseFloat((Math.floor(baseAmount) + paise / 100).toFixed(2));
     const [existing] = await pool.query(
-      "SELECT id FROM pending_deposit_orders WHERE pay_amount = ? AND status = 'pending' AND expires_at > NOW() LIMIT 1",
-      [payAmount]
+      `SELECT id
+       FROM pending_deposit_orders
+       WHERE pay_amount = ?
+         AND (
+           (status = 'pending' AND expires_at > NOW())
+           OR
+           (status = 'expired' AND expires_at > DATE_SUB(NOW(), INTERVAL ? MINUTE))
+         )
+       LIMIT 1`,
+      [payAmount, LATE_MATCH_GRACE_MINUTES]
     );
     if (existing.length === 0) return payAmount;
   }
-  // All 99 paise slots occupied for this base amount — reject rather than risk collision
-  throw new Error('Unable to generate unique payment amount. Too many concurrent orders for this amount. Please try again in a moment.');
+  // All 99 paise slots are occupied across active + late-matchable recent orders.
+  // Reject rather than reusing an amount that could cause a wrong credit.
+  throw new Error('Unable to generate unique payment amount right now. Please wait a few minutes and try again.');
 }
 
 /**
