@@ -27,6 +27,29 @@ function getOrderStatusLabel(status) {
   return status || 'Unknown'
 }
 
+const CONFIRM_BUTTON_DELAY_MS = 90_000
+
+function getRemainingSeconds(expiresAt) {
+  if (!expiresAt) return 0
+  const expiry = new Date(expiresAt).getTime()
+  if (Number.isNaN(expiry)) return 0
+  return Math.max(0, Math.floor((expiry - Date.now()) / 1000))
+}
+
+function buildPaymentDetails(order) {
+  return {
+    upi_id: order.upi_id || '',
+    payee_name: order.payee_name || '',
+    amount: parseFloat(order.amount),
+    pay_amount: order.pay_amount ? parseFloat(order.pay_amount) : parseFloat(order.amount),
+    order_ref: order.order_ref || null,
+    upi_link: order.upi_link || null,
+    qr_code: order.qr_code || null,
+    download_qr_url: order.download_qr_url || null,
+    download_qr_code: order.download_qr_code || null,
+  }
+}
+
 const DepositPage = () => {
   const router = useRouter();
   const [amount, setAmount] = useState('');
@@ -51,11 +74,43 @@ const DepositPage = () => {
   const [delayWarning, setDelayWarning] = useState(false);
   const orderCreatedAtRef = useRef(null);
 
+  const clearActiveOrder = useCallback(() => {
+    if (pollRef.current) clearInterval(pollRef.current)
+    if (timerRef.current) clearInterval(timerRef.current)
+    setActiveOrder(null)
+    setPaymentDetails(null)
+    setTimeLeft(0)
+    setShowConfirmBtn(false)
+    setConfirmMessage('')
+    setDelayWarning(false)
+    orderCreatedAtRef.current = null
+  }, [])
+
+  const hydratePendingOrder = useCallback((order) => {
+    const remaining = getRemainingSeconds(order?.expires_at)
+    if (!order || remaining <= 0) return false
+
+    const createdAt = order.created_at ? new Date(order.created_at).getTime() : Date.now()
+    orderCreatedAtRef.current = createdAt
+    if (Date.now() - createdAt >= CONFIRM_BUTTON_DELAY_MS) {
+      setShowConfirmBtn(true)
+      setDelayWarning(true)
+    }
+
+    setActiveOrder(order)
+    setPaymentDetails(buildPaymentDetails(order))
+    setTimeLeft(remaining)
+    return true
+  }, [])
+
   const fetchHistory = async () => {
     try {
       const res = await autoDepositAPI.getMyOrders({ page: 1, limit: 20 });
-      setOrderHistory(res.orders || []);
+      const orders = res.orders || []
+      setOrderHistory(orders)
+      return orders
     } catch {}
+    return []
   };
 
   useEffect(() => {
@@ -71,33 +126,11 @@ const DepositPage = () => {
 
     // Single fetch for history + pending order check
     autoDepositAPI.getMyOrders({ page: 1, limit: 20 }).then((res) => {
-      const orders = res.orders || [];
-      setOrderHistory(orders);
-      const order = orders.find((item) => item.status === 'pending');
-      if (order) {
-        const expiresAt = new Date(order.expires_at).getTime();
-        const remaining = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
-        if (remaining > 0) {
-          // Derive actual order creation time from expires_at (order window = 10 min)
-          const createdAt = expiresAt - 10 * 60 * 1000;
-          const orderAge = Date.now() - createdAt;
-          orderCreatedAtRef.current = createdAt;
-          if (orderAge >= 90_000) {
-            setShowConfirmBtn(true);
-            setDelayWarning(true);
-          }
-          setActiveOrder(order);
-          setTimeLeft(remaining);
-          setPaymentDetails({
-            upi_id: order.upi_id || '',
-            payee_name: order.payee_name || '',
-            amount: parseFloat(order.amount),
-            pay_amount: order.pay_amount ? parseFloat(order.pay_amount) : parseFloat(order.amount),
-            order_ref: order.order_ref || null,
-            upi_link: order.upi_link || null,
-            qr_code: order.qr_code || null,
-          });
-        }
+      const orders = res.orders || []
+      setOrderHistory(orders)
+      const order = orders.find((item) => item.status === 'pending')
+      if (order && !hydratePendingOrder(order)) {
+        setError('Payment window expired. Generate a fresh QR before trying again. Do not pay with an old QR after the timer ends.')
       }
     }).catch(() => {});
 
@@ -105,7 +138,7 @@ const DepositPage = () => {
       if (pollRef.current) clearInterval(pollRef.current);
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, []);
+  }, [hydratePendingOrder]);
 
   // Countdown timer
   useEffect(() => {
@@ -119,28 +152,23 @@ const DepositPage = () => {
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
-          clearInterval(timerRef.current);
-          clearInterval(pollRef.current);
-          setActiveOrder(null);
-          setPaymentDetails(null);
-          setShowConfirmBtn(false);
-          setConfirmMessage('');          setDelayWarning(false);          orderCreatedAtRef.current = null;
-          setError('Payment window expired. If you have already paid, your payment will still be verified automatically within a few minutes. If not credited, please contact support with your transaction reference (UTR).');
-          fetchHistory();
+          clearActiveOrder()
+          setError('Payment window expired. Generate a fresh QR before trying again. Do not pay with an old QR after the timer ends.')
+          fetchHistory()
           return 0;
         }
         return prev - 1;
       });
 
       // Show "I Have Paid - Confirm" button after 90 seconds
-      if (orderCreatedAtRef.current && Date.now() - orderCreatedAtRef.current >= 90_000) {
+      if (orderCreatedAtRef.current && Date.now() - orderCreatedAtRef.current >= CONFIRM_BUTTON_DELAY_MS) {
         setShowConfirmBtn(true);
         setDelayWarning(true);
       }
     }, 1000);
 
     return () => clearInterval(timerRef.current);
-  }, [activeOrder]);
+  }, [activeOrder, clearActiveOrder]);
 
   // Poll order status — continues polling for the entire order lifetime
   const startPolling = useCallback((orderId) => {
@@ -153,31 +181,17 @@ const DepositPage = () => {
         const res = await autoDepositAPI.getOrderStatus(orderId);
         const order = res.order;
         if (order.status === 'matched') {
-          clearInterval(pollRef.current);
-          clearInterval(timerRef.current);
-          setActiveOrder(null);
-          setPaymentDetails(null);
-          setShowConfirmBtn(false);
-          setConfirmMessage('');
-          setDelayWarning(false);
-          orderCreatedAtRef.current = null;
+          clearActiveOrder()
           setSuccess(`Deposit of ₹${parseFloat(order.amount).toLocaleString('en-IN')} has been verified and credited!`);
           fetchHistory();
         } else if (order.status === 'expired' || order.status === 'cancelled') {
-          clearInterval(pollRef.current);
-          clearInterval(timerRef.current);
-          setActiveOrder(null);
-          setPaymentDetails(null);
-          setShowConfirmBtn(false);
-          setConfirmMessage('');
-          setDelayWarning(false);
-          orderCreatedAtRef.current = null;
-          if (order.status === 'expired') setError('Order expired. Please try again.');
+          clearActiveOrder()
+          if (order.status === 'expired') setError('Payment window expired. Generate a fresh QR before trying again. Do not pay with an old QR after the timer ends.');
           fetchHistory();
         }
       } catch {}
     }, 5000);
-  }, []);
+  }, [clearActiveOrder]);
 
   useEffect(() => {
     if (activeOrder) {
@@ -197,7 +211,7 @@ const DepositPage = () => {
       const res = await autoDepositAPI.createOrder(parsed);
       setActiveOrder(res.order);
       setPaymentDetails(res.payment_details);
-      setTimeLeft(res.order.expires_in_seconds || 600);
+      setTimeLeft(getRemainingSeconds(res.order.expires_at) || res.order.expires_in_seconds || 240);
       setAmount('');
       setShowConfirmBtn(false);
       setConfirmMessage('');
@@ -218,15 +232,7 @@ const DepositPage = () => {
     if (!activeOrder) return;
     try {
       await autoDepositAPI.cancelOrder(activeOrder.id);
-      clearInterval(pollRef.current);
-      clearInterval(timerRef.current);
-      setActiveOrder(null);
-      setPaymentDetails(null);
-      setTimeLeft(0);
-      setShowConfirmBtn(false);
-      setConfirmMessage('');
-      setDelayWarning(false);
-      orderCreatedAtRef.current = null;
+      clearActiveOrder()
     } catch (err) {
       setError(err.message || 'Failed to cancel order');
     }
@@ -240,29 +246,17 @@ const DepositPage = () => {
       const res = await autoDepositAPI.getOrderStatus(activeOrder.id);
       const order = res.order;
       if (order.status === 'matched') {
-        clearInterval(pollRef.current);
-        clearInterval(timerRef.current);
-        setActiveOrder(null);
-        setPaymentDetails(null);
-        setShowConfirmBtn(false);
-        setDelayWarning(false);
-        orderCreatedAtRef.current = null;
+        clearActiveOrder()
         setSuccess(`Deposit of ₹${parseFloat(order.amount).toLocaleString('en-IN')} has been verified and credited!`);
         fetchHistory();
       } else if (order.status === 'expired' || order.status === 'cancelled') {
-        clearInterval(pollRef.current);
-        clearInterval(timerRef.current);
-        setActiveOrder(null);
-        setPaymentDetails(null);
-        setShowConfirmBtn(false);
-        setDelayWarning(false);
-        orderCreatedAtRef.current = null;
-        if (order.status === 'expired') setError('Order expired. Please try again.');
+        clearActiveOrder()
+        if (order.status === 'expired') setError('Payment window expired. Generate a fresh QR before trying again. Do not pay with an old QR after the timer ends.');
         fetchHistory();
       } else {
         // Still pending — redirect to home, matching will happen in background
-        clearInterval(pollRef.current);
-        clearInterval(timerRef.current);
+        if (pollRef.current) clearInterval(pollRef.current)
+        if (timerRef.current) clearInterval(timerRef.current)
         router.push('/home');
       }
     } catch {
@@ -273,6 +267,14 @@ const DepositPage = () => {
   };
 
   const handleDownloadQR = () => {
+    if (paymentDetails?.download_qr_code) {
+      const link = document.createElement('a')
+      link.download = `QR_${paymentDetails.order_ref || 'deposit'}.png`
+      link.href = paymentDetails.download_qr_code
+      link.click()
+      return
+    }
+
     if (!qrRef.current) return;
     const svg = qrRef.current.querySelector('svg');
     const img = qrRef.current.querySelector('img');
@@ -354,7 +356,7 @@ const DepositPage = () => {
                       )}
                     </div>
                   </div>
-                  <p className="text-center text-[10px] text-[#9a3412] mb-2">Scan QR code with any UPI app</p>
+                  <p className="text-center text-[10px] text-[#9a3412] mb-2">Scan QR code with any UPI app while the timer is active</p>
 
                   <button
                     type="button"
@@ -376,8 +378,8 @@ const DepositPage = () => {
                     <p>1. Open your UPI app (GPay, PhonePe, Paytm, etc.)</p>
                     <p>2. Send exactly <b>₹{(paymentDetails.pay_amount || paymentDetails.amount).toFixed(2)}</b> to <b>{paymentDetails.upi_id}</b></p>
                     <p>3. The exact paise amount ensures your payment is matched correctly.</p>
-                    <p>4. Your deposit will be automatically detected and credited.</p>
-                    <p>5. Do NOT close this page until payment is confirmed.</p>
+                    <p>4. This QR becomes invalid as soon as the timer expires or the payment is credited.</p>
+                    <p>5. Downloaded QR copies are protected. If reused after success or expiry, they will show used or expired.</p>
                   </div>
                 </div>
 

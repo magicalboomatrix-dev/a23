@@ -16,6 +16,8 @@ const orderCreateLimiter = rateLimit({
 
 // ========== USER ROUTES ==========
 
+router.get('/qr/:token', autoDepositController.openProtectedQr);
+
 // Create a deposit order (user provides amount, gets UPI details)
 router.post('/order', authenticate, orderCreateLimiter, autoDepositController.createDepositOrder);
 

@@ -8,8 +8,13 @@ const pool = require('../config/database');
 const { recordWalletTransaction } = require('../utils/wallet-ledger');
 const logger = require('../utils/logger');
 
-const ORDER_EXPIRY_MINUTES = 10;
-const LATE_MATCH_GRACE_MINUTES = Math.max(5, Number(process.env.AUTO_DEPOSIT_LATE_MATCH_GRACE_MINUTES || 60));
+function parseNonNegativeInt(value, fallback) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+const ORDER_EXPIRY_MINUTES = Math.max(1, parseNonNegativeInt(process.env.AUTO_DEPOSIT_ORDER_EXPIRY_MINUTES, 4));
+const LATE_MATCH_GRACE_MINUTES = parseNonNegativeInt(process.env.AUTO_DEPOSIT_LATE_MATCH_GRACE_MINUTES, 0);
 const DEFAULT_MIN_DEPOSIT = 100;
 const DEFAULT_MAX_DEPOSIT = 50000;
 

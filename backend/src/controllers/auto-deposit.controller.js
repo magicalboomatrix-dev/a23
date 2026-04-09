@@ -13,9 +13,84 @@ const {
   applyDepositBonuses,
 } = require('../services/auto-deposit-matcher');
 const { resolveUpiForUser } = require('../services/upi-resolver');
-const { buildUpiLink, generateQrDataUri } = require('../services/qr-generator');
+const { buildUpiLink, buildProtectedQrUrl, verifyQrLaunchToken, generateQrDataUri } = require('../services/qr-generator');
 const { clampPagination } = require('../utils/pagination');
 const { recordWalletTransaction } = require('../utils/wallet-ledger');
+
+function escapeHtml(value) {
+  return `${value ?? ''}`
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function getDepositPageUrl() {
+  const frontendBase = process.env.FRONTEND_URL?.split(',')[0]?.trim();
+  if (!frontendBase) {
+    return '/deposit';
+  }
+  return `${frontendBase.replace(/\/$/, '')}/deposit`;
+}
+
+async function buildQrPayload({ orderId, orderRef, upiId, payeeName, payAmount, expiresAt }) {
+  const upiLink = buildUpiLink({ upiId, payeeName, amount: payAmount, orderRef });
+  const qrDataUri = await generateQrDataUri(upiLink);
+  const downloadQrUrl = buildProtectedQrUrl({ orderId, orderRef, upiId, payeeName, amount: payAmount, expiresAt });
+  const downloadQrDataUri = await generateQrDataUri(downloadQrUrl);
+
+  return {
+    upiLink,
+    qrDataUri,
+    downloadQrUrl,
+    downloadQrDataUri,
+  };
+}
+
+function renderQrStatusPage({ title, message, tone = 'warning', autoOpenUpiLink = null }) {
+  const palette = tone === 'success'
+    ? { accent: '#15803d', background: '#f0fdf4', border: '#86efac', text: '#166534' }
+    : { accent: '#c2410c', background: '#fff7ed', border: '#fdba74', text: '#9a3412' };
+  const depositUrl = escapeHtml(getDepositPageUrl());
+  const safeUpiLink = autoOpenUpiLink ? escapeHtml(autoOpenUpiLink) : '';
+  const autoOpenScript = autoOpenUpiLink
+    ? `<script>setTimeout(function () { window.location.href = ${JSON.stringify(autoOpenUpiLink)}; }, 250);</script>`
+    : '';
+
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${escapeHtml(title)}</title>
+    <style>
+      body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: linear-gradient(180deg, #fffaf0 0%, #fff 100%); font-family: Arial, sans-serif; color: #1f2937; }
+      .card { width: min(92vw, 460px); background: #fff; border: 1px solid ${palette.border}; box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08); padding: 28px 22px; }
+      .badge { display: inline-block; margin-bottom: 12px; padding: 6px 10px; background: ${palette.background}; color: ${palette.accent}; font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+      h1 { margin: 0 0 10px; color: ${palette.text}; font-size: 24px; }
+      p { margin: 0; line-height: 1.6; font-size: 15px; }
+      .actions { margin-top: 18px; display: flex; flex-direction: column; gap: 10px; }
+      .button { display: inline-flex; align-items: center; justify-content: center; min-height: 46px; text-decoration: none; font-weight: 700; border: 1px solid transparent; }
+      .button.primary { background: ${palette.accent}; color: white; }
+      .button.secondary { background: white; color: ${palette.accent}; border-color: ${palette.border}; }
+      .hint { margin-top: 8px; font-size: 12px; color: #6b7280; }
+    </style>
+    ${autoOpenScript}
+  </head>
+  <body>
+    <main class="card">
+      <span class="badge">A23 Satta Deposit QR</span>
+      <h1>${escapeHtml(title)}</h1>
+      <p>${escapeHtml(message)}</p>
+      <div class="actions">
+        ${autoOpenUpiLink ? `<a href="${safeUpiLink}" class="button secondary">Open UPI App</a><p class="hint">If your UPI app did not open automatically, tap the button above.</p>` : ''}
+        <a href="${depositUrl}" class="button primary">Generate New QR</a>
+      </div>
+    </main>
+  </body>
+</html>`;
+}
 
 /**
  * Generate a short unique order reference (e.g., "RM7X3K9P")
@@ -133,11 +208,17 @@ exports.createDepositOrder = async (req, res, next) => {
     );
 
     // Build UPI payment link with reference in transaction note
-    const upiLink = buildUpiLink({ upiId, payeeName, amount: payAmount, orderRef });
-    const qrDataUri = await generateQrDataUri(upiLink);
+    const { upiLink, qrDataUri, downloadQrUrl, downloadQrDataUri } = await buildQrPayload({
+      orderId: result.insertId,
+      orderRef,
+      upiId,
+      payeeName,
+      payAmount,
+      expiresAt,
+    });
 
     res.status(201).json({
-      message: 'Deposit order created. Please complete UPI payment within 10 minutes.',
+      message: `Deposit order created. Please complete UPI payment within ${ORDER_EXPIRY_MINUTES} minutes.`,
       order: {
         id: result.insertId,
         amount: parsedAmount,
@@ -153,6 +234,8 @@ exports.createDepositOrder = async (req, res, next) => {
         order_ref: orderRef,
         upi_link: upiLink,
         qr_code: qrDataUri,
+        download_qr_url: downloadQrUrl,
+        download_qr_code: downloadQrDataUri,
       },
     });
   } catch (error) {
@@ -240,11 +323,20 @@ exports.getMyOrders = async (req, res, next) => {
       const o = { ...order };
       if (order.status === 'pending' && order.pay_amount && order.order_ref && upiInfo) {
         const payAmount = parseFloat(order.pay_amount);
-        const upiLink = buildUpiLink({ upiId: upiInfo.upiId, payeeName: upiInfo.payeeName, amount: payAmount, orderRef: order.order_ref });
+        const { upiLink, qrDataUri, downloadQrUrl, downloadQrDataUri } = await buildQrPayload({
+          orderId: order.id,
+          orderRef: order.order_ref,
+          upiId: upiInfo.upiId,
+          payeeName: upiInfo.payeeName,
+          payAmount,
+          expiresAt: order.expires_at,
+        });
         o.upi_id = upiInfo.upiId;
         o.payee_name = upiInfo.payeeName;
         o.upi_link = upiLink;
-        o.qr_code = await generateQrDataUri(upiLink);
+        o.qr_code = qrDataUri;
+        o.download_qr_url = downloadQrUrl;
+        o.download_qr_code = downloadQrDataUri;
       }
       return o;
     }));
@@ -291,6 +383,89 @@ exports.cancelOrder = async (req, res, next) => {
     next(error);
   } finally {
     conn.release();
+  }
+};
+
+exports.openProtectedQr = async (req, res, next) => {
+  try {
+    const payload = verifyQrLaunchToken(req.params.token);
+
+    if (!payload?.oid || !payload?.ref || !payload?.upi || !payload?.amt || !payload?.exp) {
+      return res.status(400).type('html').send(renderQrStatusPage({
+        title: 'QR Invalid',
+        message: 'This QR code is not valid anymore. Please generate a new QR from the deposit page.',
+      }));
+    }
+
+    const [orders] = await pool.query(
+      `SELECT id, order_ref, status, pay_amount, matched_deposit_id, expires_at
+       FROM pending_deposit_orders
+       WHERE id = ?
+       LIMIT 1`,
+      [payload.oid]
+    );
+
+    if (orders.length === 0) {
+      return res.status(404).type('html').send(renderQrStatusPage({
+        title: 'QR Invalid',
+        message: 'This payment QR no longer exists. Please generate a new QR from the deposit page.',
+      }));
+    }
+
+    const order = orders[0];
+    const orderAmount = Number.parseFloat(order.pay_amount);
+    const payloadAmount = Number.parseFloat(payload.amt);
+
+    if (order.order_ref !== payload.ref || orderAmount !== payloadAmount) {
+      return res.status(400).type('html').send(renderQrStatusPage({
+        title: 'QR Invalid',
+        message: 'This QR does not match the current payment order. Please generate a new QR.',
+      }));
+    }
+
+    const now = new Date();
+    const expiresAt = new Date(order.expires_at);
+    const payloadExpiresAt = new Date(payload.exp);
+    const isUsed = order.status === 'matched' || Boolean(order.matched_deposit_id);
+    const isCancelled = order.status === 'cancelled';
+    const isExpired = order.status === 'expired' || expiresAt <= now || payloadExpiresAt <= now;
+
+    if (!isUsed && !isCancelled && isExpired && order.status === 'pending') {
+      await pool.query(
+        "UPDATE pending_deposit_orders SET status = 'expired' WHERE id = ? AND status = 'pending'",
+        [order.id]
+      );
+    }
+
+    if (isUsed) {
+      return res.type('html').send(renderQrStatusPage({
+        title: 'QR Already Used',
+        message: 'This payment QR has already been used successfully. Please generate a new QR for another deposit.',
+      }));
+    }
+
+    if (isCancelled || isExpired) {
+      return res.type('html').send(renderQrStatusPage({
+        title: 'QR Expired',
+        message: 'This payment QR has expired or is no longer active. Please generate a new QR before paying.',
+      }));
+    }
+
+    const upiLink = buildUpiLink({
+      upiId: payload.upi,
+      payeeName: payload.pn || '',
+      amount: payloadAmount,
+      orderRef: payload.ref,
+    });
+
+    return res.type('html').send(renderQrStatusPage({
+      title: 'Opening Payment',
+      message: 'This QR is active. We are opening your UPI app now.',
+      tone: 'success',
+      autoOpenUpiLink: upiLink,
+    }));
+  } catch (error) {
+    next(error);
   }
 };
 
