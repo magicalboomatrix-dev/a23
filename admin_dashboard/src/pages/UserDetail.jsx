@@ -6,6 +6,37 @@ function formatCurrency(value) {
   return `₹${Number(value || 0).toLocaleString('en-IN')}`;
 }
 
+function renderWithdrawalDestination(withdrawal) {
+  if (withdrawal.bank_name || withdrawal.account_number) {
+    return (
+      <>
+        <div>{withdrawal.bank_name || 'Bank transfer'}</div>
+        <div className="text-gray-500">{withdrawal.account_number || '-'}</div>
+      </>
+    );
+  }
+
+  if (withdrawal.withdraw_method === 'upi') {
+    return (
+      <>
+        <div>UPI</div>
+        <div className="text-gray-500">{withdrawal.upi_id || '-'}</div>
+      </>
+    );
+  }
+
+  if (withdrawal.withdraw_method === 'phone') {
+    return (
+      <>
+        <div>Phone</div>
+        <div className="text-gray-500">{withdrawal.phone_number || '-'}</div>
+      </>
+    );
+  }
+
+  return <div>-</div>;
+}
+
 export default function UserDetail() {
   const { id } = useParams();
   const [data, setData] = useState(null);
@@ -177,8 +208,7 @@ export default function UserDetail() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-600">
-                    <div>{withdrawal.bank_name}</div>
-                    <div className="text-gray-500">{withdrawal.account_number}</div>
+                    {renderWithdrawalDestination(withdrawal)}
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-600">
                     <div>{withdrawal.approved_by_name || '-'}</div>

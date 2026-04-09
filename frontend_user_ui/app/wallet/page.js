@@ -253,6 +253,14 @@ export default function WalletPage() {
 </div>
         </section>
 
+        {wallet?.betting_locked && (
+          <section className="mt-4 border border-[#f59e0b] bg-[#fffbeb] px-4 py-3 text-sm text-[#92400e] shadow-[0_12px_28px_rgba(79,52,10,0.08)]">
+            <div className="font-bold">Withdrawal Pending</div>
+            <div className="mt-1">₹{Number(wallet.pending_withdrawal_amount || 0).toFixed(2)} is locked in a pending withdrawal request.</div>
+            <div className="mt-1">Betting stays blocked until that withdrawal is approved or rejected.</div>
+          </section>
+        )}
+
          <section className="flex justify-center gap-2 max-w-md mx-auto">
 
   {/* Deposit */}

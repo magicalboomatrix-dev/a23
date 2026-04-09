@@ -305,11 +305,12 @@ exports.getUserDetail = async (req, res, next) => {
         LIMIT 200
       `, [id]),
       pool.query(`
-        SELECT wr.id, wr.amount, wr.status, wr.reject_reason, wr.created_at, wr.updated_at,
+         SELECT wr.id, wr.bank_id, wr.withdraw_method, wr.upi_id, wr.phone_number,
+           wr.amount, wr.status, wr.reject_reason, wr.created_at, wr.updated_at,
                approver.id AS approved_by_id, approver.name AS approved_by_name,
                ba.id AS bank_id, ba.bank_name, ba.account_holder, ba.account_number, ba.ifsc, ba.is_flagged
         FROM withdraw_requests wr
-        JOIN bank_accounts ba ON ba.id = wr.bank_id
+         LEFT JOIN bank_accounts ba ON ba.id = wr.bank_id
         LEFT JOIN users approver ON approver.id = wr.approved_by
         WHERE wr.user_id = ?
         ORDER BY wr.created_at DESC

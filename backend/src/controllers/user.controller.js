@@ -8,12 +8,20 @@ exports.getProfile = async (req, res, next) => {
     const wallet = wallets[0] || { balance: 0, bonus_balance: 0 };
 
     // Calculate exposure (sum of pending bets)
-    const [exposureResult] = await pool.query(
-      'SELECT COALESCE(SUM(total_amount), 0) as exposure FROM bets WHERE user_id = ? AND status = ?',
-      [req.user.id, 'pending']
-    );
+    const [[exposureResult], [pendingWithdrawalResult]] = await Promise.all([
+      pool.query(
+        'SELECT COALESCE(SUM(total_amount), 0) as exposure FROM bets WHERE user_id = ? AND status = ?',
+        [req.user.id, 'pending']
+      ),
+      pool.query(
+        "SELECT COUNT(*) AS pending_count, COALESCE(SUM(amount), 0) AS pending_amount FROM withdraw_requests WHERE user_id = ? AND status = 'pending'",
+        [req.user.id]
+      ),
+    ]);
 
     const exposure = parseFloat(exposureResult[0].exposure);
+    const pendingWithdrawalCount = Number(pendingWithdrawalResult[0].pending_count || 0);
+    const pendingWithdrawalAmount = parseFloat(pendingWithdrawalResult[0].pending_amount || 0);
 
     res.json({
       user: {
@@ -30,6 +38,9 @@ exports.getProfile = async (req, res, next) => {
         bonus_balance: parseFloat(wallet.bonus_balance),
         exposure,
         available_withdrawal: parseFloat(wallet.balance),
+        pending_withdrawal_count: pendingWithdrawalCount,
+        pending_withdrawal_amount: pendingWithdrawalAmount,
+        betting_locked: pendingWithdrawalCount > 0,
       }
     });
   } catch (error) {
