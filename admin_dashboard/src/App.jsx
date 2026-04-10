@@ -20,7 +20,8 @@ import CustomAds from './pages/CustomAds';
 import AutoDeposits from './pages/AutoDeposits';
 import UpiManagement from './pages/UpiManagement';
 import SettlementMonitor from './pages/SettlementMonitor';
-import WalletAudit from './pages/WalletAudit';
+import WalletTransactions from './pages/WalletTransactions';
+import BonusTransactions from './pages/BonusTransactions';
 import MyScanner from './pages/MyScanner';
 import HowToPlay from './pages/HowToPlay';
 import Referrals from './pages/Referrals';
@@ -44,7 +45,9 @@ const APP_ROUTES = [
   { path: 'fraud-logs', element: <FraudLogs /> },
   { path: 'custom-ads', element: <CustomAds /> },
   { path: 'settlement-monitor', element: <SettlementMonitor /> },
-  { path: 'wallet-audit', element: <WalletAudit /> },
+  { path: 'wallet-transactions', element: <WalletTransactions /> },
+  { path: 'bonus-transactions', element: <BonusTransactions /> },
+  { path: 'wallet-audit', element: <Navigate to="/wallet-transactions" replace /> },
   { path: 'my-scanner', element: <MyScanner /> },
   { path: 'how-to-play', element: <HowToPlay /> },
   { path: 'referrals', element: <Referrals /> },
