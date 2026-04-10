@@ -16,7 +16,6 @@ const depositRoutes = require('./routes/deposit.routes');
 const withdrawRoutes = require('./routes/withdraw.routes');
 const bonusRoutes = require('./routes/bonus.routes');
 const resultRoutes = require('./routes/result.routes');
-const analyticsRoutes = require('./routes/analytics.routes');
 const jantriRoutes = require('./routes/jantri.routes');
 const moderatorRoutes = require('./routes/moderator.routes');
 const moderatorSelfRoutes = require('./routes/moderator-self.routes');
@@ -53,7 +52,6 @@ const routeRegistrations = [
   ['/api/withdraw', withdrawRoutes],
   ['/api/bonus', bonusRoutes],
   ['/api/results', resultRoutes],
-  ['/api/analytics', analyticsRoutes],
   ['/api/jantri', jantriRoutes],
   ['/api/moderators', moderatorRoutes],
   ['/api/moderator', moderatorSelfRoutes],

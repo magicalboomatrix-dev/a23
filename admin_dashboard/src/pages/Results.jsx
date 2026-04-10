@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import api from '../utils/api';
 import { useConfirm, ConfirmModal } from '../components/ui';
 
@@ -88,6 +89,7 @@ function AdminYearlyChart({ data, year }) {
 }
 
 export default function Results() {
+  const [searchParams] = useSearchParams();
   const [games, setGames] = useState([]);
   const [history, setHistory] = useState([]);
   const [historyFilters, setHistoryFilters] = useState({ game_id: '', from_date: '', to_date: '', search: '' });
@@ -110,6 +112,20 @@ export default function Results() {
     initialize();
   }, []);
 
+  useEffect(() => {
+    const gameId = searchParams.get('game_id') || '';
+    if (!gameId) return;
+
+    setHistoryFilters((current) => {
+      if (current.game_id === gameId) return current;
+      return { ...current, game_id: gameId };
+    });
+
+    if (games.length > 0) {
+      loadHistory({ ...historyFilters, game_id: gameId });
+    }
+  }, [searchParams]);
+
   const initialize = async () => {
     try {
       const gamesRes = await api.get('/games');
@@ -117,11 +133,14 @@ export default function Results() {
       setGames(gameRows);
       const firstGame = gameRows[0]?.name || '';
       const firstGameId = gameRows[0]?.id ? String(gameRows[0].id) : '';
+      const queryGameId = searchParams.get('game_id') || '';
+      const effectiveHistoryGameId = queryGameId || historyFilters.game_id || '';
       setYearlyFilters((current) => ({ ...current, game_name: current.game_name || firstGame }));
       setResultForm((current) => ({ ...current, game_id: current.game_id || firstGameId }));
       setImportForm((current) => ({ ...current, game_id: current.game_id || firstGameId }));
+      setHistoryFilters((current) => ({ ...current, game_id: effectiveHistoryGameId }));
       await Promise.all([
-        loadHistory({ ...historyFilters, game_id: historyFilters.game_id || '' }),
+        loadHistory({ ...historyFilters, game_id: effectiveHistoryGameId }),
         loadMonthlyChart(monthlyFilters.year, monthlyFilters.month),
         firstGame ? loadYearlyChart(yearlyFilters.year, firstGame) : Promise.resolve(),
       ]);

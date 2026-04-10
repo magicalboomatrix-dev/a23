@@ -7,9 +7,9 @@ import Users from './pages/Users';
 import Moderators from './pages/Moderators';
 import Deposits from './pages/Deposits';
 import Withdrawals from './pages/Withdrawals';
+import Bets from './pages/Bets';
 import Games from './pages/Games';
 import Settings from './pages/Settings';
-import Analytics from './pages/Analytics';
 import Jantri from './pages/Jantri';
 import Notifications from './pages/Notifications';
 import FraudLogs from './pages/FraudLogs';
@@ -35,10 +35,10 @@ const APP_ROUTES = [
   { path: 'auto-deposits', element: <AutoDeposits /> },
   { path: 'upi-management', element: <UpiManagement /> },
   { path: 'withdrawals', element: <Withdrawals /> },
+  { path: 'bets', element: <Bets /> },
   { path: 'games', element: <Games /> },
   { path: 'results', element: <Results /> },
   { path: 'settings', element: <Settings /> },
-  { path: 'analytics', element: <Analytics /> },
   { path: 'jantri', element: <Jantri /> },
   { path: 'notifications', element: <Notifications /> },
   { path: 'fraud-logs', element: <FraudLogs /> },

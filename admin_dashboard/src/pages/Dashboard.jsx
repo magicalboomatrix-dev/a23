@@ -40,12 +40,12 @@ export default function Dashboard() {
   const loadData = async () => {
     try {
       const requests = [
-        api.get('/analytics/dashboard'),
+        api.get('/admin/dashboard-overview'),
         api.get('/notifications/my'),
       ];
 
       if (user?.role === 'admin') {
-        requests.push(api.get('/analytics/revenue?period=7d'));
+        requests.push(api.get('/admin/revenue-overview?period=7d'));
         requests.push(api.get('/admin/users', { params: { role: 'user', moderator_id: 'unassigned', page: 1, limit: 6 } }));
         requests.push(api.get('/admin/dashboard-stats'));
       }

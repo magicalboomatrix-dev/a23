@@ -277,7 +277,7 @@ export default function Jantri() {
     loadJantri();
   }, [filters.date, filters.game_id, filters.moderator_id, filters.type, user?.role]);
 
-  const items = Array.isArray(jantri?.analytics) ? jantri.analytics : [];
+  const items = Array.isArray(jantri?.entries) ? jantri.entries : [];
   const summary = jantri?.summary || {};
   const noBetNumbers = Array.isArray(summary.no_bet_numbers) ? summary.no_bet_numbers : [];
   const selectedModerator = moderators.find((moderator) => String(moderator.id) === String(filters.moderator_id));

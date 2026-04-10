@@ -100,10 +100,10 @@ export default function Moderators() {
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab('analytics')}
-          className={`px-4 py-2 text-sm font-medium ${activeTab === 'analytics' ? 'bg-primary-600 text-white' : 'bg-white border text-gray-600 hover:bg-gray-50'}`}
+          onClick={() => setActiveTab('summary')}
+          className={`px-4 py-2 text-sm font-medium ${activeTab === 'summary' ? 'bg-primary-600 text-white' : 'bg-white border text-gray-600 hover:bg-gray-50'}`}
         >
-          Deposit Analytics
+          Deposit Summary
         </button>
       </div>
 
@@ -182,7 +182,7 @@ export default function Moderators() {
       </div>
       )}
 
-      {activeTab === 'analytics' && (
+      {activeTab === 'summary' && (
         <div className="bg-white border overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
@@ -214,7 +214,7 @@ export default function Moderators() {
                 </tr>
               ))}
               {stats.length === 0 && (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">No moderator analytics yet</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">No moderator summary yet</td></tr>
               )}
             </tbody>
           </table>

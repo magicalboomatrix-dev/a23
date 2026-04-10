@@ -5,6 +5,8 @@ const { authenticate, authorize } = require('../middleware/auth.middleware');
 const { adminActivity } = require('../middleware/admin-activity.middleware');
 
 router.get('/users', authenticate, authorize('admin', 'moderator'), adminController.listUsers);
+router.get('/dashboard-overview', authenticate, authorize('admin', 'moderator'), adminController.getDashboardOverview);
+router.get('/revenue-overview', authenticate, authorize('admin'), adminController.getRevenueOverview);
 router.put('/users/:id/block', authenticate, authorize('admin'), adminActivity('block_user', 'user'), adminController.blockUser);
 router.get('/settings', authenticate, authorize('admin'), adminController.getSettings);
 router.put('/settings', authenticate, authorize('admin'), adminActivity('update_settings', 'settings'), adminController.updateSettings);

@@ -322,6 +322,173 @@ exports.getUserBets = async (req, res, next) => {
   }
 };
 
+exports.getAllBets = async (req, res, next) => {
+  try {
+    const { game_id, status, search, from_date, to_date, moderator_id } = req.query;
+    const { page, limit, offset } = clampPagination(req.query);
+
+    const baseJoins = `
+      FROM bets b
+      JOIN users u ON u.id = b.user_id
+      LEFT JOIN users mod ON mod.id = u.moderator_id
+      JOIN games g ON g.id = b.game_id
+      LEFT JOIN game_results gr_linked ON gr_linked.id = b.game_result_id
+      LEFT JOIN game_results gr_session
+        ON gr_session.game_id = b.game_id
+       AND gr_session.result_date = COALESCE(b.session_date, DATE(b.created_at))
+    `;
+
+    let filters = ' WHERE 1 = 1';
+    const params = [];
+
+    if (req.user.role === 'moderator') {
+      filters += ' AND u.moderator_id = ?';
+      params.push(req.user.id);
+    } else if (moderator_id) {
+      filters += ' AND u.moderator_id = ?';
+      params.push(moderator_id);
+    }
+
+    if (game_id) {
+      filters += ' AND b.game_id = ?';
+      params.push(game_id);
+    }
+
+    if (status) {
+      filters += ' AND b.status = ?';
+      params.push(status);
+    }
+
+    if (from_date) {
+      filters += ' AND COALESCE(b.session_date, DATE(b.created_at)) >= ?';
+      params.push(from_date);
+    }
+
+    if (to_date) {
+      filters += ' AND COALESCE(b.session_date, DATE(b.created_at)) <= ?';
+      params.push(to_date);
+    }
+
+    if (search) {
+      const escaped = escapeLike(search);
+      filters += `
+        AND (
+          u.name LIKE ?
+          OR u.phone LIKE ?
+          OR g.name LIKE ?
+          OR b.type LIKE ?
+          OR COALESCE(gr_linked.result_number, gr_session.result_number) LIKE ?
+          OR EXISTS (
+            SELECT 1
+            FROM bet_numbers bn_search
+            WHERE bn_search.bet_id = b.id
+              AND bn_search.number LIKE ?
+          )
+        )
+      `;
+      params.push(
+        `%${escaped}%`,
+        `%${escaped}%`,
+        `%${escaped}%`,
+        `%${escaped}%`,
+        `%${escaped}%`,
+        `%${escaped}%`
+      );
+    }
+
+    const countQuery = `SELECT COUNT(*) as total ${baseJoins} ${filters}`;
+    const summaryQuery = `
+      SELECT
+        COUNT(*) as totalBets,
+        COALESCE(SUM(b.total_amount), 0) as totalStake,
+        COALESCE(SUM(b.win_amount), 0) as totalWin,
+        COALESCE(SUM(b.win_amount - b.total_amount), 0) as netProfitLoss
+      ${baseJoins} ${filters}
+    `;
+
+    const dataQuery = `
+      SELECT
+        b.id,
+        b.user_id,
+        b.game_id,
+        b.type,
+        b.total_amount,
+        b.win_amount,
+        b.status,
+        b.created_at,
+        b.updated_at,
+        DATE_FORMAT(COALESCE(b.session_date, DATE(b.created_at)), '%Y-%m-%d') as session_date,
+        u.name AS user_name,
+        u.phone AS user_phone,
+        u.moderator_id,
+        mod.name AS moderator_name,
+        g.name AS game_name,
+        COALESCE(gr_linked.result_number, gr_session.result_number) AS result_number,
+        DATE_FORMAT(COALESCE(gr_linked.result_date, gr_session.result_date), '%Y-%m-%d') AS result_date,
+        GROUP_CONCAT(CONCAT(bn.number, ' (₹', FORMAT(bn.amount, 2), ')') ORDER BY bn.id SEPARATOR ', ') AS bet_numbers
+      ${baseJoins}
+      LEFT JOIN bet_numbers bn ON bn.bet_id = b.id
+      ${filters}
+      GROUP BY
+        b.id,
+        b.user_id,
+        b.game_id,
+        b.type,
+        b.total_amount,
+        b.win_amount,
+        b.status,
+        b.created_at,
+        b.updated_at,
+        b.session_date,
+        u.name,
+        u.phone,
+        u.moderator_id,
+        mod.name,
+        g.name,
+        gr_linked.result_number,
+        gr_linked.result_date,
+        gr_session.result_number,
+        gr_session.result_date
+      ORDER BY COALESCE(b.session_date, DATE(b.created_at)) DESC, b.created_at DESC
+      LIMIT ? OFFSET ?
+    `;
+
+    const [countResult, summaryResult, betsResult] = await Promise.all([
+      pool.query(countQuery, params),
+      pool.query(summaryQuery, params),
+      pool.query(dataQuery, [...params, limit, offset]),
+    ]);
+
+    const summaryRow = summaryResult[0][0] || {};
+
+    const bets = (betsResult[0] || []).map((bet) => ({
+      ...bet,
+      total_amount: Number(bet.total_amount || 0),
+      win_amount: Number(bet.win_amount || 0),
+      profit_loss: Number((Number(bet.win_amount || 0) - Number(bet.total_amount || 0)).toFixed(2)),
+      loss_amount: Math.max(Number((Number(bet.total_amount || 0) - Number(bet.win_amount || 0)).toFixed(2)), 0),
+    }));
+
+    res.json({
+      bets,
+      summary: {
+        totalBets: Number(summaryRow.totalBets || 0),
+        totalStake: Number(summaryRow.totalStake || 0),
+        totalWin: Number(summaryRow.totalWin || 0),
+        netProfitLoss: Number(summaryRow.netProfitLoss || 0),
+      },
+      pagination: {
+        page,
+        limit,
+        total: Number(countResult[0][0]?.total || 0),
+        totalPages: Math.ceil(Number(countResult[0][0]?.total || 0) / limit),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.getRecentWinners = async (req, res, next) => {
   try {
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 5, 1), 20);

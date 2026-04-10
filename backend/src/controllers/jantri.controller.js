@@ -56,25 +56,25 @@ exports.getJantri = async (req, res, next) => {
 
     query += ' GROUP BY bn.number, b.type ORDER BY total_amount DESC, bn.number ASC';
 
-    const [analytics] = await pool.query(query, params);
+    const [entries] = await pool.query(query, params);
 
-    const jodiItems = analytics.filter((item) => /^\d{2}$/.test(String(item.number)));
+    const jodiItems = entries.filter((item) => /^\d{2}$/.test(String(item.number)));
     const allNumbers = Array.from({ length: 100 }, (_, index) => index.toString().padStart(2, '0'));
     const bettedNumbers = new Set(jodiItems.map((item) => String(item.number).padStart(2, '0')));
     const noBetNumbers = allNumbers.filter((number) => !bettedNumbers.has(number));
 
-    const totalAmount = analytics.reduce((sum, item) => sum + (parseFloat(item.total_amount) || 0), 0);
-    const totalBetCount = analytics.reduce((sum, item) => sum + (Number(item.bet_count) || 0), 0);
+    const totalAmount = entries.reduce((sum, item) => sum + (parseFloat(item.total_amount) || 0), 0);
+    const totalBetCount = entries.reduce((sum, item) => sum + (Number(item.bet_count) || 0), 0);
 
     res.json({
-      analytics,
+      entries,
       summary: {
         total_amount: totalAmount,
         total_bet_count: totalBetCount,
-        total_numbers_with_bets: analytics.length,
+        total_numbers_with_bets: entries.length,
         total_jodi_numbers_with_bets: jodiItems.length,
         no_bet_numbers: noBetNumbers,
-        highest_bet: analytics[0] || null,
+        highest_bet: entries[0] || null,
       },
       filters: {
         date: date || null,
