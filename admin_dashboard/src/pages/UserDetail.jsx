@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import api from '../utils/api';
+import { cleanDisplayText } from '../utils/display';
 
 function formatCurrency(value) {
   return `₹${Number(value || 0).toLocaleString('en-IN')}`;
@@ -175,8 +176,8 @@ export default function UserDetail() {
                   <td className={`px-4 py-3 text-right font-semibold ${Number(transaction.amount) >= 0 ? 'text-green-700' : 'text-red-700'}`}>{formatCurrency(transaction.amount)}</td>
                   <td className="px-4 py-3 text-right text-xs text-gray-700">{formatCurrency(transaction.balance_after)}</td>
                   <td className="px-4 py-3 text-xs text-gray-600">
-                    <div>{transaction.reference_type || '-'}</div>
-                    <div className="text-gray-500">{transaction.reference_id || '-'}</div>
+                    <div>{cleanDisplayText(transaction.reference_type)}</div>
+                    <div className="text-gray-500">{cleanDisplayText(transaction.reference_id)}</div>
                   </td>
                 </tr>
               ))}
@@ -271,7 +272,7 @@ export default function UserDetail() {
                     <td className="px-4 py-3 text-xs text-gray-600">{new Date(bonus.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</td>
                     <td className="px-4 py-3 text-xs text-gray-700">{bonus.type}</td>
                     <td className="px-4 py-3 text-right text-xs text-green-700">{formatCurrency(bonus.amount)}</td>
-                    <td className="px-4 py-3 text-xs text-gray-600">{bonus.reference_id || '-'}</td>
+                    <td className="px-4 py-3 text-xs text-gray-600">{cleanDisplayText(bonus.reference_id)}</td>
                   </tr>
                 ))}
                 {bonuses.length === 0 && <tr><td colSpan={4} className="px-4 py-8 text-center text-gray-400">No bonuses</td></tr>}

@@ -439,6 +439,7 @@ export default function AutoDeposits() {
                     <td className="px-4 py-2">{log.order_id || '-'}</td>
                     <td className="px-4 py-2">{log.deposit_id || '-'}</td>
                     <td className="px-4 py-2 text-xs max-w-xs truncate">{log.details || '-'}</td>
+                      <td className="px-4 py-2 text-xs max-w-xs truncate">{cleanDisplayText(log.details)}</td>
                     <td className="px-4 py-2 text-xs">{fmt(log.created_at)}</td>
                   </tr>
                 ))}

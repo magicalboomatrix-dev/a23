@@ -83,7 +83,7 @@ exports.placeBet = async (req, res, next) => {
 
     // Check game exists and is active
     const [games] = await conn.query(
-      'SELECT id, open_time, close_time, is_overnight, is_active FROM games WHERE id = ? AND is_active = 1',
+      'SELECT id, name, open_time, close_time, is_overnight, is_active FROM games WHERE id = ? AND is_active = 1',
       [game_id]
     );
     if (games.length === 0) {

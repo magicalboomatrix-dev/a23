@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import { cleanDisplayText } from '../utils/display';
 
 const TYPE_OPTIONS = ['deposit', 'bet', 'win', 'withdraw', 'adjustment', 'bonus', 'refund'];
 const STATUS_OPTIONS = ['pending', 'completed', 'failed'];
@@ -71,14 +72,14 @@ function buildWalletTransactionsCsv({ filters, summary, transactions, selectedMo
       transaction.user_id,
       transaction.user_name,
       transaction.user_phone,
-      transaction.moderator_name || '',
+      cleanDisplayText(transaction.moderator_name, ''),
       transaction.type,
       Number(transaction.amount || 0).toLocaleString('en-IN'),
       Number(transaction.balance_after || 0).toLocaleString('en-IN'),
       transaction.status,
-      transaction.reference_type || '',
-      transaction.reference_id || '',
-      transaction.remark || '',
+      cleanDisplayText(transaction.reference_type, ''),
+      cleanDisplayText(transaction.reference_id, ''),
+      cleanDisplayText(transaction.remark, ''),
     ]),
   ];
 
@@ -318,7 +319,7 @@ export default function WalletTransactions() {
                 <td className="px-4 py-3 text-xs text-gray-700">
                   <Link to={`/users/${transaction.user_id}`} className="text-blue-600 hover:underline font-medium">{transaction.user_name}</Link>
                   <div className="text-gray-500">#{transaction.user_id} • {transaction.user_phone}</div>
-                  {transaction.moderator_id ? <div className="text-gray-400">Mod: <Link to={`/moderators/${transaction.moderator_id}`} className="text-blue-600 hover:underline">{transaction.moderator_name || transaction.moderator_id}</Link></div> : null}
+                  {transaction.moderator_id ? <div className="text-gray-400">Mod: <Link to={`/moderators/${transaction.moderator_id}`} className="text-blue-600 hover:underline">{cleanDisplayText(transaction.moderator_name, String(transaction.moderator_id))}</Link></div> : null}
                 </td>
                 <td className={`px-4 py-3 text-xs font-semibold uppercase tracking-wide ${TYPE_COLORS[transaction.type] || 'text-gray-700'}`}>{transaction.type}</td>
                 <td className={`px-4 py-3 text-right text-xs font-semibold ${Number(transaction.amount || 0) >= 0 ? 'text-green-700' : 'text-red-600'}`}>{Number(transaction.amount || 0) >= 0 ? '+' : ''}{formatCurrency(transaction.amount)}</td>
@@ -326,9 +327,9 @@ export default function WalletTransactions() {
                 <td className="px-4 py-3 text-center">
                   <span className={`px-2 py-1 text-xs font-medium ${transaction.status === 'completed' ? 'bg-green-100 text-green-700' : transaction.status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{transaction.status}</span>
                 </td>
-                <td className="px-4 py-3 text-xs text-gray-700 font-mono">{transaction.reference_type || '-'}</td>
-                <td className="px-4 py-3 text-xs text-gray-600 font-mono break-all">{transaction.reference_id || '-'}</td>
-                <td className="px-4 py-3 text-xs text-gray-600 whitespace-normal break-words">{transaction.remark || '-'}</td>
+                <td className="px-4 py-3 text-xs text-gray-700 font-mono">{cleanDisplayText(transaction.reference_type)}</td>
+                <td className="px-4 py-3 text-xs text-gray-600 font-mono break-all">{cleanDisplayText(transaction.reference_id)}</td>
+                <td className="px-4 py-3 text-xs text-gray-600 whitespace-normal break-words">{cleanDisplayText(transaction.remark)}</td>
               </tr>
             ))}
             {transactions.length === 0 ? <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-400">{loading ? 'Loading...' : 'No wallet transactions found'}</td></tr> : null}

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import { cleanDisplayText } from '../utils/display';
 
 const BONUS_TYPE_OPTIONS = ['first_deposit', 'slab', 'referral', 'daily', 'usage'];
 
@@ -60,13 +61,13 @@ function buildBonusTransactionsCsv({ filters, summary, entries, selectedModerato
       entry.user_id,
       entry.user_name,
       entry.user_phone,
-      entry.moderator_name || '',
+      cleanDisplayText(entry.moderator_name, ''),
       entry.entry_kind,
       entry.bonus_type,
       Number(entry.amount || 0).toLocaleString('en-IN'),
-      entry.reference_type || '',
-      entry.reference_id || '',
-      entry.detail || '',
+      cleanDisplayText(entry.reference_type, ''),
+      cleanDisplayText(entry.reference_id, ''),
+      cleanDisplayText(entry.detail, ''),
     ]),
   ];
 
@@ -285,7 +286,7 @@ export default function BonusTransactions() {
                 <td className="px-4 py-3 text-xs text-gray-700">
                   <Link to={`/users/${entry.user_id}`} className="text-blue-600 hover:underline font-medium">{entry.user_name}</Link>
                   <div className="text-gray-500">#{entry.user_id} • {entry.user_phone}</div>
-                  {entry.moderator_id ? <div className="text-gray-400">Mod: <Link to={`/moderators/${entry.moderator_id}`} className="text-blue-600 hover:underline">{entry.moderator_name || entry.moderator_id}</Link></div> : null}
+                  {entry.moderator_id ? <div className="text-gray-400">Mod: <Link to={`/moderators/${entry.moderator_id}`} className="text-blue-600 hover:underline">{cleanDisplayText(entry.moderator_name, String(entry.moderator_id))}</Link></div> : null}
                 </td>
                 <td className="px-4 py-3 text-center">
                   <span className={`px-2 py-1 text-xs font-medium ${entry.entry_kind === 'credit' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{entry.entry_kind}</span>
@@ -293,10 +294,10 @@ export default function BonusTransactions() {
                 <td className="px-4 py-3 text-xs text-gray-700 uppercase tracking-wide">{entry.bonus_type}</td>
                 <td className={`px-4 py-3 text-right text-xs font-semibold ${entry.entry_kind === 'credit' ? 'text-green-700' : 'text-red-600'}`}>{entry.entry_kind === 'credit' ? '+' : ''}{formatCurrency(entry.amount)}</td>
                 <td className="px-4 py-3 text-xs text-gray-600">
-                  <div className="font-mono text-gray-700">{entry.reference_type || '-'}</div>
-                  <div className="font-mono break-all">{entry.reference_id || '-'}</div>
+                  <div className="font-mono text-gray-700">{cleanDisplayText(entry.reference_type)}</div>
+                  <div className="font-mono break-all">{cleanDisplayText(entry.reference_id)}</div>
                 </td>
-                <td className="px-4 py-3 text-xs text-gray-600 whitespace-normal break-words">{entry.detail || '-'}</td>
+                <td className="px-4 py-3 text-xs text-gray-600 whitespace-normal break-words">{cleanDisplayText(entry.detail)}</td>
               </tr>
             ))}
             {entries.length === 0 ? <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">{loading ? 'Loading...' : 'No bonus transactions found'}</td></tr> : null}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../utils/api';
 import { useToast, ToastContainer } from '../components/ui';
+import { cleanDisplayText } from '../utils/display';
 
 const TYPE_COLORS = {
   deposit:    'text-green-600',
@@ -174,8 +175,8 @@ export default function WalletAudit() {
                       <td className="px-4 py-2 text-right text-gray-600">
                         ₹{parseFloat(t.balance_after).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </td>
-                      <td className="px-4 py-2 font-mono text-xs text-gray-500">{t.reference_id || '-'}</td>
-                      <td className="px-4 py-2 text-xs">{t.remark || '-'}</td>
+                      <td className="px-4 py-2 font-mono text-xs text-gray-500">{cleanDisplayText(t.reference_id)}</td>
+                      <td className="px-4 py-2 text-xs">{cleanDisplayText(t.remark)}</td>
                       <td className="px-4 py-2 text-xs text-gray-400">
                         {new Date(t.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
                       </td>
