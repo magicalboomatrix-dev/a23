@@ -1,6 +1,7 @@
 ﻿import { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import AdminCommandBar from './AdminCommandBar';
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: '📊' },
@@ -95,7 +96,7 @@ export default function Layout() {
       {/* Main content */}
       <div className="lg:ml-64 flex flex-col h-screen">
         {/* Top bar */}
-        <header className="shrink-0 z-20 bg-white border-b border-gray-300 px-3 sm:px-6 py-2 sm:py-4 flex items-center justify-between gap-2">
+        <header className="shrink-0 z-20 bg-white border-b border-gray-300 px-3 sm:px-6 py-2 sm:py-4 flex items-center gap-2 sm:gap-4">
           <button
             onClick={() => setSidebarOpen(true)}
             className="lg:hidden text-gray-600 hover:text-gray-800 shrink-0"
@@ -105,14 +106,16 @@ export default function Layout() {
             </svg>
           </button>
 
-          <h2 className="text-sm sm:text-lg font-semibold text-gray-800 truncate">
+          <h2 className="text-sm sm:text-lg font-semibold text-gray-800 truncate shrink-0">
             {getCurrentPageLabel(location.pathname)}
           </h2>
 
-          <div className="hidden sm:block text-sm text-gray-500 shrink-0">
+          {user?.role === 'admin' ? <AdminCommandBar /> : <div className="flex-1" />}
+
+          <div className="hidden sm:block text-sm text-gray-500 shrink-0 ml-auto">
             {new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </div>
-          <div className="sm:hidden text-xs text-gray-400 shrink-0">
+          <div className="sm:hidden text-xs text-gray-400 shrink-0 ml-auto">
             {new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
           </div>
         </header>

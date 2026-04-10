@@ -75,9 +75,11 @@ exports.getAllDeposits = async (req, res, next) => {
               d.webhook_txn_id, d.order_id, d.status,
               d.created_at,
               u.name AS user_name, u.phone AS user_phone,
-              u.moderator_id
+              u.moderator_id,
+              moderator_user.name AS moderator_name
        FROM deposits d
        JOIN users u ON d.user_id = u.id
+       LEFT JOIN users moderator_user ON moderator_user.id = u.moderator_id
        ${whereClause}
        ORDER BY d.created_at DESC
        LIMIT ? OFFSET ?`,

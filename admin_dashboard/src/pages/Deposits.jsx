@@ -1,6 +1,18 @@
 import { useState, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import SavedFilterPresets from '../components/SavedFilterPresets';
+
+function getDepositFiltersFromSearchParams(searchParams) {
+  return {
+    search: searchParams.get('search') || '',
+    status: searchParams.get('status') || '',
+    moderator_id: searchParams.get('moderator_id') || '',
+    from_date: searchParams.get('from_date') || '',
+    to_date: searchParams.get('to_date') || '',
+  };
+}
 
 function formatCurrency(amount) {
   return `₹${Number(amount || 0).toLocaleString('en-IN', {
@@ -11,6 +23,7 @@ function formatCurrency(amount) {
 
 export default function Deposits() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const isAdmin = user?.role === 'admin';
   const [deposits, setDeposits] = useState([]);
   const [moderators, setModerators] = useState([]);
@@ -18,13 +31,13 @@ export default function Deposits() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [filters, setFilters] = useState({
-    search: '',
-    status: '',
-    moderator_id: '',
-    from_date: '',
-    to_date: '',
-  });
+  const [filters, setFilters] = useState(() => getDepositFiltersFromSearchParams(searchParams));
+
+  useEffect(() => {
+    const nextFilters = getDepositFiltersFromSearchParams(searchParams);
+    setFilters((current) => JSON.stringify(current) === JSON.stringify(nextFilters) ? current : nextFilters);
+    setPage(1);
+  }, [searchParams]);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -147,6 +160,15 @@ export default function Deposits() {
             </button>
           </div>
         </div>
+
+        <SavedFilterPresets
+          storageKey="deposits"
+          currentFilters={filters}
+          onApply={(nextFilters) => {
+            setPage(1);
+            setFilters((current) => ({ ...current, ...nextFilters }));
+          }}
+        />
       </div>
 
       <div className="bg-white border overflow-x-auto">
@@ -171,7 +193,10 @@ export default function Deposits() {
                 <td className="px-4 py-3 font-medium">#{d.id}</td>
                 <td className="px-4 py-3 text-xs text-gray-600">{d.order_id ? `#${d.order_id}` : '-'}</td>
                 <td className="px-4 py-3 text-xs text-gray-600">{d.webhook_txn_id ? `#${d.webhook_txn_id}` : '-'}</td>
-                <td className="px-4 py-3 font-medium">{d.user_name}</td>
+                <td className="px-4 py-3 text-xs text-gray-700">
+                  <Link to={`/users/${d.user_id}`} className="text-blue-600 hover:underline font-medium">{d.user_name}</Link>
+                  {d.moderator_id ? <div className="text-gray-400 mt-1">Mod: {d.moderator_name || `#${d.moderator_id}`}</div> : null}
+                </td>
                 <td className="px-4 py-3">{d.user_phone}</td>
                 <td className="px-4 py-3 text-right font-semibold text-green-700">
                   {formatCurrency(d.amount)}

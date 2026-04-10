@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast, ToastContainer } from '../components/ui';
+import SavedFilterPresets from '../components/SavedFilterPresets';
 
 export default function Users() {
   const { user: authUser } = useAuth();
@@ -118,6 +119,16 @@ export default function Users() {
           </select>
         )}
       </div>
+
+      <SavedFilterPresets
+        storageKey="users"
+        currentFilters={{ search, moderatorFilter }}
+        onApply={(nextFilters) => {
+          setPage(1);
+          setSearch(nextFilters.search || '');
+          setModeratorFilter(nextFilters.moderatorFilter || 'all');
+        }}
+      />
 
       {isAdmin && (
         <div className="bg-blue-50 border border-blue-100 p-4 text-sm text-blue-900">

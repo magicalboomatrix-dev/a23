@@ -1,17 +1,35 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import api from '../utils/api';
+import SavedFilterPresets from '../components/SavedFilterPresets';
+
+function getReferralFiltersFromSearchParams(searchParams) {
+  return {
+    search: searchParams.get('search') || '',
+    status: searchParams.get('status') || '',
+    referrerType: searchParams.get('referrer_type') || '',
+  };
+}
 
 export default function Referrals() {
+  const [searchParams] = useSearchParams();
   const [referrals, setReferrals] = useState([]);
   const [stats, setStats] = useState({});
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [limit] = useState(20);
-  const [search, setSearch] = useState('');
-  const [status, setStatus] = useState('');
-  const [referrerType, setReferrerType] = useState('');
+  const [search, setSearch] = useState(() => getReferralFiltersFromSearchParams(searchParams).search);
+  const [status, setStatus] = useState(() => getReferralFiltersFromSearchParams(searchParams).status);
+  const [referrerType, setReferrerType] = useState(() => getReferralFiltersFromSearchParams(searchParams).referrerType);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const next = getReferralFiltersFromSearchParams(searchParams);
+    setSearch(next.search);
+    setStatus(next.status);
+    setReferrerType(next.referrerType);
+    setPage(1);
+  }, [searchParams]);
 
   const fetchReferrals = useCallback(async () => {
     setLoading(true);
@@ -71,6 +89,17 @@ export default function Referrals() {
           <option value="user">User</option>
         </select>
       </div>
+
+      <SavedFilterPresets
+        storageKey="referrals"
+        currentFilters={{ search, status, referrerType }}
+        onApply={(nextFilters) => {
+          setPage(1);
+          setSearch(nextFilters.search || '');
+          setStatus(nextFilters.status || '');
+          setReferrerType(nextFilters.referrerType || '');
+        }}
+      />
 
       {/* Table */}
       <div className="bg-white border overflow-x-auto">

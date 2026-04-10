@@ -355,9 +355,11 @@ exports.getAllWithdrawals = async (req, res, next) => {
       SELECT wr.id, wr.user_id, wr.bank_id, wr.withdraw_method, wr.upi_id, wr.phone_number,
              wr.amount, wr.status, wr.reject_reason, wr.created_at, wr.updated_at,
              u.name as user_name, u.phone as user_phone, u.moderator_id,
+             moderator_user.name AS moderator_name,
              ba.account_number, ba.bank_name, ba.account_holder, ba.ifsc, ba.is_flagged
       FROM withdraw_requests wr
       JOIN users u ON wr.user_id = u.id
+      LEFT JOIN users moderator_user ON moderator_user.id = u.moderator_id
       LEFT JOIN bank_accounts ba ON wr.bank_id = ba.id
       ${whereClause}
     `;

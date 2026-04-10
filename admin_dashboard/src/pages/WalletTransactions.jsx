@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { cleanDisplayText } from '../utils/display';
+import { getWalletTransactionLinks } from '../utils/wallet-links';
+import SavedFilterPresets from '../components/SavedFilterPresets';
 
 const TYPE_OPTIONS = ['deposit', 'bet', 'win', 'withdraw', 'adjustment', 'bonus', 'refund'];
 const STATUS_OPTIONS = ['pending', 'completed', 'failed'];
@@ -227,6 +229,15 @@ export default function WalletTransactions() {
             <button type="button" onClick={clearFilters} className="px-4 py-2 border text-sm font-medium text-gray-600 hover:bg-gray-50">Clear</button>
           </div>
         </div>
+
+        <SavedFilterPresets
+          storageKey="wallet-transactions"
+          currentFilters={filters}
+          onApply={(nextFilters) => {
+            setPage(1);
+            setFilters((current) => ({ ...current, ...nextFilters }));
+          }}
+        />
       </div>
 
       {error ? <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm">{error}</div> : null}
@@ -307,6 +318,7 @@ export default function WalletTransactions() {
               <th className="text-left px-4 py-3 font-medium text-gray-600">Reference Type</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Reference ID</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Remark</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -330,9 +342,18 @@ export default function WalletTransactions() {
                 <td className="px-4 py-3 text-xs text-gray-700 font-mono">{cleanDisplayText(transaction.reference_type)}</td>
                 <td className="px-4 py-3 text-xs text-gray-600 font-mono break-all">{cleanDisplayText(transaction.reference_id)}</td>
                 <td className="px-4 py-3 text-xs text-gray-600 whitespace-normal break-words">{cleanDisplayText(transaction.remark)}</td>
+                <td className="px-4 py-3 text-xs text-gray-600">
+                  <div className="flex flex-wrap gap-2">
+                    {getWalletTransactionLinks(transaction).map((link) => (
+                      <Link key={`${transaction.id}-${link.label}`} to={link.to} className="text-blue-600 hover:underline">
+                        {link.label}
+                      </Link>
+                    ))}
+                  </div>
+                </td>
               </tr>
             ))}
-            {transactions.length === 0 ? <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-400">{loading ? 'Loading...' : 'No wallet transactions found'}</td></tr> : null}
+            {transactions.length === 0 ? <tr><td colSpan={10} className="px-4 py-8 text-center text-gray-400">{loading ? 'Loading...' : 'No wallet transactions found'}</td></tr> : null}
           </tbody>
         </table>
       </div>

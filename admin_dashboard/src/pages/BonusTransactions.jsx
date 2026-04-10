@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { cleanDisplayText } from '../utils/display';
+import SavedFilterPresets from '../components/SavedFilterPresets';
 
 const BONUS_TYPE_OPTIONS = ['first_deposit', 'slab', 'referral', 'daily', 'usage'];
 
@@ -200,6 +201,15 @@ export default function BonusTransactions() {
             <button type="button" onClick={clearFilters} className="px-4 py-2 border text-sm font-medium text-gray-600 hover:bg-gray-50">Clear</button>
           </div>
         </div>
+
+        <SavedFilterPresets
+          storageKey="bonus-transactions"
+          currentFilters={filters}
+          onApply={(nextFilters) => {
+            setPage(1);
+            setFilters((current) => ({ ...current, ...nextFilters }));
+          }}
+        />
       </div>
 
       {error ? <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm">{error}</div> : null}

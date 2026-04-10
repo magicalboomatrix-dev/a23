@@ -6,6 +6,14 @@ const { IST_NOW_SQL, IST_DATE_SQL } = require('../utils/sql-time');
 const LARGE_NEW_USER_DEPOSIT_THRESHOLD = 5000;
 const LARGE_NEW_USER_DEPOSIT_MAX_AGE_DAYS = 3;
 
+function normalizeSearchTerm(value) {
+  return String(value || '').trim();
+}
+
+function buildSearchPattern(value) {
+  return `%${escapeLike(normalizeSearchTerm(value))}%`;
+}
+
 exports.getDashboardOverview = async (req, res, next) => {
   try {
     const isModerator = req.user.role === 'moderator';
@@ -622,6 +630,279 @@ exports.getDashboardStats = async (req, res, next) => {
       fraud_attempts_today: fraudToday[0]?.fraud_attempts_today || 0,
       active_moderators: activeModerators[0]?.active_moderators || 0,
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getOperationsCockpit = async (req, res, next) => {
+  try {
+    const [pendingWithdrawals, autoDepositMismatches, duplicateAttempts, largeNewUserDeposits, aiAlerts] = await Promise.all([
+      pool.query(`
+        SELECT wr.id, wr.user_id, wr.amount, wr.withdraw_method, wr.status, wr.created_at,
+               u.name AS user_name, u.phone AS user_phone, u.moderator_id,
+               moderator_user.name AS moderator_name
+        FROM withdraw_requests wr
+        JOIN users u ON u.id = wr.user_id
+        LEFT JOIN users moderator_user ON moderator_user.id = u.moderator_id
+        WHERE wr.status = 'pending'
+        ORDER BY wr.created_at ASC
+        LIMIT 6
+      `),
+      pool.query(`
+        SELECT uwt.id, uwt.reference_number, uwt.amount, uwt.payer_name, uwt.status,
+               uwt.error_message, uwt.created_at, uwt.matched_order_id,
+               pdo.order_ref
+        FROM upi_webhook_transactions uwt
+        LEFT JOIN pending_deposit_orders pdo ON pdo.id = uwt.matched_order_id
+        WHERE uwt.status IN ('unmatched', 'received')
+        ORDER BY uwt.created_at ASC
+        LIMIT 6
+      `),
+      pool.query(`
+        SELECT adl.id, adl.action, adl.details, adl.created_at,
+               u.id AS user_id, u.name AS user_name, u.phone AS user_phone
+        FROM auto_deposit_logs adl
+        LEFT JOIN users u ON u.id = adl.user_id
+        WHERE adl.action IN ('duplicate_ref', 'duplicate_utr', 'user_blocked')
+        ORDER BY adl.created_at DESC
+        LIMIT 4
+      `),
+      pool.query(`
+        SELECT d.id, d.amount, d.created_at, u.id AS user_id, u.name AS user_name, u.phone AS user_phone,
+               TIMESTAMPDIFF(HOUR, u.created_at, d.created_at) AS account_age_hours
+        FROM deposits d
+        JOIN users u ON u.id = d.user_id
+        WHERE d.amount >= ?
+          AND TIMESTAMPDIFF(DAY, u.created_at, d.created_at) <= ?
+        ORDER BY d.created_at DESC
+        LIMIT 4
+      `, [LARGE_NEW_USER_DEPOSIT_THRESHOLD, LARGE_NEW_USER_DEPOSIT_MAX_AGE_DAYS]),
+      pool.query(`
+        SELECT fa.id, fa.user_id, fa.alert_type, fa.severity, fa.details, fa.created_at,
+               u.name AS user_name, u.phone AS user_phone
+        FROM fraud_alerts fa
+        JOIN users u ON u.id = fa.user_id
+        WHERE fa.is_resolved = 0
+        ORDER BY fa.created_at DESC
+        LIMIT 4
+      `),
+    ]);
+
+    const fraudAlerts = [
+      ...aiAlerts[0].map((row) => ({
+        id: `ai-${row.id}`,
+        kind: 'ai_alert',
+        severity: row.severity || 'medium',
+        user_id: row.user_id,
+        user_name: row.user_name,
+        user_phone: row.user_phone,
+        created_at: row.created_at,
+        title: row.alert_type,
+        description: row.details,
+        path: '/fraud-logs',
+      })),
+      ...duplicateAttempts[0].map((row) => ({
+        id: `dup-${row.id}`,
+        kind: row.action,
+        severity: 'high',
+        user_id: row.user_id,
+        user_name: row.user_name,
+        user_phone: row.user_phone,
+        created_at: row.created_at,
+        title: row.action.replace(/_/g, ' '),
+        description: row.details,
+        path: '/fraud-logs',
+      })),
+      ...largeNewUserDeposits[0].map((row) => ({
+        id: `large-${row.id}`,
+        kind: 'large_new_user_deposit',
+        severity: 'medium',
+        user_id: row.user_id,
+        user_name: row.user_name,
+        user_phone: row.user_phone,
+        created_at: row.created_at,
+        title: 'Large new-user deposit',
+        description: `₹${Number(row.amount || 0).toLocaleString('en-IN')} within ${row.account_age_hours}h of signup`,
+        path: `/users/${row.user_id}`,
+      })),
+    ]
+      .sort((left, right) => new Date(right.created_at) - new Date(left.created_at))
+      .slice(0, 6);
+
+    res.json({
+      summary: {
+        pending_withdrawals: pendingWithdrawals[0].length,
+        auto_deposit_mismatches: autoDepositMismatches[0].length,
+        fraud_alerts: fraudAlerts.length,
+      },
+      queues: {
+        pending_withdrawals: pendingWithdrawals[0],
+        auto_deposit_mismatches: autoDepositMismatches[0],
+        fraud_alerts: fraudAlerts,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.globalSearch = async (req, res, next) => {
+  try {
+    const query = normalizeSearchTerm(req.query.q);
+    if (query.length < 2) {
+      return res.json({ query, sections: [] });
+    }
+
+    const pattern = buildSearchPattern(query);
+    const exactNumber = /^\d+$/.test(query) ? Number(query) : null;
+
+    const [users, moderators, deposits, withdrawals, bets, referrals] = await Promise.all([
+      pool.query(
+        `SELECT u.id, u.name, u.phone, u.referral_code, u.moderator_id, moderator_user.name AS moderator_name
+         FROM users u
+         LEFT JOIN users moderator_user ON moderator_user.id = u.moderator_id
+         WHERE u.role = 'user' AND u.is_deleted = 0
+           AND (
+             u.name LIKE ? ESCAPE '\\\\' OR
+             u.phone LIKE ? ESCAPE '\\\\' OR
+             u.referral_code LIKE ? ESCAPE '\\\\'${exactNumber ? ' OR u.id = ?' : ''}
+           )
+         ORDER BY u.created_at DESC
+         LIMIT 6`,
+        exactNumber ? [pattern, pattern, pattern, exactNumber] : [pattern, pattern, pattern]
+      ).then(([rows]) => rows),
+      pool.query(
+        `SELECT id, name, phone, referral_code
+         FROM users
+         WHERE role = 'moderator' AND is_deleted = 0
+           AND (
+             name LIKE ? ESCAPE '\\\\' OR
+             phone LIKE ? ESCAPE '\\\\' OR
+             referral_code LIKE ? ESCAPE '\\\\'${exactNumber ? ' OR id = ?' : ''}
+           )
+         ORDER BY created_at DESC
+         LIMIT 6`,
+        exactNumber ? [pattern, pattern, pattern, exactNumber] : [pattern, pattern, pattern]
+      ).then(([rows]) => rows),
+      pool.query(
+        `SELECT d.id, d.user_id, d.amount, d.utr_number, d.created_at, u.name AS user_name, u.phone AS user_phone
+         FROM deposits d
+         JOIN users u ON u.id = d.user_id
+         WHERE d.utr_number LIKE ? ESCAPE '\\\\'${exactNumber ? ' OR d.id = ?' : ''}
+         ORDER BY d.created_at DESC
+         LIMIT 6`,
+        exactNumber ? [pattern, exactNumber] : [pattern]
+      ).then(([rows]) => rows),
+      pool.query(
+        `SELECT wr.id, wr.user_id, wr.amount, wr.status, wr.created_at, u.name AS user_name, u.phone AS user_phone
+         FROM withdraw_requests wr
+         JOIN users u ON u.id = wr.user_id
+         WHERE ${exactNumber ? 'wr.id = ? OR ' : ''}(u.name LIKE ? ESCAPE '\\\\' OR u.phone LIKE ? ESCAPE '\\\\')
+         ORDER BY wr.created_at DESC
+         LIMIT 6`,
+        exactNumber ? [exactNumber, pattern, pattern] : [pattern, pattern]
+      ).then(([rows]) => rows),
+      pool.query(
+        `SELECT b.id, b.user_id, b.total_amount, b.status, b.created_at, b.type,
+                u.name AS user_name, u.phone AS user_phone, g.name AS game_name
+         FROM bets b
+         JOIN users u ON u.id = b.user_id
+         JOIN games g ON g.id = b.game_id
+         WHERE ${exactNumber ? 'b.id = ? OR ' : ''}(u.name LIKE ? ESCAPE '\\\\' OR u.phone LIKE ? ESCAPE '\\\\')
+         ORDER BY b.created_at DESC
+         LIMIT 6`,
+        exactNumber ? [exactNumber, pattern, pattern] : [pattern, pattern]
+      ).then(([rows]) => rows),
+      pool.query(
+        `SELECT r.id, r.referrer_id, r.referred_user_id, r.bonus_amount, r.status, r.created_at,
+                referrer.name AS referrer_name, referrer.role AS referrer_role,
+                referred.name AS referred_name, referred.phone AS referred_phone
+         FROM referrals r
+         JOIN users referrer ON referrer.id = r.referrer_id
+         JOIN users referred ON referred.id = r.referred_user_id
+         WHERE ${exactNumber ? 'r.id = ? OR ' : ''}(
+           referrer.name LIKE ? ESCAPE '\\\\' OR
+           referrer.phone LIKE ? ESCAPE '\\\\' OR
+           referred.name LIKE ? ESCAPE '\\\\' OR
+           referred.phone LIKE ? ESCAPE '\\\\'
+         )
+         ORDER BY r.created_at DESC
+         LIMIT 6`,
+        exactNumber ? [exactNumber, pattern, pattern, pattern, pattern] : [pattern, pattern, pattern, pattern]
+      ).then(([rows]) => rows),
+    ]);
+
+    const sections = [
+      {
+        key: 'users',
+        label: 'Users',
+        items: users.map((row) => ({
+          id: `user-${row.id}`,
+          title: row.name,
+          subtitle: `${row.phone} • Ref ${row.referral_code || '-'}`,
+          meta: row.moderator_name ? `Moderator: ${row.moderator_name}` : 'No moderator',
+          path: `/users/${row.id}`,
+        })),
+      },
+      {
+        key: 'moderators',
+        label: 'Moderators',
+        items: moderators.map((row) => ({
+          id: `moderator-${row.id}`,
+          title: row.name,
+          subtitle: `${row.phone} • Ref ${row.referral_code || '-'}`,
+          meta: `Moderator #${row.id}`,
+          path: `/moderators/${row.id}`,
+        })),
+      },
+      {
+        key: 'deposits',
+        label: 'Deposits / UTR',
+        items: deposits.map((row) => ({
+          id: `deposit-${row.id}`,
+          title: `Deposit #${row.id}`,
+          subtitle: `${row.user_name} • ${row.user_phone}`,
+          meta: `UTR ${row.utr_number} • ₹${Number(row.amount || 0).toLocaleString('en-IN')}`,
+          path: `/deposits?search=${encodeURIComponent(row.utr_number || row.id)}`,
+        })),
+      },
+      {
+        key: 'withdrawals',
+        label: 'Withdrawals',
+        items: withdrawals.map((row) => ({
+          id: `withdraw-${row.id}`,
+          title: `Withdrawal #${row.id}`,
+          subtitle: `${row.user_name} • ${row.user_phone}`,
+          meta: `₹${Number(row.amount || 0).toLocaleString('en-IN')} • ${row.status}`,
+          path: `/withdrawals?search=${encodeURIComponent(row.id)}`,
+        })),
+      },
+      {
+        key: 'bets',
+        label: 'Bets',
+        items: bets.map((row) => ({
+          id: `bet-${row.id}`,
+          title: `Bet #${row.id}`,
+          subtitle: `${row.user_name} • ${row.user_phone}`,
+          meta: `${row.game_name} • ${row.type} • ₹${Number(row.total_amount || 0).toLocaleString('en-IN')}`,
+          path: `/bets?search=${encodeURIComponent(row.id)}`,
+        })),
+      },
+      {
+        key: 'referrals',
+        label: 'Referrals',
+        items: referrals.map((row) => ({
+          id: `referral-${row.id}`,
+          title: `Referral #${row.id}`,
+          subtitle: `${row.referrer_name} → ${row.referred_name}`,
+          meta: `₹${Number(row.bonus_amount || 0).toLocaleString('en-IN')} • ${row.status}`,
+          path: `/referrals?search=${encodeURIComponent(row.referred_phone || row.id)}`,
+        })),
+      },
+    ].filter((section) => section.items.length > 0);
+
+    res.json({ query, sections });
   } catch (error) {
     next(error);
   }

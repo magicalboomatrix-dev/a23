@@ -1,24 +1,57 @@
 import { useState, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import api from '../utils/api';
 import { useToast, ToastContainer, useConfirm, ConfirmModal } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
+import SavedFilterPresets from '../components/SavedFilterPresets';
+
+function getWithdrawalFiltersFromSearchParams(searchParams) {
+  return {
+    status: searchParams.get('status') || 'pending',
+    search: searchParams.get('search') || '',
+    method: searchParams.get('method') || '',
+    moderator_id: searchParams.get('moderator_id') || '',
+    from_date: searchParams.get('from_date') || '',
+    to_date: searchParams.get('to_date') || '',
+  };
+}
 
 export default function Withdrawals() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const isAdmin = user?.role === 'admin';
   const [withdrawals, setWithdrawals] = useState([]);
   const [moderators, setModerators] = useState([]);
   const [pagination, setPagination] = useState({});
-  const [filter, setFilter] = useState('pending');
+  const [filter, setFilter] = useState(() => getWithdrawalFiltersFromSearchParams(searchParams).status);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({
-    search: '',
-    method: '',
-    moderator_id: '',
-    from_date: '',
-    to_date: '',
+  const [filters, setFilters] = useState(() => {
+    const next = getWithdrawalFiltersFromSearchParams(searchParams);
+    return {
+      search: next.search,
+      method: next.method,
+      moderator_id: next.moderator_id,
+      from_date: next.from_date,
+      to_date: next.to_date,
+    };
   });
+
+  useEffect(() => {
+    const next = getWithdrawalFiltersFromSearchParams(searchParams);
+    setFilter(next.status);
+    setFilters((current) => {
+      const nextFilters = {
+        search: next.search,
+        method: next.method,
+        moderator_id: next.moderator_id,
+        from_date: next.from_date,
+        to_date: next.to_date,
+      };
+      return JSON.stringify(current) === JSON.stringify(nextFilters) ? current : nextFilters;
+    });
+    setPage(1);
+  }, [searchParams]);
   const { toasts, success, error: toastError, dismiss } = useToast();
   const { confirmState, confirm, handleConfirm, handleCancel } = useConfirm();
   const [rejectModal, setRejectModal] = useState({ open: false, id: null, reason: '' });
@@ -215,6 +248,23 @@ export default function Withdrawals() {
             </button>
           </div>
         </div>
+
+        <SavedFilterPresets
+          storageKey="withdrawals"
+          currentFilters={{ status: filter, ...filters }}
+          onApply={(nextFilters) => {
+            setPage(1);
+            setFilter(nextFilters.status || 'pending');
+            setFilters((current) => ({
+              ...current,
+              search: nextFilters.search || '',
+              method: nextFilters.method || '',
+              moderator_id: nextFilters.moderator_id || '',
+              from_date: nextFilters.from_date || '',
+              to_date: nextFilters.to_date || '',
+            }));
+          }}
+        />
       </div>
 
       <div className="bg-white border overflow-x-auto">
@@ -259,7 +309,10 @@ export default function Withdrawals() {
               return (
                 <tr key={w.id} className={`hover:bg-gray-50 ${isBankFlagged ? 'bg-red-50' : ''}`}>
                   <td className="px-4 py-3">{w.id}</td>
-                  <td className="px-4 py-3 font-medium">{w.user_name}</td>
+                  <td className="px-4 py-3 text-xs text-gray-700">
+                    <Link to={`/users/${w.user_id}`} className="text-blue-600 hover:underline font-medium">{w.user_name}</Link>
+                    {w.moderator_id ? <div className="text-gray-400 mt-1">Mod: {w.moderator_name || `#${w.moderator_id}`}</div> : null}
+                  </td>
                   <td className="px-4 py-3">{w.user_phone}</td>
                   <td className="px-4 py-3 text-right font-semibold text-red-700">₹{parseFloat(w.amount).toLocaleString()}</td>
                   <td className="px-4 py-3">{methodBadge}</td>

@@ -373,6 +373,8 @@ exports.getAllBets = async (req, res, next) => {
       const escaped = escapeLike(search);
       filters += `
         AND (
+          CAST(b.id AS CHAR) LIKE ?
+          OR
           u.name LIKE ?
           OR u.phone LIKE ?
           OR g.name LIKE ?
@@ -387,6 +389,7 @@ exports.getAllBets = async (req, res, next) => {
         )
       `;
       params.push(
+        `%${escaped}%`,
         `%${escaped}%`,
         `%${escaped}%`,
         `%${escaped}%`,

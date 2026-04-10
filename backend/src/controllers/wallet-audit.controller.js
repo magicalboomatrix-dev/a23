@@ -3,6 +3,100 @@
 const pool = require('../config/database');
 const { clampPagination, escapeLike } = require('../utils/pagination');
 
+function parseLinkedReference(transaction) {
+  const referenceType = String(transaction.reference_type || '');
+  const referenceId = String(transaction.reference_id || '');
+  const linked = {
+    deposit_id: null,
+    withdraw_id: null,
+    bet_id: null,
+  };
+
+  if (referenceType === 'deposit') {
+    const match = referenceId.match(/^deposit_(\d+)$/);
+    if (match) linked.deposit_id = Number(match[1]);
+  }
+
+  if (referenceType === 'withdraw') {
+    const match = referenceId.match(/^withdraw(?:_refund)?_(\d+)$/);
+    if (match) linked.withdraw_id = Number(match[1]);
+  }
+
+  if (referenceType === 'bet') {
+    const match = referenceId.match(/^bet_(\d+)$/);
+    if (match) linked.bet_id = Number(match[1]);
+  }
+
+  if (referenceType === 'bet_bonus') {
+    const match = referenceId.match(/^bet_bonus_(\d+)$/);
+    if (match) linked.bet_id = Number(match[1]);
+  }
+
+  if (referenceType === 'bet_reversal') {
+    const match = referenceId.match(/^bet_reversal_(\d+)_/);
+    if (match) linked.bet_id = Number(match[1]);
+  }
+
+  return linked;
+}
+
+async function attachWalletTransactionLinks(transactions) {
+  const depositIds = new Set();
+  const withdrawIds = new Set();
+  const betIds = new Set();
+
+  transactions.forEach((transaction) => {
+    const linked = parseLinkedReference(transaction);
+    transaction.related = linked;
+    if (linked.deposit_id) depositIds.add(linked.deposit_id);
+    if (linked.withdraw_id) withdrawIds.add(linked.withdraw_id);
+    if (linked.bet_id) betIds.add(linked.bet_id);
+  });
+
+  const [deposits, withdrawals, bets] = await Promise.all([
+    depositIds.size > 0
+      ? pool.query(
+          `SELECT id, order_id, webhook_txn_id, utr_number
+           FROM deposits
+           WHERE id IN (?)`,
+          [[...depositIds]]
+        ).then(([rows]) => rows)
+      : Promise.resolve([]),
+    withdrawIds.size > 0
+      ? pool.query(
+          `SELECT id, status
+           FROM withdraw_requests
+           WHERE id IN (?)`,
+          [[...withdrawIds]]
+        ).then(([rows]) => rows)
+      : Promise.resolve([]),
+    betIds.size > 0
+      ? pool.query(
+          `SELECT b.id, b.game_id, b.status, b.session_date, g.name AS game_name
+           FROM bets b
+           JOIN games g ON g.id = b.game_id
+           WHERE b.id IN (?)`,
+          [[...betIds]]
+        ).then(([rows]) => rows)
+      : Promise.resolve([]),
+  ]);
+
+  const depositMap = new Map(deposits.map((row) => [Number(row.id), row]));
+  const withdrawalMap = new Map(withdrawals.map((row) => [Number(row.id), row]));
+  const betMap = new Map(bets.map((row) => [Number(row.id), row]));
+
+  transactions.forEach((transaction) => {
+    transaction.related = {
+      ...transaction.related,
+      deposit: transaction.related.deposit_id ? depositMap.get(transaction.related.deposit_id) || null : null,
+      withdrawal: transaction.related.withdraw_id ? withdrawalMap.get(transaction.related.withdraw_id) || null : null,
+      bet: transaction.related.bet_id ? betMap.get(transaction.related.bet_id) || null : null,
+    };
+  });
+
+  return transactions;
+}
+
 function buildWalletTransactionFilters(query) {
   const {
     search,
@@ -280,7 +374,7 @@ exports.getWalletTransactions = async (req, res, next) => {
       LEFT JOIN users moderator_user ON moderator_user.id = u.moderator_id
     `;
 
-    const [[countRow], [summaryRows], typeBreakdown, transactions] = await Promise.all([
+    const [[countRow], [summaryRows], typeBreakdown, transactionRows] = await Promise.all([
       pool.query(`SELECT COUNT(*) AS total ${baseFrom} ${whereClause}`, params),
       pool.query(
         `SELECT
@@ -327,6 +421,8 @@ exports.getWalletTransactions = async (req, res, next) => {
         [...params, limit, offset]
       ).then(([rows]) => rows),
     ]);
+
+    const transactions = await attachWalletTransactionLinks(transactionRows);
 
     res.json({
       transactions,

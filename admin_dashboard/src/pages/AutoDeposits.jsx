@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import api from '../utils/api';
 import { useToast, ToastContainer } from '../components/ui';
+import { cleanDisplayText } from '../utils/display';
+import { cleanDisplayText } from '../utils/display';
 
 const STATUS_COLORS = {
   received: 'bg-blue-100 text-blue-800',
@@ -31,7 +34,22 @@ function StatCard({ label, value, color = 'text-dark-900' }) {
 }
 
 export default function AutoDeposits() {
-  const [tab, setTab] = useState('stats');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [tab, setTab] = useState(searchParams.get('tab') || 'stats');
+    useEffect(() => {
+      const nextTab = searchParams.get('tab') || 'stats';
+      setTab((current) => current === nextTab ? current : nextTab);
+    }, [searchParams]);
+
+    const selectTab = (nextTab) => {
+      setTab(nextTab);
+      setSearchParams((current) => {
+        const next = new URLSearchParams(current);
+        next.set('tab', nextTab);
+        return next;
+      });
+    };
+
   const [stats, setStats] = useState(null);
   const [webhookTxns, setWebhookTxns] = useState([]);
   const [pendingOrders, setPendingOrders] = useState([]);
@@ -249,7 +267,7 @@ export default function AutoDeposits() {
         {tabs.map((t) => (
           <button
             key={t.key}
-            onClick={() => setTab(t.key)}
+            onClick={() => selectTab(t.key)}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               tab === t.key ? 'border-primary-500 text-primary-600' : 'border-transparent text-dark-500 hover:text-dark-700'
             }`}

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import SavedFilterPresets from '../components/SavedFilterPresets';
 
 function getIstDateInputValue() {
   return new Intl.DateTimeFormat('en-CA', {
@@ -84,22 +85,27 @@ function buildBetsCsv({ filters, summary, bets, selectedGame, selectedModerator,
   return rows.map((row) => row.map(escapeCsvValue).join(',')).join('\n');
 }
 
+function getBetsFiltersFromSearchParams(searchParams) {
+  return {
+    search: searchParams.get('search') || '',
+    game_id: searchParams.get('game_id') || '',
+    moderator_id: searchParams.get('moderator_id') || '',
+    from_date: searchParams.get('from_date') || getIstDateInputValue(),
+    to_date: searchParams.get('to_date') || getIstDateInputValue(),
+    status: searchParams.get('status') || '',
+  };
+}
+
 export default function Bets() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const isAdmin = user?.role === 'admin';
   const [games, setGames] = useState([]);
   const [moderators, setModerators] = useState([]);
   const [bets, setBets] = useState([]);
   const [pagination, setPagination] = useState({});
   const [summary, setSummary] = useState({ totalBets: 0, totalStake: 0, totalWin: 0, netProfitLoss: 0 });
-  const [filters, setFilters] = useState({
-    search: '',
-    game_id: '',
-    moderator_id: '',
-    from_date: getIstDateInputValue(),
-    to_date: getIstDateInputValue(),
-    status: '',
-  });
+  const [filters, setFilters] = useState(() => getBetsFiltersFromSearchParams(searchParams));
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -116,6 +122,12 @@ export default function Bets() {
       .then((res) => setModerators(Array.isArray(res.data.moderators) ? res.data.moderators : []))
       .catch(console.error);
   }, [isAdmin]);
+
+  useEffect(() => {
+    const nextFilters = getBetsFiltersFromSearchParams(searchParams);
+    setFilters((current) => JSON.stringify(current) === JSON.stringify(nextFilters) ? current : nextFilters);
+    setPage(1);
+  }, [searchParams]);
 
   useEffect(() => {
     const loadBets = async () => {
@@ -282,6 +294,15 @@ export default function Bets() {
             </button>
           </div>
         </div>
+
+        <SavedFilterPresets
+          storageKey="bets"
+          currentFilters={filters}
+          onApply={(nextFilters) => {
+            setPage(1);
+            setFilters((current) => ({ ...current, ...nextFilters }));
+          }}
+        />
       </div>
 
       {error ? (

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { cleanDisplayText } from '../utils/display';
 
 function StatCard({ title, value, sub, color = 'primary' }) {
   const colors = {
@@ -31,6 +32,7 @@ export default function Dashboard() {
   const [revenue, setRevenue] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [unassignedUsers, setUnassignedUsers] = useState([]);
+  const [operations, setOperations] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -45,15 +47,17 @@ export default function Dashboard() {
       ];
 
       if (user?.role === 'admin') {
+        requests.push(api.get('/admin/operations-cockpit'));
         requests.push(api.get('/admin/revenue-overview?period=7d'));
         requests.push(api.get('/admin/users', { params: { role: 'user', moderator_id: 'unassigned', page: 1, limit: 6 } }));
         requests.push(api.get('/admin/dashboard-stats'));
       }
 
-      const [dashRes, notificationsRes, revRes, unassignedRes, adminStatsRes] = await Promise.all(requests);
+      const [dashRes, notificationsRes, operationsRes, revRes, unassignedRes, adminStatsRes] = await Promise.all(requests);
       setStats(dashRes.data.stats || null);
       setRecentBets(Array.isArray(dashRes.data.recent_bets) ? dashRes.data.recent_bets : []);
       setNotifications(Array.isArray(notificationsRes.data.notifications) ? notificationsRes.data.notifications.slice(0, 6) : []);
+      setOperations(operationsRes?.data || null);
       setRevenue(revRes?.data || null);
       setUnassignedUsers(Array.isArray(unassignedRes?.data?.users) ? unassignedRes.data.users : []);
       setAdminStats(adminStatsRes?.data || null);
@@ -68,6 +72,109 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
+      {user?.role === 'admin' && operations ? (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-xl font-semibold text-gray-800">Operations Cockpit</h3>
+              <p className="text-sm text-gray-500 mt-1">Priority queues that need staff action now, ahead of passive reporting.</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-red-50 border border-red-200 p-4">
+              <p className="text-sm text-red-700">Pending Withdrawals</p>
+              <p className="text-2xl font-bold text-red-800 mt-1">{operations.summary?.pending_withdrawals || 0}</p>
+            </div>
+            <div className="bg-amber-50 border border-amber-200 p-4">
+              <p className="text-sm text-amber-700">Auto-Deposit Mismatches</p>
+              <p className="text-2xl font-bold text-amber-800 mt-1">{operations.summary?.auto_deposit_mismatches || 0}</p>
+            </div>
+            <div className="bg-purple-50 border border-purple-200 p-4">
+              <p className="text-sm text-purple-700">Fraud Alerts</p>
+              <p className="text-2xl font-bold text-purple-800 mt-1">{operations.summary?.fraud_alerts || 0}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+            <div className="bg-white border">
+              <div className="px-4 py-4 border-b flex items-center justify-between">
+                <h4 className="text-lg font-semibold text-gray-800">Pending Withdrawals</h4>
+                <Link to="/withdrawals?status=pending" className="text-sm text-blue-600 hover:underline">Open Queue</Link>
+              </div>
+              <div className="divide-y">
+                {(operations.queues?.pending_withdrawals || []).map((row) => (
+                  <div key={row.id} className="px-4 py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <Link to={`/users/${row.user_id}`} className="text-sm font-medium text-blue-600 hover:underline">{row.user_name}</Link>
+                        <p className="text-xs text-gray-500 mt-1">{row.user_phone} {row.moderator_name ? `• Mod ${row.moderator_name}` : ''}</p>
+                        <p className="text-xs text-gray-400 mt-1">{new Date(row.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-semibold text-red-700">₹{Number(row.amount || 0).toLocaleString('en-IN')}</div>
+                        <div className="text-xs text-gray-500 uppercase mt-1">{row.withdraw_method}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {!(operations.queues?.pending_withdrawals || []).length ? <div className="px-4 py-6 text-sm text-gray-400">No pending withdrawals.</div> : null}
+              </div>
+            </div>
+
+            <div className="bg-white border">
+              <div className="px-4 py-4 border-b flex items-center justify-between">
+                <h4 className="text-lg font-semibold text-gray-800">Auto-Deposit Mismatches</h4>
+                <Link to="/auto-deposits?tab=unmatched" className="text-sm text-blue-600 hover:underline">Open Queue</Link>
+              </div>
+              <div className="divide-y">
+                {(operations.queues?.auto_deposit_mismatches || []).map((row) => (
+                  <div key={row.id} className="px-4 py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium text-gray-800 font-mono">{cleanDisplayText(row.reference_number)}</p>
+                        <p className="text-xs text-gray-500 mt-1">{cleanDisplayText(row.payer_name)} • {row.status}</p>
+                        <p className="text-xs text-gray-400 mt-1">{cleanDisplayText(row.order_ref, 'No order ref')} • {new Date(row.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-semibold text-amber-700">₹{Number(row.amount || 0).toLocaleString('en-IN')}</div>
+                        <div className="text-xs text-gray-500 mt-1">{cleanDisplayText(row.error_message, 'Needs review')}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {!(operations.queues?.auto_deposit_mismatches || []).length ? <div className="px-4 py-6 text-sm text-gray-400">No mismatches waiting.</div> : null}
+              </div>
+            </div>
+
+            <div className="bg-white border">
+              <div className="px-4 py-4 border-b flex items-center justify-between">
+                <h4 className="text-lg font-semibold text-gray-800">Fraud Alerts</h4>
+                <Link to="/fraud-logs" className="text-sm text-blue-600 hover:underline">Open Queue</Link>
+              </div>
+              <div className="divide-y">
+                {(operations.queues?.fraud_alerts || []).map((row) => (
+                  <div key={row.id} className="px-4 py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">{cleanDisplayText(row.title)}</p>
+                        <p className="text-xs text-gray-500 mt-1">{cleanDisplayText(row.user_name, 'System')} {row.user_phone ? `• ${row.user_phone}` : ''}</p>
+                        <p className="text-xs text-gray-400 mt-1">{cleanDisplayText(row.description, 'Needs review')}</p>
+                      </div>
+                      <div className="text-right">
+                        <span className={`px-2 py-1 text-xs font-medium ${row.severity === 'high' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{row.severity}</span>
+                        <div className="text-xs text-gray-400 mt-2">{new Date(row.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {!(operations.queues?.fraud_alerts || []).length ? <div className="px-4 py-6 text-sm text-gray-400">No unresolved fraud alerts.</div> : null}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         <StatCard title="Total Users" value={stats?.total_users || 0} color="blue" />

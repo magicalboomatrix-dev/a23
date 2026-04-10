@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import api from '../utils/api';
 import { cleanDisplayText } from '../utils/display';
+import { getWalletTransactionLinks } from '../utils/wallet-links';
 
 function formatCurrency(value) {
   return `₹${Number(value || 0).toLocaleString('en-IN')}`;
@@ -166,6 +167,7 @@ export default function UserDetail() {
                 <th className="text-right px-4 py-3 font-medium text-gray-600">Amount</th>
                 <th className="text-right px-4 py-3 font-medium text-gray-600">Balance After</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Reference</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -179,9 +181,18 @@ export default function UserDetail() {
                     <div>{cleanDisplayText(transaction.reference_type)}</div>
                     <div className="text-gray-500">{cleanDisplayText(transaction.reference_id)}</div>
                   </td>
+                  <td className="px-4 py-3 text-xs text-gray-600">
+                    <div className="flex flex-wrap gap-2">
+                      {getWalletTransactionLinks(transaction).filter((link) => link.label !== 'User').map((link) => (
+                        <Link key={`${transaction.id}-${link.label}`} to={link.to} className="text-blue-600 hover:underline">
+                          {link.label}
+                        </Link>
+                      ))}
+                    </div>
+                  </td>
                 </tr>
               ))}
-              {walletTransactions.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">No wallet transactions</td></tr>}
+              {walletTransactions.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">No wallet transactions</td></tr>}
             </tbody>
           </table>
         </div>
