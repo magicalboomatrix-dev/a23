@@ -368,7 +368,7 @@ const DepositPage = () => {
                   </button>
 
                   <p className="mt-2 text-center text-[10px] text-[#9a3412]">
-                    Downloaded QR copies stay protected so they can expire and stop working after successful payment.
+                    Downloaded QR copies use the same direct UPI payment details shown on screen.
                   </p>
 
                   <div className="mt-3 flex items-center justify-between">
@@ -382,8 +382,7 @@ const DepositPage = () => {
                     <p>1. Open your UPI app (GPay, PhonePe, Paytm, etc.)</p>
                     <p>2. Send exactly <b>₹{(paymentDetails.pay_amount || paymentDetails.amount).toFixed(2)}</b> to <b>{paymentDetails.upi_id}</b></p>
                     <p>3. The exact paise amount ensures your payment is matched correctly.</p>
-                    <p>4. This on-screen QR is direct UPI and works best for scanner apps.</p>
-                    <p>5. Downloaded QR copies are protected. They stop working after success or expiry.</p>
+                    <p>4. This QR is direct UPI and works in scanner apps and downloaded copies.</p>
                   </div>
                 </div>
 

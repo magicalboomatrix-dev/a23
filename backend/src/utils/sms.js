@@ -1,5 +1,7 @@
-const twilio = require('twilio');
+const https = require('https');
 const { normalizePhone } = require('./phone');
+
+const FAST2SMS_API_URL = 'https://www.fast2sms.com/dev/bulkV2';
 
 function applyTemplate(template, values) {
   return String(template || '').replace(/{{\s*(\w+)\s*}}/g, (_, key) => {
@@ -8,49 +10,146 @@ function applyTemplate(template, values) {
   });
 }
 
-function getTwilioConfig() {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const from = process.env.TWILIO_PHONE_NUMBER;
-  const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
+function getSmsConfig() {
+  const provider = String(process.env.SMS_PROVIDER || 'fast2sms').trim().toLowerCase();
 
-  if (!accountSid || !authToken) {
-    throw new Error('TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN are required in production to send OTPs.');
+  if (provider !== 'fast2sms') {
+    throw new Error(`Unsupported SMS_PROVIDER "${provider}".`);
   }
 
-  if (!from && !messagingServiceSid) {
-    throw new Error('Set TWILIO_PHONE_NUMBER or TWILIO_MESSAGING_SERVICE_SID in production to send OTPs.');
+  const authorizationKey = process.env.FAST2SMS_AUTHORIZATION_KEY;
+  if (!authorizationKey) {
+    throw new Error('FAST2SMS_AUTHORIZATION_KEY is required in production to send OTPs.');
   }
 
   return {
-    client: twilio(accountSid, authToken),
-    from,
-    messagingServiceSid,
-    messageTemplate: process.env.TWILIO_OTP_TEMPLATE || 'Your A23 OTP is {{otp}}. Valid for {{expiryMinutes}} minutes.',
+    authorizationKey,
+    route: process.env.FAST2SMS_ROUTE || 'q',
+    language: process.env.FAST2SMS_LANGUAGE || 'english',
+    senderId: process.env.FAST2SMS_SENDER_ID,
+    entityId: process.env.FAST2SMS_ENTITY_ID,
+    templateId: process.env.FAST2SMS_TEMPLATE_ID,
+    messageTemplate: process.env.FAST2SMS_OTP_TEMPLATE || 'Your A23 OTP is {{otp}}. Valid for {{expiryMinutes}} minutes.',
   };
 }
 
-async function sendProductionOtpSms({ phone, otp, purpose, expiryMinutes }) {
-  const { client, from, messagingServiceSid, messageTemplate } = getTwilioConfig();
+function toFast2SmsNumber(phone) {
   const normalizedPhone = normalizePhone(phone);
 
-  if (!normalizedPhone) {
-    throw new Error('Valid phone number with country code required for OTP delivery.');
+  if (!normalizedPhone || !/^\+91\d{10}$/.test(normalizedPhone)) {
+    throw new Error('Fast2SMS requires a valid Indian mobile number in +91 format.');
   }
+
+  return normalizedPhone.slice(3);
+}
+
+function formatFast2SmsError(responseBody, statusCode) {
+  if (responseBody && typeof responseBody === 'object') {
+    if (Array.isArray(responseBody.message) && responseBody.message.length > 0) {
+      return `Fast2SMS error (${statusCode || 'unknown'}): ${responseBody.message.join(', ')}`;
+    }
+
+    if (typeof responseBody.message === 'string' && responseBody.message) {
+      return `Fast2SMS error (${statusCode || 'unknown'}): ${responseBody.message}`;
+    }
+
+    if (typeof responseBody.error === 'string' && responseBody.error) {
+      return `Fast2SMS error (${statusCode || 'unknown'}): ${responseBody.error}`;
+    }
+  }
+
+  if (typeof responseBody === 'string' && responseBody.trim()) {
+    return `Fast2SMS error (${statusCode || 'unknown'}): ${responseBody.trim()}`;
+  }
+
+  return `Fast2SMS request failed${statusCode ? ` with status ${statusCode}` : ''}.`;
+}
+
+function sendFast2SmsRequest(payload, authorizationKey) {
+  return new Promise((resolve, reject) => {
+    const requestBody = JSON.stringify(payload);
+    const request = https.request(
+      FAST2SMS_API_URL,
+      {
+        method: 'POST',
+        headers: {
+          authorization: authorizationKey,
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(requestBody),
+        },
+      },
+      (response) => {
+        let responseBody = '';
+        response.setEncoding('utf8');
+        response.on('data', (chunk) => {
+          responseBody += chunk;
+        });
+        response.on('end', () => {
+          let parsedBody = responseBody;
+          try {
+            parsedBody = JSON.parse(responseBody);
+          } catch (error) {
+            // Fast2SMS may return plain text errors for rejected requests.
+          }
+
+          if (response.statusCode < 200 || response.statusCode >= 300) {
+            reject(new Error(formatFast2SmsError(parsedBody, response.statusCode)));
+            return;
+          }
+
+          if (parsedBody && typeof parsedBody === 'object' && parsedBody.return === false) {
+            reject(new Error(formatFast2SmsError(parsedBody, response.statusCode)));
+            return;
+          }
+
+          resolve(parsedBody);
+        });
+      }
+    );
+
+    request.on('error', (error) => {
+      reject(error);
+    });
+
+    request.write(requestBody);
+    request.end();
+  });
+}
+
+async function sendProductionOtpSms({ phone, otp, purpose, expiryMinutes }) {
+  const {
+    authorizationKey,
+    route,
+    language,
+    senderId,
+    entityId,
+    templateId,
+    messageTemplate,
+  } = getSmsConfig();
+  const fast2SmsNumber = toFast2SmsNumber(phone);
 
   const message = applyTemplate(messageTemplate, { phone, otp, purpose, expiryMinutes });
   const payload = {
-    to: normalizedPhone,
-    body: message,
+    route,
+    language,
+    flash: 0,
+    numbers: fast2SmsNumber,
+    message,
   };
 
-  if (messagingServiceSid) {
-    payload.messagingServiceSid = messagingServiceSid;
-  } else {
-    payload.from = from;
+  if (senderId) {
+    payload.sender_id = senderId;
   }
 
-  return client.messages.create(payload);
+  if (entityId) {
+    payload.entity_id = entityId;
+  }
+
+  if (templateId) {
+    payload.template_id = templateId;
+  }
+
+  return sendFast2SmsRequest(payload, authorizationKey);
 }
 
 async function sendOtpSms({ phone, otp, purpose, expiryMinutes }) {

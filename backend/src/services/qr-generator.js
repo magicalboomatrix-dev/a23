@@ -5,24 +5,6 @@ function getQrTokenSecret() {
   return process.env.QR_LINK_SECRET || process.env.JWT_SECRET || 'a23-qr-link-secret';
 }
 
-function getBackendPublicUrl() {
-  const explicitUrl = process.env.BACKEND_PUBLIC_URL;
-  if (explicitUrl) {
-    return explicitUrl.replace(/\/$/, '');
-  }
-
-  const port = process.env.PORT || 9000;
-  return `http://localhost:${port}`;
-}
-
-function toBase64Url(value) {
-  return Buffer.from(value)
-    .toString('base64')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/g, '');
-}
-
 function fromBase64Url(value) {
   const normalized = `${value}`.replace(/-/g, '+').replace(/_/g, '/');
   const padding = normalized.length % 4 === 0 ? '' : '='.repeat(4 - (normalized.length % 4));
@@ -37,21 +19,6 @@ function signQrPayload(encodedPayload) {
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=+$/g, '');
-}
-
-function buildProtectedQrUrl({ orderId, orderRef, upiId, payeeName, amount, expiresAt }) {
-  const payload = {
-    v: 1,
-    oid: orderId,
-    ref: orderRef,
-    upi: upiId,
-    pn: payeeName,
-    amt: Number(amount),
-    exp: new Date(expiresAt).toISOString(),
-  };
-  const encodedPayload = toBase64Url(JSON.stringify(payload));
-  const signature = signQrPayload(encodedPayload);
-  return `${getBackendPublicUrl()}/api/auto-deposit/qr/${encodedPayload}.${signature}`;
 }
 
 function verifyQrLaunchToken(token) {
@@ -103,4 +70,4 @@ async function generateQrDataUri(qrValue) {
   });
 }
 
-module.exports = { buildUpiLink, buildProtectedQrUrl, verifyQrLaunchToken, generateQrDataUri };
+module.exports = { buildUpiLink, verifyQrLaunchToken, generateQrDataUri };
