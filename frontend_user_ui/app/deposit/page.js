@@ -356,7 +356,7 @@ const DepositPage = () => {
                       )}
                     </div>
                   </div>
-                  <p className="text-center text-[10px] text-[#9a3412] mb-2">Scan QR code with any UPI app while the timer is active</p>
+                  <p className="text-center text-[10px] text-[#9a3412] mb-2">Scan this on-screen QR with any UPI app while the timer is active</p>
 
                   <button
                     type="button"
@@ -364,8 +364,12 @@ const DepositPage = () => {
                     className="mt-2 flex w-full items-center justify-center gap-2 rounded bg-[#f97316] py-2.5 text-sm font-bold text-white"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
-                    Download QR Code
+                    Download QR
                   </button>
+
+                  <p className="mt-2 text-center text-[10px] text-[#9a3412]">
+                    Downloaded QR copies stay protected so they can expire and stop working after successful payment.
+                  </p>
 
                   <div className="mt-3 flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -378,8 +382,8 @@ const DepositPage = () => {
                     <p>1. Open your UPI app (GPay, PhonePe, Paytm, etc.)</p>
                     <p>2. Send exactly <b>₹{(paymentDetails.pay_amount || paymentDetails.amount).toFixed(2)}</b> to <b>{paymentDetails.upi_id}</b></p>
                     <p>3. The exact paise amount ensures your payment is matched correctly.</p>
-                    <p>4. This QR becomes invalid as soon as the timer expires or the payment is credited.</p>
-                    <p>5. Downloaded QR copies are protected. If reused after success or expiry, they will show used or expired.</p>
+                    <p>4. This on-screen QR is direct UPI and works best for scanner apps.</p>
+                    <p>5. Downloaded QR copies are protected. They stop working after success or expiry.</p>
                   </div>
                 </div>
 

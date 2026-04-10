@@ -458,12 +458,8 @@ exports.openProtectedQr = async (req, res, next) => {
       orderRef: payload.ref,
     });
 
-    return res.type('html').send(renderQrStatusPage({
-      title: 'Opening Payment',
-      message: 'This QR is active. We are opening your UPI app now.',
-      tone: 'success',
-      autoOpenUpiLink: upiLink,
-    }));
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    return res.redirect(302, upiLink);
   } catch (error) {
     next(error);
   }
