@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../utils/api';
+import { useAuth } from '../context/AuthContext';
 
 function formatCurrency(amount) {
   return `₹${Number(amount || 0).toLocaleString('en-IN', {
@@ -9,19 +10,44 @@ function formatCurrency(amount) {
 }
 
 export default function Deposits() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [deposits, setDeposits] = useState([]);
+  const [moderators, setModerators] = useState([]);
   const [pagination, setPagination] = useState({});
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [filters, setFilters] = useState({
+    search: '',
+    status: '',
+    moderator_id: '',
+    from_date: '',
+    to_date: '',
+  });
 
-  useEffect(() => { loadDeposits(); }, [page]);
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    api.get('/moderators')
+      .then((res) => setModerators(Array.isArray(res.data.moderators) ? res.data.moderators : []))
+      .catch(console.error);
+  }, [isAdmin]);
+
+  useEffect(() => { loadDeposits(); }, [page, filters.search, filters.status, filters.moderator_id, filters.from_date, filters.to_date]);
 
   const loadDeposits = async () => {
     setLoading(true);
     setError('');
     try {
-      const res = await api.get('/deposits/all', { params: { page, limit: 20 } });
+      const params = { page, limit: 20 };
+      if (filters.search.trim()) params.search = filters.search.trim();
+      if (filters.status) params.status = filters.status;
+      if (isAdmin && filters.moderator_id) params.moderator_id = filters.moderator_id;
+      if (filters.from_date) params.from_date = filters.from_date;
+      if (filters.to_date) params.to_date = filters.to_date;
+
+      const res = await api.get('/deposits/all', { params });
       setDeposits(Array.isArray(res.data.deposits) ? res.data.deposits : []);
       setPagination(res.data.pagination || {});
     } catch (err) {
@@ -32,6 +58,22 @@ export default function Deposits() {
     }
   };
 
+  const updateFilter = (key, value) => {
+    setPage(1);
+    setFilters((current) => ({ ...current, [key]: value }));
+  };
+
+  const clearFilters = () => {
+    setPage(1);
+    setFilters({
+      search: '',
+      status: '',
+      moderator_id: '',
+      from_date: '',
+      to_date: '',
+    });
+  };
+
   return (
     <div className="space-y-4">
       {error && (
@@ -40,8 +82,71 @@ export default function Deposits() {
         </div>
       )}
 
-      <div className="text-sm text-gray-500">
-        All deposits are auto-verified via UPI webhook. Showing completed credits only. Total: {pagination.total || 0}
+      <div className="bg-white border p-4 space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+          <div>
+            <h3 className="text-xl font-semibold text-gray-800">Deposits</h3>
+            <p className="text-sm text-gray-500 mt-1">
+              Search deposit credits by user, UTR, payer, date range, and moderator assignment.
+            </p>
+          </div>
+          <div className="text-sm text-gray-500">
+            Total: {pagination.total || 0}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3">
+          <input
+            type="text"
+            placeholder="Search user, phone, UTR, payer, order..."
+            value={filters.search}
+            onChange={(event) => updateFilter('search', event.target.value)}
+            className="w-full px-3 py-2 border text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+          />
+          <select
+            value={filters.status}
+            onChange={(event) => updateFilter('status', event.target.value)}
+            className="w-full px-3 py-2 border bg-white text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+          >
+            <option value="">All Status</option>
+            <option value="completed">Completed</option>
+            <option value="pending">Pending</option>
+            <option value="failed">Failed</option>
+          </select>
+          {isAdmin ? (
+            <select
+              value={filters.moderator_id}
+              onChange={(event) => updateFilter('moderator_id', event.target.value)}
+              className="w-full px-3 py-2 border bg-white text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+            >
+              <option value="">All Moderators</option>
+              {moderators.map((moderator) => (
+                <option key={moderator.id} value={String(moderator.id)}>{moderator.name}</option>
+              ))}
+            </select>
+          ) : null}
+          <input
+            type="date"
+            value={filters.from_date}
+            onChange={(event) => updateFilter('from_date', event.target.value)}
+            className="w-full px-3 py-2 border text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+          />
+          <div className="flex gap-3">
+            <input
+              type="date"
+              value={filters.to_date}
+              onChange={(event) => updateFilter('to_date', event.target.value)}
+              className="w-full px-3 py-2 border text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+            />
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="px-4 py-2 border text-sm font-medium text-gray-600 hover:bg-gray-50"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="bg-white border overflow-x-auto">

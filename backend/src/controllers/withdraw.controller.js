@@ -298,39 +298,77 @@ exports.rejectWithdraw = async (req, res, next) => {
 
 exports.getAllWithdrawals = async (req, res, next) => {
   try {
-    const { status } = req.query;
+    const { status, search, from_date, to_date, moderator_id, method } = req.query;
     const { page, limit, offset } = clampPagination(req.query);
 
-    let query = `
+    const whereConditions = [];
+    const params = [];
+
+    if (req.user.role === 'moderator') {
+      whereConditions.push('u.moderator_id = ?');
+      params.push(req.user.id);
+    } else if (moderator_id) {
+      whereConditions.push('u.moderator_id = ?');
+      params.push(moderator_id);
+    }
+
+    if (status) {
+      whereConditions.push('wr.status = ?');
+      params.push(status);
+    }
+
+    if (method) {
+      whereConditions.push('wr.withdraw_method = ?');
+      params.push(method);
+    }
+
+    if (from_date) {
+      whereConditions.push('DATE(wr.created_at) >= ?');
+      params.push(from_date);
+    }
+
+    if (to_date) {
+      whereConditions.push('DATE(wr.created_at) <= ?');
+      params.push(to_date);
+    }
+
+    if (search && search.trim()) {
+      const searchTerm = `%${search.trim()}%`;
+      whereConditions.push(`(
+        u.name LIKE ? OR
+        u.phone LIKE ? OR
+        COALESCE(wr.upi_id, '') LIKE ? OR
+        COALESCE(wr.phone_number, '') LIKE ? OR
+        COALESCE(ba.account_number, '') LIKE ? OR
+        COALESCE(ba.bank_name, '') LIKE ? OR
+        COALESCE(ba.account_holder, '') LIKE ? OR
+        CAST(wr.id AS CHAR) LIKE ?
+      )`);
+      params.push(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm);
+    }
+
+    const whereClause = whereConditions.length > 0
+      ? `WHERE ${whereConditions.join(' AND ')}`
+      : '';
+
+    const baseQuery = `
       SELECT wr.id, wr.user_id, wr.bank_id, wr.withdraw_method, wr.upi_id, wr.phone_number,
              wr.amount, wr.status, wr.reject_reason, wr.created_at, wr.updated_at,
-             u.name as user_name, u.phone as user_phone,
+             u.name as user_name, u.phone as user_phone, u.moderator_id,
              ba.account_number, ba.bank_name, ba.account_holder, ba.ifsc, ba.is_flagged
       FROM withdraw_requests wr
       JOIN users u ON wr.user_id = u.id
       LEFT JOIN bank_accounts ba ON wr.bank_id = ba.id
+      ${whereClause}
     `;
-    const params = [];
 
-    if (req.user.role === 'moderator') {
-      query += ' WHERE wr.user_id IN (SELECT id FROM users WHERE moderator_id = ? AND is_deleted = 0)';
-      params.push(req.user.id);
-      if (status) {
-        query += ' AND wr.status = ?';
-        params.push(status);
-      }
-    } else if (status) {
-      query += ' WHERE wr.status = ?';
-      params.push(status);
-    }
-
-    const countQuery = `SELECT COUNT(*) as total FROM (${query}) as countTable`;
+    const countQuery = `SELECT COUNT(*) as total FROM (${baseQuery}) as countTable`;
     const [countResult] = await pool.query(countQuery, params);
 
-    query += ' ORDER BY wr.created_at DESC LIMIT ? OFFSET ?';
-    params.push(limit, offset);
+    const query = `${baseQuery} ORDER BY wr.created_at DESC LIMIT ? OFFSET ?`;
+    const queryWithPagination = [...params, limit, offset];
 
-    const [withdrawals] = await pool.query(query, params);
+    const [withdrawals] = await pool.query(query, queryWithPagination);
 
     res.json({
       withdrawals,

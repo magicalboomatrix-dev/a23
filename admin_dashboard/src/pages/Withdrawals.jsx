@@ -1,23 +1,49 @@
 import { useState, useEffect } from 'react';
 import api from '../utils/api';
 import { useToast, ToastContainer, useConfirm, ConfirmModal } from '../components/ui';
+import { useAuth } from '../context/AuthContext';
 
 export default function Withdrawals() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [withdrawals, setWithdrawals] = useState([]);
+  const [moderators, setModerators] = useState([]);
   const [pagination, setPagination] = useState({});
   const [filter, setFilter] = useState('pending');
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [filters, setFilters] = useState({
+    search: '',
+    method: '',
+    moderator_id: '',
+    from_date: '',
+    to_date: '',
+  });
   const { toasts, success, error: toastError, dismiss } = useToast();
   const { confirmState, confirm, handleConfirm, handleCancel } = useConfirm();
   const [rejectModal, setRejectModal] = useState({ open: false, id: null, reason: '' });
 
-  useEffect(() => { loadData(); }, [page, filter]);
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    api.get('/moderators')
+      .then((res) => setModerators(Array.isArray(res.data.moderators) ? res.data.moderators : []))
+      .catch(console.error);
+  }, [isAdmin]);
+
+  useEffect(() => { loadData(); }, [page, filter, filters.search, filters.method, filters.moderator_id, filters.from_date, filters.to_date]);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/withdraw/all', { params: { status: filter, page, limit: 15 } });
+      const params = { status: filter, page, limit: 15 };
+      if (filters.search.trim()) params.search = filters.search.trim();
+      if (filters.method) params.method = filters.method;
+      if (isAdmin && filters.moderator_id) params.moderator_id = filters.moderator_id;
+      if (filters.from_date) params.from_date = filters.from_date;
+      if (filters.to_date) params.to_date = filters.to_date;
+
+      const res = await api.get('/withdraw/all', { params });
       setWithdrawals(Array.isArray(res.data.withdrawals) ? res.data.withdrawals : []);
       setPagination(res.data.pagination || {});
     } catch (err) {
@@ -59,6 +85,22 @@ export default function Withdrawals() {
     } catch (err) {
       toastError(err.response?.data?.error || 'Failed');
     }
+  };
+
+  const updateFilter = (key, value) => {
+    setPage(1);
+    setFilters((current) => ({ ...current, [key]: value }));
+  };
+
+  const clearFilters = () => {
+    setPage(1);
+    setFilters({
+      search: '',
+      method: '',
+      moderator_id: '',
+      from_date: '',
+      to_date: '',
+    });
   };
 
   return (
@@ -106,6 +148,73 @@ export default function Withdrawals() {
             {s}
           </button>
         ))}
+      </div>
+
+      <div className="bg-white border p-4 space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+          <div>
+            <h3 className="text-xl font-semibold text-gray-800">Withdrawals</h3>
+            <p className="text-sm text-gray-500 mt-1">
+              Filter withdrawal requests by user, payment details, date range, method, and moderator assignment.
+            </p>
+          </div>
+          <div className="text-sm text-gray-500">
+            Total: {pagination.total || 0}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3">
+          <input
+            type="text"
+            placeholder="Search user, phone, bank, UPI, request id..."
+            value={filters.search}
+            onChange={(event) => updateFilter('search', event.target.value)}
+            className="w-full px-3 py-2 border text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+          />
+          <select
+            value={filters.method}
+            onChange={(event) => updateFilter('method', event.target.value)}
+            className="w-full px-3 py-2 border bg-white text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+          >
+            <option value="">All Methods</option>
+            <option value="bank">Bank</option>
+            <option value="upi">UPI</option>
+            <option value="phone">Phone</option>
+          </select>
+          {isAdmin ? (
+            <select
+              value={filters.moderator_id}
+              onChange={(event) => updateFilter('moderator_id', event.target.value)}
+              className="w-full px-3 py-2 border bg-white text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+            >
+              <option value="">All Moderators</option>
+              {moderators.map((moderator) => (
+                <option key={moderator.id} value={String(moderator.id)}>{moderator.name}</option>
+              ))}
+            </select>
+          ) : null}
+          <input
+            type="date"
+            value={filters.from_date}
+            onChange={(event) => updateFilter('from_date', event.target.value)}
+            className="w-full px-3 py-2 border text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+          />
+          <div className="flex gap-3">
+            <input
+              type="date"
+              value={filters.to_date}
+              onChange={(event) => updateFilter('to_date', event.target.value)}
+              className="w-full px-3 py-2 border text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+            />
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="px-4 py-2 border text-sm font-medium text-gray-600 hover:bg-gray-50"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="bg-white border overflow-x-auto">
