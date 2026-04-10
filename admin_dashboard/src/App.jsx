@@ -10,6 +10,7 @@ import Withdrawals from './pages/Withdrawals';
 import Games from './pages/Games';
 import Settings from './pages/Settings';
 import Analytics from './pages/Analytics';
+import Jantri from './pages/Jantri';
 import Notifications from './pages/Notifications';
 import FraudLogs from './pages/FraudLogs';
 import ModeratorDetail from './pages/ModeratorDetail';
@@ -38,6 +39,7 @@ const APP_ROUTES = [
   { path: 'results', element: <Results /> },
   { path: 'settings', element: <Settings /> },
   { path: 'analytics', element: <Analytics /> },
+  { path: 'jantri', element: <Jantri /> },
   { path: 'notifications', element: <Notifications /> },
   { path: 'fraud-logs', element: <FraudLogs /> },
   { path: 'custom-ads', element: <CustomAds /> },

@@ -13,6 +13,7 @@ const navItems = [
   { path: '/games', label: 'Games', icon: '🎮' },
   { path: '/results', label: 'Results', icon: '🧾' },
   { path: '/analytics', label: 'Analytics', icon: '📈' },
+  { path: '/jantri', label: 'Jantri', icon: '🔢' },
   { path: '/notifications', label: 'Notifications', icon: '🔔' },
   { path: '/fraud-logs', label: 'Fraud Alerts', icon: '🚨' },
   { path: '/settlement-monitor', label: 'Settlement Monitor', icon: '⚙️' },
