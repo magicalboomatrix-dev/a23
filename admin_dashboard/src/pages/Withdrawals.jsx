@@ -139,11 +139,12 @@ export default function Withdrawals() {
               } else {
                 methodBadge = <span className="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs font-medium">Bank</span>;
                 paymentInfo = (
-                  <span className="text-xs">
-                    <span className="font-medium">{w.bank_name || '-'}</span>
-                    {w.account_number ? <span className="font-mono ml-1">•••{String(w.account_number).slice(-4)}</span> : null}
-                    {w.ifsc ? <span className="text-gray-400 ml-1">({w.ifsc})</span> : null}
-                  </span>
+                  <div className="text-xs leading-5">
+                    <div className="font-medium text-gray-800">{w.bank_name || '-'}</div>
+                    <div className="text-gray-600">{w.account_holder || '-'}</div>
+                    <div className="font-mono text-gray-700">{w.account_number || '-'}</div>
+                    {w.ifsc ? <div className="text-gray-400">IFSC: {w.ifsc}</div> : null}
+                  </div>
                 );
               }
               return (
