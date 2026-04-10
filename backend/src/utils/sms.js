@@ -2,6 +2,7 @@ const https = require('https');
 const { normalizePhone } = require('./phone');
 
 const FAST2SMS_API_URL = 'https://www.fast2sms.com/dev/bulkV2';
+const DLT_ROUTE_ERROR_TEXT = 'route is blocked in your account, use dlt sms route';
 
 function applyTemplate(template, values) {
   return String(template || '').replace(/{{\s*(\w+)\s*}}/g, (_, key) => {
@@ -24,13 +25,48 @@ function getSmsConfig() {
 
   return {
     authorizationKey,
-    route: process.env.FAST2SMS_ROUTE || 'q',
+    route: String(process.env.FAST2SMS_ROUTE || '').trim().toLowerCase(),
     language: process.env.FAST2SMS_LANGUAGE || 'english',
     senderId: process.env.FAST2SMS_SENDER_ID,
     entityId: process.env.FAST2SMS_ENTITY_ID,
     templateId: process.env.FAST2SMS_TEMPLATE_ID,
     messageTemplate: process.env.FAST2SMS_OTP_TEMPLATE || 'Your A23 OTP is {{otp}}. Valid for {{expiryMinutes}} minutes.',
   };
+}
+
+function hasDltConfig(config) {
+  return Boolean(config.senderId && config.entityId && config.templateId);
+}
+
+function getFast2SmsRoute(config) {
+  const configuredRoute = config.route;
+
+  if (configuredRoute === 'dlt') {
+    return 'dlt';
+  }
+
+  if (configuredRoute === 'otp') {
+    return 'otp';
+  }
+
+  // Legacy q/default route is commonly blocked for OTP traffic. For this utility,
+  // which only sends OTP messages, prefer DLT when fully configured, otherwise OTP.
+  if (!configuredRoute || configuredRoute === 'q') {
+    return hasDltConfig(config) ? 'dlt' : 'otp';
+  }
+
+  return configuredRoute;
+}
+
+function validateDltConfig(config) {
+  const missing = [];
+  if (!config.senderId) missing.push('FAST2SMS_SENDER_ID');
+  if (!config.entityId) missing.push('FAST2SMS_ENTITY_ID');
+  if (!config.templateId) missing.push('FAST2SMS_TEMPLATE_ID');
+
+  if (missing.length > 0) {
+    throw new Error(`FAST2SMS DLT route requires ${missing.join(', ')}.`);
+  }
 }
 
 function toFast2SmsNumber(phone) {
@@ -63,6 +99,23 @@ function formatFast2SmsError(responseBody, statusCode) {
   }
 
   return `Fast2SMS request failed${statusCode ? ` with status ${statusCode}` : ''}.`;
+}
+
+function decorateFast2SmsError(error, route, config) {
+  const rawMessage = String(error?.message || '');
+  const normalizedMessage = rawMessage.toLowerCase();
+
+  if (normalizedMessage.includes(DLT_ROUTE_ERROR_TEXT)) {
+    if (route !== 'dlt' && !hasDltConfig(config)) {
+      return new Error(`${rawMessage} Configure FAST2SMS_SENDER_ID, FAST2SMS_ENTITY_ID, FAST2SMS_TEMPLATE_ID and set FAST2SMS_ROUTE=dlt if your account only allows DLT SMS.`);
+    }
+
+    if (route !== 'dlt' && hasDltConfig(config)) {
+      return new Error(`${rawMessage} Your account appears to require DLT SMS. Set FAST2SMS_ROUTE=dlt to force the DLT route.`);
+    }
+  }
+
+  return error;
 }
 
 function sendFast2SmsRequest(payload, authorizationKey) {
@@ -117,25 +170,35 @@ function sendFast2SmsRequest(payload, authorizationKey) {
 }
 
 async function sendProductionOtpSms({ phone, otp, purpose, expiryMinutes }) {
+  const config = getSmsConfig();
   const {
     authorizationKey,
-    route,
     language,
     senderId,
     entityId,
     templateId,
     messageTemplate,
-  } = getSmsConfig();
+  } = config;
   const fast2SmsNumber = toFast2SmsNumber(phone);
+  const route = getFast2SmsRoute(config);
 
   const message = applyTemplate(messageTemplate, { phone, otp, purpose, expiryMinutes });
   const payload = {
     route,
-    language,
     flash: 0,
     numbers: fast2SmsNumber,
-    message,
   };
+
+  if (route === 'otp') {
+    payload.variables_values = String(otp);
+  } else {
+    payload.language = language;
+    payload.message = message;
+  }
+
+  if (route === 'dlt') {
+    validateDltConfig(config);
+  }
 
   if (senderId) {
     payload.sender_id = senderId;
@@ -149,7 +212,11 @@ async function sendProductionOtpSms({ phone, otp, purpose, expiryMinutes }) {
     payload.template_id = templateId;
   }
 
-  return sendFast2SmsRequest(payload, authorizationKey);
+  try {
+    return await sendFast2SmsRequest(payload, authorizationKey);
+  } catch (error) {
+    throw decorateFast2SmsError(error, route, config);
+  }
 }
 
 async function sendOtpSms({ phone, otp, purpose, expiryMinutes }) {

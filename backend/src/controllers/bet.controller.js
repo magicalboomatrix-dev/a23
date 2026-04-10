@@ -330,7 +330,7 @@ exports.getAllBets = async (req, res, next) => {
     const baseJoins = `
       FROM bets b
       JOIN users u ON u.id = b.user_id
-      LEFT JOIN users mod ON mod.id = u.moderator_id
+      LEFT JOIN users moderator_user ON moderator_user.id = u.moderator_id
       JOIN games g ON g.id = b.game_id
       LEFT JOIN game_results gr_linked ON gr_linked.id = b.game_result_id
       LEFT JOIN game_results gr_session
@@ -421,7 +421,7 @@ exports.getAllBets = async (req, res, next) => {
         u.name AS user_name,
         u.phone AS user_phone,
         u.moderator_id,
-        mod.name AS moderator_name,
+        moderator_user.name AS moderator_name,
         g.name AS game_name,
         COALESCE(gr_linked.result_number, gr_session.result_number) AS result_number,
         DATE_FORMAT(COALESCE(gr_linked.result_date, gr_session.result_date), '%Y-%m-%d') AS result_date,
@@ -443,7 +443,7 @@ exports.getAllBets = async (req, res, next) => {
         u.name,
         u.phone,
         u.moderator_id,
-        mod.name,
+        moderator_user.name,
         g.name,
         gr_linked.result_number,
         gr_linked.result_date,
