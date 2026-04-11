@@ -50,9 +50,13 @@ function getFast2SmsRoute(config) {
   }
 
   // Legacy q/default route is commonly blocked for OTP traffic. For this utility,
-  // which only sends OTP messages, prefer DLT when fully configured, otherwise OTP.
-  if (!configuredRoute || configuredRoute === 'q') {
-    return hasDltConfig(config) ? 'dlt' : 'otp';
+  // which only sends OTP messages, prefer DLT when fully configured, otherwise use q.
+  if (!configuredRoute) {
+    return hasDltConfig(config) ? 'dlt' : 'q';
+  }
+
+  if (configuredRoute === 'q') {
+    return 'q';
   }
 
   return configuredRoute;

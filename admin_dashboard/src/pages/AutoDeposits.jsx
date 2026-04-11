@@ -3,7 +3,6 @@ import { useSearchParams } from 'react-router-dom';
 import api from '../utils/api';
 import { useToast, ToastContainer } from '../components/ui';
 import { cleanDisplayText } from '../utils/display';
-import { cleanDisplayText } from '../utils/display';
 
 const STATUS_COLORS = {
   received: 'bg-blue-100 text-blue-800',
