@@ -117,24 +117,6 @@ exports.placeBet = async (req, res, next) => {
     const { maxBet, minBet, minutesLeft } = betCheck;
     const totalAmount = betNumbers.reduce((sum, n) => sum + parseFloat(n.amount), 0);
 
-    const [pendingWithdrawals] = await conn.query(
-      `SELECT COUNT(*) AS pending_count, COALESCE(SUM(amount), 0) AS pending_amount
-       FROM withdraw_requests
-       WHERE user_id = ? AND status = 'pending'`,
-      [req.user.id]
-    );
-
-    const pendingWithdrawalCount = Number(pendingWithdrawals[0]?.pending_count || 0);
-    const pendingWithdrawalAmount = Number.parseFloat(pendingWithdrawals[0]?.pending_amount || 0);
-
-    if (pendingWithdrawalCount > 0) {
-      await conn.rollback();
-      return res.status(400).json({
-        error: `Betting is locked while your withdrawal request is pending. Pending withdrawal: ₹${pendingWithdrawalAmount.toFixed(2)}.`,
-        code: 'PENDING_WITHDRAWAL_BLOCK',
-      });
-    }
-
     // Validate each number amount
     for (const item of betNumbers) {
       if (parseFloat(item.amount) < minBet) {

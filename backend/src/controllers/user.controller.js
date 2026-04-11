@@ -40,7 +40,7 @@ exports.getProfile = async (req, res, next) => {
         available_withdrawal: parseFloat(wallet.balance),
         pending_withdrawal_count: pendingWithdrawalCount,
         pending_withdrawal_amount: pendingWithdrawalAmount,
-        betting_locked: pendingWithdrawalCount > 0,
+        betting_locked: false,
       }
     });
   } catch (error) {

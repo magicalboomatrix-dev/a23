@@ -29,7 +29,7 @@ exports.getWalletInfo = async (req, res, next) => {
       available_withdrawal: balance,
       pending_withdrawal_count: pendingWithdrawalCount,
       pending_withdrawal_amount: pendingWithdrawalAmount,
-      betting_locked: pendingWithdrawalCount > 0,
+      betting_locked: false,
       total: balance + bonusBalance,
     });
   } catch (error) {
