@@ -142,3 +142,11 @@ export const notificationAPI = {
   recent: () => request('/notifications/recent'),
   markRead: (id) => request(`/notifications/${id}/read`, { method: 'PUT' }),
 };
+
+// Support
+export const supportAPI = {
+  createTicket: (data) => request('/support/tickets', { method: 'POST', body: JSON.stringify(data) }),
+  myTickets: (params) => request(`/support/tickets/my${buildQuery(params)}`),
+  getTicket: (id) => request(`/support/tickets/${id}`),
+  addMessage: (id, message) => request(`/support/tickets/${id}/messages`, { method: 'POST', body: JSON.stringify({ message }) }),
+};

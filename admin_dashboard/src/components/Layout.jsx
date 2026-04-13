@@ -25,6 +25,7 @@ const navItems = [
   { path: '/my-scanner', label: 'My UPI / Scanner', icon: '📲' },
   { path: '/how-to-play', label: 'How To Play', icon: '🎬' },
   { path: '/referrals', label: 'Referrals', icon: '🎁' },
+  { path: '/support', label: 'Support', icon: '🎫' },
 ];
 
 const MODERATOR_HIDDEN_LABELS = new Set(['Moderators', 'Games', 'Results', 'Settings', 'Fraud Alerts', 'UPI Management', 'Settlement Monitor', 'Wallet Transactions', 'Bonus Transactions', 'Wallet Audit', 'Custom Ads', 'How To Play', 'Auto Deposits', 'Referrals']);

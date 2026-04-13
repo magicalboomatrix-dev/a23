@@ -425,11 +425,23 @@ exports.upsertResult = async (req, res, next) => {
 
     // Check if a result already exists and whether it's been settled
     const [existingResult] = await pool.query(
-      'SELECT id, result_number, is_settled FROM game_results WHERE game_id = ? AND result_date = ? LIMIT 1',
+      'SELECT id, result_number, is_settled, declared_at FROM game_results WHERE game_id = ? AND result_date = ? LIMIT 1',
       [gameId, result_date]
     );
 
     const oldResult = existingResult.length > 0 ? existingResult[0] : null;
+
+    // Block ALL edits more than 30 minutes after declaration
+    if (oldResult && oldResult.declared_at) {
+      const declaredAt = new Date(oldResult.declared_at);
+      const minutesSince = (Date.now() - declaredAt.getTime()) / 60000;
+      if (minutesSince > 30) {
+        return res.status(403).json({
+          error: `Result is locked. It was declared at ${declaredAt.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} (${Math.floor(minutesSince)} minutes ago). Results cannot be changed more than 30 minutes after declaration.`,
+        });
+      }
+    }
+
     const isRevision = oldResult && oldResult.is_settled && oldResult.result_number !== resultNumber;
     let reversedCount = 0;
     let reversedBetIds = [];
@@ -518,6 +530,17 @@ exports.updateResultById = async (req, res, next) => {
     const existing = await getResultById(resultId);
     if (!existing) {
       return res.status(404).json({ error: 'Result not found.' });
+    }
+
+    // Block ALL edits more than 30 minutes after declaration
+    if (existing.declared_at) {
+      const declaredAt = new Date(existing.declared_at);
+      const minutesSince = (Date.now() - declaredAt.getTime()) / 60000;
+      if (minutesSince > 30) {
+        return res.status(403).json({
+          error: `Result is locked. It was declared at ${declaredAt.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} (${Math.floor(minutesSince)} minutes ago). Results cannot be changed more than 30 minutes after declaration.`,
+        });
+      }
     }
 
     if (Number(existing.linked_bet_count) > 0) {

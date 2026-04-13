@@ -342,6 +342,19 @@ const DepositPage = () => {
                   <p className="mb-1 text-xs text-[#7c2d12]"><b>UPI ID:</b> {paymentDetails.upi_id}</p>
                   {paymentDetails.payee_name && <p className="mb-1 text-xs text-[#7c2d12]"><b>Name:</b> {paymentDetails.payee_name}</p>}
 
+                  {/* QR Warning */}
+                  <div className="mb-3 rounded-lg border border-[#fbbf24] bg-[#fffbeb] px-3 py-2.5">
+                    <div className="flex items-start gap-2">
+                      <span className="mt-0.5 text-base leading-none">⚠️</span>
+                      <div>
+                        <p className="text-[11px] font-bold text-[#92400e]">हर बार नया QR उपयोग करें — पुराना QR कभी उपयोग न करें!</p>
+                        <p className="mt-0.5 text-[11px] text-[#92400e]">पुराने QR से भुगतान फंस सकता है और क्रेडिट नहीं मिलेगा।</p>
+                        <p className="mt-1.5 text-[11px] font-bold text-[#b45309]">Always use a fresh QR for every payment — never reuse a downloaded QR.</p>
+                        <p className="mt-0.5 text-[11px] text-[#b45309]">Old or saved QR codes may cause your payment to get stuck.</p>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* UPI QR Code */}
                   <div className="my-3 flex justify-center">
                     <div ref={qrRef} className="rounded-lg bg-white p-3 shadow-md border border-[#e5e7eb]">

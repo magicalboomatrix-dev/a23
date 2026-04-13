@@ -1,55 +1,28 @@
-const https = require('https');
+const twilio = require('twilio');
 const { normalizePhone } = require('./phone');
 
-function to10DigitNumber(phone) {
-  const normalizedPhone = normalizePhone(phone);
-  if (!normalizedPhone || !/^\+91\d{10}$/.test(normalizedPhone)) {
-    throw new Error('2Factor requires a valid Indian mobile number in +91 format.');
+async function sendTwilioOtp({ phone, otp }) {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  const fromNumber = process.env.TWILIO_PHONE_NUMBER;
+
+  if (!accountSid || !authToken || !fromNumber) {
+    throw new Error('TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER are required in production to send OTPs.');
   }
-  return normalizedPhone.slice(3);
-}
 
-function send2FactorOtp({ phone, otp }) {
-  return new Promise((resolve, reject) => {
-    const apiKey = process.env.TWOFACTOR_API_KEY;
-    if (!apiKey) {
-      return reject(new Error('TWOFACTOR_API_KEY is required in production to send OTPs.'));
-    }
+  const normalizedPhone = normalizePhone(phone);
+  if (!normalizedPhone) {
+    throw new Error('A valid phone number is required to send OTP.');
+  }
 
-    const number = to10DigitNumber(phone);
-    const templateName = process.env.TWOFACTOR_TEMPLATE_NAME || 'AUTOGEN';
-    const path = `/API/V1/${encodeURIComponent(apiKey)}/SMS/${encodeURIComponent(number)}/${encodeURIComponent(String(otp))}/${encodeURIComponent(templateName)}`;
-
-    const req = https.request(
-      { hostname: '2factor.in', path, method: 'GET' },
-      (response) => {
-        let body = '';
-        response.setEncoding('utf8');
-        response.on('data', (chunk) => { body += chunk; });
-        response.on('end', () => {
-          let parsed = body;
-          try { parsed = JSON.parse(body); } catch (_) {}
-
-          if (response.statusCode < 200 || response.statusCode >= 300) {
-            return reject(new Error(`2Factor error (${response.statusCode}): ${body.trim()}`));
-          }
-
-          if (parsed && typeof parsed === 'object' && parsed.Status === 'Error') {
-            return reject(new Error(`2Factor error: ${parsed.Details || body.trim()}`));
-          }
-
-          resolve(parsed);
-        });
-      }
-    );
-
-    req.on('error', (error) => reject(error));
-    req.end();
+  const client = twilio(accountSid, authToken);
+  const message = await client.messages.create({
+    body: `Your A23 Satta OTP is: ${otp}. Valid for 5 minutes. Do not share with anyone.`,
+    from: fromNumber,
+    to: normalizedPhone,
   });
-}
 
-async function sendProductionOtpSms({ phone, otp }) {
-  return send2FactorOtp({ phone, otp });
+  return { sid: message.sid };
 }
 
 async function sendOtpSms({ phone, otp, purpose, expiryMinutes }) {
@@ -58,7 +31,7 @@ async function sendOtpSms({ phone, otp, purpose, expiryMinutes }) {
     return { mode: 'development' };
   }
 
-  return sendProductionOtpSms({ phone, otp, purpose, expiryMinutes });
+  return sendTwilioOtp({ phone, otp });
 }
 
 module.exports = {

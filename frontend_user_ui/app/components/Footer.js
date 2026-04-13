@@ -8,7 +8,7 @@ const Footer = () => {
   const pathname = usePathname();
   const { isLoggedIn } = useAuth();
   const hideFooterRoutes = ["/login", "/login-account", "/bind-bank-card", "/game-page", "/success"];
-  if (!isLoggedIn || hideFooterRoutes.includes(pathname)) {
+  if (!isLoggedIn || hideFooterRoutes.includes(pathname) || pathname.startsWith('/support/')) {
     return null;
   }
 

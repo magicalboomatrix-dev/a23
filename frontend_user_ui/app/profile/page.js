@@ -1,6 +1,6 @@
 'use client'
 import React, { useState, useEffect } from 'react'
-import { User, BarChart2, CreditCard, ChevronRight, Bell, Shield, FileText, Info, PlayCircle, Gift } from 'lucide-react'
+import { User, BarChart2, CreditCard, ChevronRight, Bell, Shield, FileText, Info, PlayCircle, Gift, Headphones } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { userAPI, notificationAPI } from '../lib/api'
@@ -125,6 +125,22 @@ const Profile = () => {
                   <Gift size={28} strokeWidth={2.2} className="text-[#b88422]" />
                 </span>
                 <span>Refer &amp; Earn</span>
+              </div>
+              <ChevronRight size={20} className="text-[#b88422]" />
+            </Link>
+          </div>
+        </section>
+
+        {/* Support */}
+        <section>
+          <h3 className="mb-2 px-1 text-xs font-black uppercase tracking-[0.12em] text-[#777]">Help &amp; Support</h3>
+          <div className="divide-y divide-[#f0ece3]">
+            <Link href="/support" className={menuItemClass}>
+              <div className="flex items-center gap-3 text-sm font-semibold text-[#111]">
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#fff4d6]">
+                  <Headphones size={20} className="text-[#c8960c]" />
+                </span>
+                <span>Support &amp; Help</span>
               </div>
               <ChevronRight size={20} className="text-[#b88422]" />
             </Link>

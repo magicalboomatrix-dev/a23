@@ -25,6 +25,7 @@ import BonusTransactions from './pages/BonusTransactions';
 import MyScanner from './pages/MyScanner';
 import HowToPlay from './pages/HowToPlay';
 import Referrals from './pages/Referrals';
+import Support from './pages/Support';
 
 const APP_ROUTES = [
   { index: true, element: <Dashboard /> },
@@ -51,6 +52,7 @@ const APP_ROUTES = [
   { path: 'my-scanner', element: <MyScanner /> },
   { path: 'how-to-play', element: <HowToPlay /> },
   { path: 'referrals', element: <Referrals /> },
+  { path: 'support', element: <Support /> },
 ];
 
 function ProtectedRoute({ children }) {
