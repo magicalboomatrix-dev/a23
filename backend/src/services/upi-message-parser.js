@@ -13,6 +13,53 @@
  *   - BHIM: "₹500 received from SENDER UPI Ref No: 412345678901"
  */
 
+/**
+ * Normalize Unicode digit representations to plain ASCII digits.
+ *
+ * PhonePe (and some other UPI apps) render notification amounts using non-ASCII
+ * Unicode characters as a privacy measure — e.g. combining diacritical marks
+ * ("3̈5̈0̈.4̈7̈"), fullwidth digits (３５０.４７), mathematical bold/sans-serif
+ * digits (𝟑𝟓𝟎.𝟒𝟕), subscript digits, etc.  JavaScript's \d only matches
+ * ASCII [0-9], so those characters break all amount regexes.
+ *
+ * This function converts every known "digit-like" Unicode form back to the
+ * plain ASCII digit it represents.
+ */
+function normalizeUnicodeDigits(str) {
+  // Step 1 – NFD decomposition then strip combining diacritical marks
+  // (U+0300–U+036F  standard combining marks,
+  //  U+20D0–U+20FF  combining marks for symbols,
+  //  U+FE20–U+FE2F  combining half-marks)
+  str = str.normalize('NFD').replace(/[\u0300-\u036F\u20D0-\u20FF\uFE20-\uFE2F]/g, '');
+
+  // Step 2 – Fullwidth digits  ０-９  (U+FF10–U+FF19)
+  str = str.replace(/[\uFF10-\uFF19]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFF10 + 0x30));
+
+  // Step 3 – Subscript digits  ₀-₉  (U+2080–U+2089)
+  str = str.replace(/[\u2080-\u2089]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x2080 + 0x30));
+
+  // Step 4 – Superscript digits  ⁰ ¹ ² ³ ⁴-⁹
+  const SUPER = { '\u2070': '0', '\u00B9': '1', '\u00B2': '2', '\u00B3': '3',
+                  '\u2074': '4', '\u2075': '5', '\u2076': '6', '\u2077': '7',
+                  '\u2078': '8', '\u2079': '9' };
+  str = str.replace(/[\u2070\u00B9\u00B2\u00B3\u2074-\u2079]/g, c => SUPER[c] || c);
+
+  // Step 5 – Mathematical Alphanumeric Symbols block (U+1D7CE–U+1D7FF)
+  // These are surrogate pairs in JavaScript (each char is two UTF-16 code units).
+  // Covers Bold, Double-struck, Sans-Serif, Sans-Serif Bold, and Monospace digits.
+  str = [...str].map(char => {
+    const cp = char.codePointAt(0);
+    if (cp >= 0x1D7CE && cp <= 0x1D7D7) return String(cp - 0x1D7CE); // Bold 𝟎-𝟗
+    if (cp >= 0x1D7D8 && cp <= 0x1D7E1) return String(cp - 0x1D7D8); // Double-struck 𝟘-𝟡
+    if (cp >= 0x1D7E2 && cp <= 0x1D7EB) return String(cp - 0x1D7E2); // Sans-Serif 𝟢-𝟫
+    if (cp >= 0x1D7EC && cp <= 0x1D7F5) return String(cp - 0x1D7EC); // Sans-Serif Bold 𝟬-𝟵
+    if (cp >= 0x1D7F6 && cp <= 0x1D7FF) return String(cp - 0x1D7F6); // Monospace 𝟶-𝟿
+    return char;
+  }).join('');
+
+  return str;
+}
+
 const AMOUNT_PATTERNS = [
   // "Amount: Rs.500" / "Amount: 500" / "Amount = ₹500"
   /Amount\s*[:=]\s*(?:Rs\.?|INR|₹)?\s*([\d,]+(?:\.\d{1,2})?)/i,
@@ -120,7 +167,14 @@ function parseUpiMessage(rawMessage) {
     .replace(/^BharatPe\s*/im, '')
     .trim();
 
-  // Deduplicate repeated lines (BharatPe sends same line twice)
+  // Normalize Unicode digits → ASCII.
+  // PhonePe (and some other apps) put combining diacritical marks on digits or use
+  // mathematical/fullwidth/subscript Unicode digit codepoints for privacy, which
+  // breaks every \d regex pattern in this parser.
+  message = normalizeUnicodeDigits(message);
+
+  // Deduplicate repeated lines (BharatPe / PhonePe forwarder apps often repeat
+  // the same line twice — once from the title, once from the body).
   const lines = message.split('\n').map(l => l.trim()).filter(Boolean);
   const seen = new Set();
   const deduped = [];
