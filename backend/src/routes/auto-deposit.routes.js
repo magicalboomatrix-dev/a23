@@ -62,4 +62,7 @@ router.post('/admin/credit-by-utr', authenticate, authorize('admin'), autoDeposi
 // List unmatched/received webhook transactions
 router.get('/admin/unmatched-transactions', authenticate, authorize('admin'), autoDepositController.getUnmatchedTransactions);
 
+// Match all today's unmatched transactions
+router.post('/admin/match-today-unmatched', authenticate, authorize('admin'), autoDepositController.matchTodayUnmatched);
+
 module.exports = router;

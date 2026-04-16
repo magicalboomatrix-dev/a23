@@ -855,3 +855,259 @@ exports.getUnmatchedTransactions = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * Admin endpoint: Match all today's unmatched webhook transactions
+ * This processes unmatched UPI transactions received today and attempts to match them
+ * to pending deposit orders by order reference or amount.
+ */
+exports.matchTodayUnmatched = async (req, res, next) => {
+  const conn = await pool.getConnection();
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Query today's unmatched transactions that haven't been attempted yet
+    const [unmatchedTxns] = await conn.query(
+      `SELECT id, raw_message, amount, reference_number, payer_name, txn_time, created_at
+       FROM upi_webhook_transactions 
+       WHERE status = 'unmatched' 
+         AND DATE(created_at) = ?
+         AND match_attempted_at IS NULL
+       ORDER BY created_at ASC
+       LIMIT 100`,
+      [today]
+    );
+
+    if (unmatchedTxns.length === 0) {
+      return res.json({
+        message: `No unmatched transactions found for today (${today})`,
+        processed: 0,
+        matched: 0,
+        failed: 0,
+        results: []
+      });
+    }
+
+    const results = [];
+    let matched = 0;
+    let failed = 0;
+
+    for (const txn of unmatchedTxns) {
+      try {
+        await conn.beginTransaction();
+
+        const amount = parseFloat(txn.amount);
+        const referenceNumber = txn.reference_number;
+        const payerName = txn.payer_name;
+
+        // Extract order reference from raw message if available
+        let orderRef = null;
+        if (txn.raw_message) {
+          const orderRefMatch = txn.raw_message.match(/\bRM([A-Z0-9]{6})\b/i);
+          if (orderRefMatch) {
+            orderRef = 'RM' + orderRefMatch[1].toUpperCase();
+          }
+        }
+
+        // Check for duplicate reference number
+        const [existingRef] = await conn.query(
+          'SELECT id FROM upi_webhook_transactions WHERE reference_number = ? AND id != ? LIMIT 1',
+          [referenceNumber, txn.id]
+        );
+        
+        if (existingRef.length > 0) {
+          await conn.query(
+            'UPDATE upi_webhook_transactions SET status = ?, error_message = ?, match_attempted_at = NOW() WHERE id = ?',
+            ['duplicate', 'Duplicate reference number', txn.id]
+          );
+          await conn.commit();
+          failed++;
+          results.push({ txnId: txn.id, amount, matched: false, reason: 'duplicate_reference' });
+          continue;
+        }
+
+        // Check against deposits UTR numbers
+        const [existingDeposit] = await conn.query(
+          'SELECT id FROM deposits WHERE utr_number = ? LIMIT 1',
+          [referenceNumber]
+        );
+        
+        if (existingDeposit.length > 0) {
+          await conn.query(
+            'UPDATE upi_webhook_transactions SET status = ?, error_message = ?, match_attempted_at = NOW() WHERE id = ?',
+            ['duplicate', 'Reference already used in deposits', txn.id]
+          );
+          await conn.commit();
+          failed++;
+          results.push({ txnId: txn.id, amount, matched: false, reason: 'duplicate_utr' });
+          continue;
+        }
+
+        // Validate amount range
+        const minDeposit = 100;
+        const maxDeposit = 50000;
+        if (amount < minDeposit || amount > maxDeposit) {
+          await conn.query(
+            'UPDATE upi_webhook_transactions SET status = ?, error_message = ?, match_attempted_at = NOW() WHERE id = ?',
+            ['unmatched', `Amount ${amount} outside range ${minDeposit}-${maxDeposit}`, txn.id]
+          );
+          await conn.commit();
+          failed++;
+          results.push({ txnId: txn.id, amount, matched: false, reason: 'amount_out_of_range' });
+          continue;
+        }
+
+        // Find matching order by reference or amount
+        let pendingOrders = [];
+        
+        if (orderRef) {
+          const [refMatch] = await conn.query(
+            `SELECT id, user_id, amount, pay_amount, order_ref
+             FROM pending_deposit_orders
+             WHERE status = 'pending'
+               AND order_ref = ?
+               AND expires_at > NOW()
+             LIMIT 1
+             FOR UPDATE`,
+            [orderRef]
+          );
+          pendingOrders = refMatch;
+        }
+
+        // Match by amount if no order reference match
+        if (pendingOrders.length === 0) {
+          const [amountMatch] = await conn.query(
+            `SELECT id, user_id, amount, pay_amount, order_ref
+             FROM pending_deposit_orders
+             WHERE status = 'pending'
+               AND pay_amount = ?
+               AND expires_at > NOW()
+             ORDER BY created_at ASC
+             LIMIT 1
+             FOR UPDATE`,
+            [amount]
+          );
+          pendingOrders = amountMatch;
+        }
+
+        if (pendingOrders.length === 0) {
+          await conn.query(
+            'UPDATE upi_webhook_transactions SET status = ?, error_message = ?, match_attempted_at = NOW() WHERE id = ?',
+            ['unmatched', `No pending order found for amount ${amount}`, txn.id]
+          );
+          await conn.commit();
+          failed++;
+          results.push({ txnId: txn.id, amount, matched: false, reason: 'no_matching_order' });
+          continue;
+        }
+
+        const order = pendingOrders[0];
+
+        // Strict amount validation
+        const expectedAmount = parseFloat(order.pay_amount);
+        if (!expectedAmount || amount !== expectedAmount) {
+          await conn.query(
+            'UPDATE upi_webhook_transactions SET status = ?, error_message = ?, match_attempted_at = NOW() WHERE id = ?',
+            ['unmatched', `Amount mismatch: received ${amount}, expected ${expectedAmount}`, txn.id]
+          );
+          await conn.commit();
+          failed++;
+          results.push({ txnId: txn.id, amount, matched: false, reason: 'amount_mismatch' });
+          continue;
+        }
+
+        // Check user is not blocked
+        const [userRows] = await conn.query(
+          'SELECT id, is_blocked FROM users WHERE id = ? LIMIT 1',
+          [order.user_id]
+        );
+        
+        if (userRows.length === 0 || userRows[0].is_blocked) {
+          await conn.query(
+            'UPDATE upi_webhook_transactions SET status = ?, error_message = ?, match_attempted_at = NOW() WHERE id = ?',
+            ['unmatched', 'User blocked or not found', txn.id]
+          );
+          await conn.commit();
+          failed++;
+          results.push({ txnId: txn.id, amount, matched: false, reason: 'user_blocked' });
+          continue;
+        }
+
+        // Create deposit record
+        const creditAmount = Math.round(parseFloat(order.amount) * 100) / 100;
+        const [depositResult] = await conn.query(
+          `INSERT INTO deposits (user_id, amount, utr_number, webhook_txn_id, order_id, payer_name, status)
+           VALUES (?, ?, ?, ?, ?, ?, 'completed')`,
+          [order.user_id, creditAmount, referenceNumber, txn.id, order.id, payerName || null]
+        );
+        const depositId = depositResult.insertId;
+
+        // Credit wallet
+        await conn.query('SELECT balance FROM wallets WHERE user_id = ? FOR UPDATE', [order.user_id]);
+        await conn.query('UPDATE wallets SET balance = balance + ? WHERE user_id = ?', [creditAmount, order.user_id]);
+        
+        const [[walletRow]] = await conn.query('SELECT balance FROM wallets WHERE user_id = ?', [order.user_id]);
+        const newBalance = parseFloat(walletRow.balance);
+        
+        await conn.query(
+          `INSERT INTO wallet_transactions
+            (user_id, type, amount, balance_after, status, reference_type, reference_id, remark)
+           VALUES (?, 'deposit', ?, ?, 'completed', 'deposit', ?, ?)`,
+          [order.user_id, creditAmount, newBalance, `deposit_${depositId}`, `Auto deposit via UPI (Ref: ${referenceNumber})`]
+        );
+
+        // Update order status
+        await conn.query(
+          'UPDATE pending_deposit_orders SET status = ?, matched_deposit_id = ?, matched_webhook_id = ? WHERE id = ?',
+          ['matched', depositId, txn.id, order.id]
+        );
+
+        // Update webhook transaction status
+        await conn.query(
+          'UPDATE upi_webhook_transactions SET status = ?, matched_order_id = ?, matched_deposit_id = ?, match_attempted_at = NOW() WHERE id = ?',
+          ['matched', order.id, depositId, txn.id]
+        );
+
+        // Notify user
+        await conn.query(
+          'INSERT INTO notifications (user_id, type, message) VALUES (?, ?, ?)',
+          [order.user_id, 'deposit', `Your deposit of Rs.${creditAmount} has been automatically verified and credited. Ref: ${referenceNumber}`]
+        );
+
+        await conn.commit();
+        matched++;
+        results.push({
+          txnId: txn.id,
+          amount,
+          matched: true,
+          depositId,
+          orderId: order.id,
+          userId: order.user_id,
+          newBalance
+        });
+
+      } catch (error) {
+        await conn.rollback();
+        failed++;
+        results.push({
+          txnId: txn.id,
+          amount: txn.amount,
+          matched: false,
+          error: error.message
+        });
+      }
+    }
+
+    res.json({
+      processed: unmatchedTxns.length,
+      matched,
+      failed,
+      results
+    });
+
+  } catch (error) {
+    next(error);
+  } finally {
+    conn.release();
+  }
+};

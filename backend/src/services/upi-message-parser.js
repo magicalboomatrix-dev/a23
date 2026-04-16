@@ -28,9 +28,14 @@
 function normalizeUnicodeDigits(str) {
   // ---- STEP 0: remove emoji keycap digits (1️⃣ 2️⃣ etc) ----
   // Converts "1️⃣0️⃣0️⃣0️⃣.9️⃣2️⃣" -> "1000.92"
+  // Handle multiple keycap emoji encodings:
+  // - digit + variation selector (U+FE0F) + combining keycap (U+20E3)
+  // - digit + combining keycap without variation selector
+  // - digit surrounded by other combining marks
   str = str
-    .replace(/([0-9])\uFE0F?\u20E3/g, '$1') // keycap emoji
-    .replace(/\uFE0F/g, ''); // variation selector
+    .replace(/([0-9])\uFE0F\u20E3/g, '$1') // digit + variation selector + keycap
+    .replace(/([0-9])\u20E3/g, '$1')       // digit + keycap (no variation selector)
+    .replace(/\uFE0F/g, '')                 // remove any remaining variation selectors
 
   // Step 1 – NFD decomposition then strip combining marks
   str = str
