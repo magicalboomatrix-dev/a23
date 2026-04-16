@@ -26,34 +26,48 @@
  * plain ASCII digit it represents.
  */
 function normalizeUnicodeDigits(str) {
-  // Step 1 – NFD decomposition then strip combining diacritical marks
-  // (U+0300–U+036F  standard combining marks,
-  //  U+20D0–U+20FF  combining marks for symbols,
-  //  U+FE20–U+FE2F  combining half-marks)
-  str = str.normalize('NFD').replace(/[\u0300-\u036F\u20D0-\u20FF\uFE20-\uFE2F]/g, '');
+  // ---- STEP 0: remove emoji keycap digits (1️⃣ 2️⃣ etc) ----
+  // Converts "1️⃣0️⃣0️⃣0️⃣.9️⃣2️⃣" -> "1000.92"
+  str = str
+    .replace(/([0-9])\uFE0F?\u20E3/g, '$1') // keycap emoji
+    .replace(/\uFE0F/g, ''); // variation selector
 
-  // Step 2 – Fullwidth digits  ０-９  (U+FF10–U+FF19)
-  str = str.replace(/[\uFF10-\uFF19]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFF10 + 0x30));
+  // Step 1 – NFD decomposition then strip combining marks
+  str = str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036F\u20D0-\u20FF\uFE20-\uFE2F]/g, '');
 
-  // Step 3 – Subscript digits  ₀-₉  (U+2080–U+2089)
-  str = str.replace(/[\u2080-\u2089]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x2080 + 0x30));
+  // Step 2 – Fullwidth digits ０-９
+  str = str.replace(/[\uFF10-\uFF19]/g,
+    c => String.fromCharCode(c.charCodeAt(0) - 0xFF10 + 0x30)
+  );
 
-  // Step 4 – Superscript digits  ⁰ ¹ ² ³ ⁴-⁹
-  const SUPER = { '\u2070': '0', '\u00B9': '1', '\u00B2': '2', '\u00B3': '3',
-                  '\u2074': '4', '\u2075': '5', '\u2076': '6', '\u2077': '7',
-                  '\u2078': '8', '\u2079': '9' };
-  str = str.replace(/[\u2070\u00B9\u00B2\u00B3\u2074-\u2079]/g, c => SUPER[c] || c);
+  // Step 3 – Subscript digits ₀-₉
+  str = str.replace(/[\u2080-\u2089]/g,
+    c => String.fromCharCode(c.charCodeAt(0) - 0x2080 + 0x30)
+  );
 
-  // Step 5 – Mathematical Alphanumeric Symbols block (U+1D7CE–U+1D7FF)
-  // These are surrogate pairs in JavaScript (each char is two UTF-16 code units).
-  // Covers Bold, Double-struck, Sans-Serif, Sans-Serif Bold, and Monospace digits.
+  // Step 4 – Superscript digits
+  const SUPER = {
+    '\u2070':'0','\u00B9':'1','\u00B2':'2','\u00B3':'3',
+    '\u2074':'4','\u2075':'5','\u2076':'6',
+    '\u2077':'7','\u2078':'8','\u2079':'9'
+  };
+
+  str = str.replace(/[\u2070\u00B9\u00B2\u00B3\u2074-\u2079]/g,
+    c => SUPER[c] || c
+  );
+
+  // Step 5 – Mathematical digits
   str = [...str].map(char => {
     const cp = char.codePointAt(0);
-    if (cp >= 0x1D7CE && cp <= 0x1D7D7) return String(cp - 0x1D7CE); // Bold 𝟎-𝟗
-    if (cp >= 0x1D7D8 && cp <= 0x1D7E1) return String(cp - 0x1D7D8); // Double-struck 𝟘-𝟡
-    if (cp >= 0x1D7E2 && cp <= 0x1D7EB) return String(cp - 0x1D7E2); // Sans-Serif 𝟢-𝟫
-    if (cp >= 0x1D7EC && cp <= 0x1D7F5) return String(cp - 0x1D7EC); // Sans-Serif Bold 𝟬-𝟵
-    if (cp >= 0x1D7F6 && cp <= 0x1D7FF) return String(cp - 0x1D7F6); // Monospace 𝟶-𝟿
+
+    if (cp >= 0x1D7CE && cp <= 0x1D7D7) return String(cp - 0x1D7CE);
+    if (cp >= 0x1D7D8 && cp <= 0x1D7E1) return String(cp - 0x1D7D8);
+    if (cp >= 0x1D7E2 && cp <= 0x1D7EB) return String(cp - 0x1D7E2);
+    if (cp >= 0x1D7EC && cp <= 0x1D7F5) return String(cp - 0x1D7EC);
+    if (cp >= 0x1D7F6 && cp <= 0x1D7FF) return String(cp - 0x1D7F6);
+
     return char;
   }).join('');
 
@@ -104,22 +118,16 @@ const AMOUNT_PATTERNS = [
   // Standalone ₹ amount as last resort (e.g., "₹100.37 received")
   /₹\s*([\d,]+(?:\.\d{1,2})?)/,
 ];
-
 const REFERENCE_PATTERNS = [
-  // "RRN:645664106610" (IndusInd bank)
-  /RRN\s*[:=]?\s*(\d{6,30})/i,
-  // "Ref No: 412345678901" / "Ref: 412345678901" / "Reference Number: ..."
-  /Ref(?:erence)?\s*(?:No\.?|Number|#|ID)?\s*[:=]?\s*(\d{6,30})/i,
-  // "UTR: 412345678901" / "UTR No 412345678901"
-  /UTR\s*(?:No\.?)?\s*[:=]?\s*(\d{6,30})/i,
-  // "UPI Ref 412345678901" / "UPI Ref: 412345678901" / "UPI Ref No. 412345678901"
-  /UPI\s+(?:Ref|Reference|transaction)\s*(?:No\.?|ID|#)?\s*[:=]?\s*(\d{6,30})/i,
-  // "Txn No: 412345678901" / "Txn ID: 412345678901" / "Transaction ID 412345678901"
-  /(?:Txn|Transaction)\s*(?:No\.?|ID|Ref|#)?\s*[:=]?\s*(\d{6,30})/i,
-  // "UPI/412345678901" (some bank SMS)
-  /UPI\/(\d{6,30})/i,
-  // Fallback: any 12-30 digit sequence (likely a UTR)
-  /(\d{12,30})/,
+  /RRN\s*[:=]?\s*([A-Z0-9]{6,40})/i,
+  /Ref(?:erence)?\s*(?:No\.?|Number|#|ID)?\s*[:=]?\s*([A-Z0-9]{6,40})/i,
+  /UTR\s*(?:No\.?)?\s*[:=]?\s*([A-Z0-9]{6,40})/i,
+  /UPI\s+(?:Ref|Reference|transaction)\s*(?:No\.?|ID|#)?\s*[:=]?\s*([A-Z0-9]{6,40})/i,
+  /(?:Txn|Transaction)\s*(?:No\.?|ID|Ref|#)?\s*[:=]?\s*([A-Z0-9]{6,40})/i,
+  /UPI\/([A-Z0-9]{6,40})/i,
+
+  /\bT\d{12,30}\b/i,     // PhonePe style
+  /\b\d{12,30}\b/        // fallback numeric UTR
 ];
 
 const PAYER_PATTERNS = [
