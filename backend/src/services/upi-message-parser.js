@@ -192,7 +192,7 @@ function parseUpiMessage(rawMessage) {
       deduped.push(line);
     }
   }
-  message = deduped.join('\n');
+  message = deduped.join(' ');
 
   // --- Safety filters: reject outgoing / non-credit messages ---
   if (DEBIT_KEYWORDS.test(message)) {

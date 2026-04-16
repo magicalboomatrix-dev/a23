@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import api from '../utils/api';
 import { useToast, ToastContainer } from '../components/ui';
 import { cleanDisplayText } from '../utils/display';
+import { MatchAllUnmatchedButton } from '../components/MatchAllUnmatchedButton';
 
 const STATUS_COLORS = {
   received: 'bg-blue-100 text-blue-800',
@@ -254,11 +255,15 @@ export default function AutoDeposits() {
     <div className="space-y-4">
       <ToastContainer toasts={toasts} dismiss={dismiss} />
 
-      <div className="flex items-center justify-between">
+
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <h1 className="text-2xl font-bold text-dark-900">Auto Deposits</h1>
-        <button onClick={handleExpireOrders} className="px-3 py-1.5 text-sm bg-yellow-600 text-white rounded hover:bg-yellow-700">
-          Expire Stale Orders
-        </button>
+        <div className="flex gap-2 flex-wrap">
+          <MatchAllUnmatchedButton onMatched={() => { loadStats(); loadUnmatchedTxns(); loadLogs(); }} />
+          <button onClick={handleExpireOrders} className="px-3 py-1.5 text-sm bg-yellow-600 text-white rounded hover:bg-yellow-700">
+            Expire Stale Orders
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
