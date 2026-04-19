@@ -399,8 +399,8 @@ function GamePageInner() {
 
   const inputClass = 'w-full border-2 border-[#e0e0e0] bg-white px-4 py-3 text-center text-xl font-semibold text-[#1a1a1a] outline-none transition focus:border-[#b88422]';
   const primaryButtonClass = 'w-full bg-black px-4 py-3 text-base font-bold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60';
-  const tabButtonClass = (isActive) => `px-4 py-2 text-sm font-black uppercase tracking-[0.14em] transition ${isActive ? 'bg-black text-[#ffd26a] shadow-[0_10px_20px_rgba(0,0,0,0.18)]' : 'text-[#6b7280]'}`;
-  const cardBoxClass = (isActive) => `cursor-pointer border px-2 py-3 text-center transition ${isActive ? 'border-[#b88422] bg-[#fff5d9] shadow-[0_8px_18px_rgba(184,132,34,0.18)]' : 'border-[#ddd] bg-white hover:border-[#d5b163]'}`;
+  const tabButtonClass = (isActive) => `px-2 py-1.5 text-[11px] font-black uppercase tracking-[0.1em] transition sm:px-4 sm:py-2 sm:text-sm sm:tracking-[0.14em] ${isActive ? 'bg-black text-[#ffd26a] shadow-[0_4px_10px_rgba(0,0,0,0.18)]' : 'text-[#6b7280]'}`;
+  const cardBoxClass = (isActive) => `cursor-pointer border px-1 py-1.5 text-center transition sm:px-2 sm:py-2 ${isActive ? 'border-[#b88422] bg-[#fff5d9] shadow-[0_4px_10px_rgba(184,132,34,0.18)]' : 'border-[#ddd] bg-white hover:border-[#d5b163]'}`;
 
   return (
     <div className="relative mx-auto w-full max-w-107.5 bg-[#f6f7fa] pb-28">
@@ -434,7 +434,7 @@ function GamePageInner() {
 
 
         <div className="mt-4 overflow-hidden border border-[#eadcc0] bg-white shadow-[0_18px_34px_rgba(15,23,42,0.08)]">
-          <div className="flex gap-2 border-b border-[#f1e7d3] bg-[#fff8e7] p-2">
+          <div className="flex gap-1 border-b border-[#f1e7d3] bg-[#fff8e7] p-1.5 sm:gap-2 sm:p-2">
             <button type="button" className={tabButtonClass(activeTab === 'tab-1')} onClick={() => setActiveTab('tab-1')}>Jodi</button>
             <button type="button" className={tabButtonClass(activeTab === 'tab-2')} onClick={() => setActiveTab('tab-2')}>Haruf</button>
             <button type="button" className={tabButtonClass(activeTab === 'tab-3')} onClick={() => setActiveTab('tab-3')}>Crossing</button>
@@ -443,39 +443,39 @@ function GamePageInner() {
 
           <div className={activeTab === 'tab-1' ? 'block' : 'hidden'}>
             {/* Removed favorites UI */}
-            <div className="grid grid-cols-5 gap-2 p-4">
+            <div className="grid grid-cols-5 gap-1 p-2 sm:gap-2 sm:p-3">
                 {jodiNumbers.map((num) => (
                   <div key={num} className={`${cardBoxClass(Boolean(savedAmounts[num]))} ${bettingClosed ? 'opacity-60 cursor-not-allowed' : ''}`} onClick={() => openPopup(num)}>
-                    <div className="flex items-center justify-center gap-1">
-                      <div className="text-sm font-semibold text-[#111]">{num}</div>
+                    <div className="flex items-center justify-center gap-0.5">
+                      <div className="text-xs font-semibold text-[#111] sm:text-sm">{num}</div>
                     </div>
-                    {savedAmounts[num] && <div className="mt-1 text-[10px] font-bold text-[#d62828]">₹{savedAmounts[num]}</div>}
+                    {savedAmounts[num] && <div className="mt-0.5 text-[9px] font-bold text-[#d62828] sm:text-[10px]">₹{savedAmounts[num]}</div>}
                   </div>
                 ))}
             </div>
           </div>
 
           <div className={activeTab === 'tab-2' ? 'block' : 'hidden'}>
-            <div className="px-4 pt-1 text-sm font-black uppercase tracking-[0.14em] text-[#111]">Andar</div>
-            <div className="grid grid-cols-5 gap-2 px-4 py-3">
+            <div className="px-2 pt-1 text-xs font-black uppercase tracking-[0.14em] text-[#111] sm:px-3 sm:text-sm">Andar</div>
+            <div className="grid grid-cols-5 gap-1 px-2 py-2 sm:gap-2 sm:px-3 sm:py-3">
                   {harufDigits.map(d => (
                     <div key={`a${d}`} className={cardBoxClass(Boolean(harufAndar[d]))} onClick={() => openHarufPopup(d, 'andar')}>
-                      {d} {harufAndar[d] && <div className="mt-1 text-[10px] font-bold text-[#d62828]">₹{harufAndar[d]}</div>}
+                      <span className="text-xs font-semibold sm:text-sm">{d}</span> {harufAndar[d] && <div className="mt-0.5 text-[9px] font-bold text-[#d62828] sm:text-[10px]">₹{harufAndar[d]}</div>}
                     </div>
                   ))}
             </div>
-            <div className="px-4 pt-1 text-sm font-black uppercase tracking-[0.14em] text-[#111]">Bahar</div>
-            <div className="grid grid-cols-5 gap-2 px-4 py-3">
+            <div className="px-2 pt-1 text-xs font-black uppercase tracking-[0.14em] text-[#111] sm:px-3 sm:text-sm">Bahar</div>
+            <div className="grid grid-cols-5 gap-1 px-2 py-2 sm:gap-2 sm:px-3 sm:py-3">
                   {harufDigits.map(d => (
                     <div key={`b${d}`} className={cardBoxClass(Boolean(harufBahar[d]))} onClick={() => openHarufPopup(d, 'bahar')}>
-                      {d} {harufBahar[d] && <div className="mt-1 text-[10px] font-bold text-[#d62828]">₹{harufBahar[d]}</div>}
+                      <span className="text-xs font-semibold sm:text-sm">{d}</span> {harufBahar[d] && <div className="mt-0.5 text-[9px] font-bold text-[#d62828] sm:text-[10px]">₹{harufBahar[d]}</div>}
                     </div>
                   ))}
             </div>
           </div>
 
           <div className={activeTab === 'tab-3' ? 'block' : 'hidden'}>
-            <div className="p-4">
+            <div className="p-2 sm:p-4">
                 <input 
                   type="text" 
                   inputMode="numeric"
