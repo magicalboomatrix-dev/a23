@@ -44,7 +44,9 @@ export default function MyScanner() {
 
   const handleCopyReferralLink = () => {
     if (!moderator?.referral_code) return;
-    const link = `${window.location.origin}/download?ref=${moderator.referral_code}`;
+    // Use main website domain, not admin panel
+    const mainDomain = window.location.origin.replace('admin.', '');
+    const link = `${mainDomain}/download?ref=${moderator.referral_code}`;
     navigator.clipboard.writeText(link).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -101,7 +103,7 @@ export default function MyScanner() {
 
           <div className="flex items-center gap-2">
             <div className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-sm font-mono text-gray-700 truncate">
-              {`${window.location.origin}/download?ref=${moderator.referral_code}`}
+              {`${window.location.origin.replace('admin.', '')}/download?ref=${moderator.referral_code}`}
             </div>
             <button
               type="button"
