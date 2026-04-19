@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Shield, Star, Download, Share2, ChevronRight, ArrowLeft, Search, MoreVertical } from 'lucide-react';
 
 /* ------------------------------------------------------------------ */
@@ -15,6 +16,18 @@ const SCREENSHOTS = [
 /* ------------------------------------------------------------------ */
 export default function PlayStoreDownload() {
   const [downloading, setDownloading] = useState(false);
+  const [moderatorRef, setModeratorRef] = useState(null);
+  const searchParams = useSearchParams();
+
+  // Capture moderator referral code from URL
+  useEffect(() => {
+    const ref = searchParams.get('ref');
+    if (ref && /^M\d{5}$/i.test(ref)) {
+      const normalizedRef = ref.toUpperCase();
+      localStorage.setItem('moderator_ref', normalizedRef);
+      setModeratorRef(normalizedRef);
+    }
+  }, [searchParams]);
 
   const handleInstall = () => {
     setDownloading(true);
@@ -50,6 +63,18 @@ export default function PlayStoreDownload() {
         <span className="py-3 text-[#5f6368]">Books</span>
         <span className="py-3 text-[#5f6368]">Kids</span>
       </nav>
+
+      {/* ── Referral banner (if via moderator) ─────────────────── */}
+      {moderatorRef && (
+        <div className="mx-5 mt-4 rounded-lg bg-gradient-to-r from-[#01875f] to-[#016d4d] px-4 py-3 text-white">
+          <p className="text-sm font-medium">
+            Referred by moderator: <span className="font-bold">{moderatorRef}</span>
+          </p>
+          <p className="text-xs opacity-90 mt-1">
+            Your account will be linked to this moderator when you register.
+          </p>
+        </div>
+      )}
 
       {/* ── App header ──────────────────────────────────────────── */}
       <section className="flex gap-4 px-5 pt-6 pb-4">

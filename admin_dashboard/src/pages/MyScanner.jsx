@@ -6,8 +6,10 @@ export default function MyScanner() {
   const { toasts, success, error, dismiss } = useToast();
 
   const [scanner, setScanner] = useState(null);
+  const [moderator, setModerator] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const [form, setForm] = useState({
     scanner_label: '',
@@ -18,6 +20,7 @@ export default function MyScanner() {
   const load = async () => {
     setLoading(true);
     try {
+      // Load scanner details
       const res = await api.get('/moderator/scanner');
       const s = res.data.scanner;
       setScanner(s);
@@ -26,14 +29,30 @@ export default function MyScanner() {
         upi_id: s.upi_id || '',
         scanner_enabled: !!s.scanner_enabled,
       });
+
+      // Load moderator profile for referral code
+      const profileRes = await api.get('/auth/me');
+      setModerator(profileRes.data.user);
     } catch (err) {
-      error(err.response?.data?.error || 'Failed to load scanner details.');
+      error(err.response?.data?.error || 'Failed to load details.');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => { load(); }, []);
+
+  const handleCopyReferralLink = () => {
+    if (!moderator?.referral_code) return;
+    const link = `${window.location.origin}/download?ref=${moderator.referral_code}`;
+    navigator.clipboard.writeText(link).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      success('Referral link copied to clipboard!');
+    }).catch(() => {
+      error('Failed to copy link.');
+    });
+  };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -69,6 +88,36 @@ export default function MyScanner() {
       <ToastContainer toasts={toasts} dismiss={dismiss} />
 
       <h1 className="text-2xl font-bold text-gray-900 mb-6">My UPI / Scanner</h1>
+
+      {/* Referral Link Section */}
+      {moderator?.referral_code && (
+        <div className="bg-white rounded-xl shadow p-6 mb-6 space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Your Referral Link</h2>
+            <p className="text-sm text-gray-500 mt-1">
+              Share this link with users. When they download and register, they'll be assigned to you.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-sm font-mono text-gray-700 truncate">
+              {`${window.location.origin}/download?ref=${moderator.referral_code}`}
+            </div>
+            <button
+              type="button"
+              onClick={handleCopyReferralLink}
+              className="px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              {copied ? 'Copied!' : 'Copy'}
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-gray-600">Referral Code:</span>
+            <span className="font-bold text-blue-600">{moderator.referral_code}</span>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSave} className="bg-white rounded-xl shadow p-6 space-y-5">
 

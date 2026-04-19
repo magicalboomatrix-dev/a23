@@ -495,6 +495,6 @@ exports.logout = (req, res) => {
 
 // Return the currently authenticated user (used by admin dashboard to verify session)
 exports.getMe = (req, res) => {
-  const { id, name, phone, role, moderator_id } = req.user;
-  res.json({ user: { id, name, phone, role, moderator_id } });
+  const { id, name, phone, role, moderator_id, referral_code } = req.user;
+  res.json({ user: { id, name, phone, role, moderator_id, referral_code } });
 };

@@ -112,6 +112,16 @@ const LoginAccountPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Load moderator referral code from localStorage when reaching profile step
+  useEffect(() => {
+    if (step === STEPS.PROFILE && !referralCode) {
+      const storedRef = localStorage.getItem('moderator_ref');
+      if (storedRef && /^M\d{5}$/i.test(storedRef)) {
+        setReferralCode(storedRef.toUpperCase());
+      }
+    }
+  }, [step, referralCode]);
+
   // Step 1: Check user after phone entry
   const handleCheckUser = async () => {
     if (!isValidPhone(phone)) {
@@ -201,6 +211,8 @@ const LoginAccountPage = () => {
 
       if (authFlow === 'register') {
         data = await authAPI.completeProfile(name.trim(), referralCode, mpin, tempToken);
+        // Clear moderator referral from localStorage after successful registration
+        localStorage.removeItem('moderator_ref');
       } else {
         await authAPI.resetMpin(mpin, tempToken);
         data = await authAPI.loginMpin(phone, mpin);
@@ -427,7 +439,19 @@ const LoginAccountPage = () => {
                   </div>
                   <div className={fieldWrapClass}>
                     <label className={labelClass}>Referral Code (Optional)</label>
-                    <input className={inputClass} placeholder="Enter referral code" type="text" value={referralCode} onChange={e => setReferralCode(e.target.value)} />
+                    <input
+                      className={inputClass}
+                      placeholder="Enter referral code"
+                      type="text"
+                      value={referralCode}
+                      onChange={e => setReferralCode(e.target.value)}
+                    />
+                    {/* Show badge if referral code is auto-filled from moderator link */}
+                    {referralCode && /^M\d{5}$/i.test(referralCode) && (
+                      <p className="mt-2 text-xs text-green-600 font-medium">
+                        Referred by moderator {referralCode}
+                      </p>
+                    )}
                   </div>
                   <button type="button" className={buttonClass} onClick={handleCompleteProfile} disabled={loading}>
                     {loading ? 'Please wait...' : 'Continue'}
