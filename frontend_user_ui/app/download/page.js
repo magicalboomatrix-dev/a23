@@ -68,10 +68,10 @@ export default function PlayStoreDownload() {
       {moderatorRef && (
         <div className="mx-5 mt-4 rounded-lg bg-gradient-to-r from-[#01875f] to-[#016d4d] px-4 py-3 text-white">
           <p className="text-sm font-medium">
-            Referred by moderator: <span className="font-bold">{moderatorRef}</span>
+            Referred by Agent : <span className="font-bold">{moderatorRef}</span>
           </p>
           <p className="text-xs opacity-90 mt-1">
-            Your account will be linked to this moderator when you register.
+            Your account will be linked to this Agent when you register.
           </p>
         </div>
       )}
