@@ -1007,10 +1007,12 @@ exports.matchTodayUnmatched = async (req, res, next) => {
           continue;
         }
 
-        // Find matching order by reference or amount
+        // Find matching order by reference or amount (including recently-expired orders within grace window)
         let pendingOrders = [];
+        let lateMatch = false;
         
         if (orderRef) {
+          // First try active pending orders
           const [refMatch] = await conn.query(
             `SELECT id, user_id, amount, pay_amount, order_ref
              FROM pending_deposit_orders
@@ -1022,6 +1024,24 @@ exports.matchTodayUnmatched = async (req, res, next) => {
             [orderRef]
           );
           pendingOrders = refMatch;
+
+          // Grace window: also match recently-expired orders (within LATE_MATCH_GRACE_MINUTES)
+          if (pendingOrders.length === 0) {
+            const [lateRefMatch] = await conn.query(
+              `SELECT id, user_id, amount, pay_amount, order_ref
+               FROM pending_deposit_orders
+               WHERE status = 'expired'
+                 AND order_ref = ?
+                 AND expires_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)
+               LIMIT 1
+               FOR UPDATE`,
+              [orderRef, LATE_MATCH_GRACE_MINUTES]
+            );
+            if (lateRefMatch.length > 0) {
+              pendingOrders = lateRefMatch;
+              lateMatch = true;
+            }
+          }
         }
 
         // Match by amount if no order reference match
@@ -1038,12 +1058,31 @@ exports.matchTodayUnmatched = async (req, res, next) => {
             [amount]
           );
           pendingOrders = amountMatch;
+
+          // Grace window for pay_amount match on recently-expired orders
+          if (pendingOrders.length === 0) {
+            const [lateAmountMatch] = await conn.query(
+              `SELECT id, user_id, amount, pay_amount, order_ref
+               FROM pending_deposit_orders
+               WHERE status = 'expired'
+                 AND pay_amount = ?
+                 AND expires_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)
+               ORDER BY created_at ASC
+               LIMIT 1
+               FOR UPDATE`,
+              [amount, LATE_MATCH_GRACE_MINUTES]
+            );
+            if (lateAmountMatch.length > 0) {
+              pendingOrders = lateAmountMatch;
+              lateMatch = true;
+            }
+          }
         }
 
         if (pendingOrders.length === 0) {
           await conn.query(
             'UPDATE upi_webhook_transactions SET status = ?, error_message = ?, match_attempted_at = NOW() WHERE id = ?',
-            ['unmatched', `No pending order found for amount ${amount}`, txn.id]
+            ['unmatched', `No pending or recently-expired order found for amount ${amount}`, txn.id]
           );
           await conn.commit();
           failed++;
@@ -1133,7 +1172,8 @@ exports.matchTodayUnmatched = async (req, res, next) => {
           depositId,
           orderId: order.id,
           userId: order.user_id,
-          newBalance
+          newBalance,
+          lateMatch
         });
 
       } catch (error) {
