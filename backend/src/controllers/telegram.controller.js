@@ -7,6 +7,7 @@ const pool = require('../config/database');
 const { parseUpiMessage } = require('../services/upi-message-parser');
 const { matchAndCreditDeposit } = require('../services/auto-deposit-matcher');
 const logger = require('../utils/logger');
+const eventBus = require('../utils/event-bus');
 
 /**
  * POST /api/telegram/webhook/:token
@@ -103,6 +104,15 @@ exports.handleWebhook = async (req, res) => {
 
     const webhookTxnId = insertResult.insertId;
 
+    // Emit real-time webhook received event
+    eventBus.emit('webhook_transaction_received', {
+      txnId: webhookTxnId,
+      amount,
+      referenceNumber,
+      payerName,
+      status: 'received',
+    });
+
     // Attempt auto-matching (this is the core logic)
     try {
       const result = await matchAndCreditDeposit({
@@ -123,6 +133,16 @@ exports.handleWebhook = async (req, res) => {
           referenceNumber,
           parsedOrderRef: orderRef,
           matchedOrderRef: result.matchedOrderRef || null,
+        });
+
+        // Emit real-time order matched event
+        eventBus.emit('deposit_order_matched', {
+          orderId: result.orderId,
+          depositId: result.depositId,
+          userId: result.userId,
+          amount,
+          utrNumber: referenceNumber,
+          moderatorId: result.moderatorId,
         });
       } else {
         logger.warn('auto-deposit', 'Payment not matched', {

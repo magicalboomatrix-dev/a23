@@ -5,6 +5,7 @@ import { useToast, ToastContainer } from '../components/ui';
 import { cleanDisplayText } from '../utils/display';
 import { MatchAllUnmatchedButton } from '../components/MatchAllUnmatchedButton';
 import { useAuth } from '../context/AuthContext';
+import { useSocket } from '../hooks/useSocket';
 
 const STATUS_COLORS = {
   received: 'bg-blue-100 text-blue-800',
@@ -43,6 +44,7 @@ export default function AutoDeposits() {
   const { user } = useAuth();
   const isModerator = user?.role === 'moderator';
   const isAdmin = user?.role === 'admin';
+  const { subscribe, isConnected } = useSocket();
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState(searchParams.get('tab') || 'stats');
@@ -281,6 +283,73 @@ export default function AutoDeposits() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [tab, loadPendingOrders, loadWebhookTxns, loadLogs, loadUnmatchedTxns, selectTab, isAdmin, tabs]);
 
+  // WebSocket real-time event listeners
+  useEffect(() => {
+    const unsubscribers = [];
+
+    // New order created
+    unsubscribers.push(subscribe('deposit_order_created', (data) => {
+      success(`New order #${data.orderId} - ₹${Number(data.amount).toLocaleString('en-IN')} from ${data.userName || 'User'}`);
+      setNewOrderIds(prev => new Set([...prev, data.orderId]));
+      // Refresh orders if on orders tab and filter is pending
+      if (tab === 'orders' && orderFilter === 'pending') {
+        loadPendingOrders();
+      }
+      // Always refresh stats
+      loadStats();
+      // Clear NEW badge after 30 seconds
+      setTimeout(() => {
+        setNewOrderIds(prev => {
+          const next = new Set(prev);
+          next.delete(data.orderId);
+          return next;
+        });
+      }, 30000);
+    }));
+
+    // Order matched
+    unsubscribers.push(subscribe('deposit_order_matched', (data) => {
+      success(`Order #${data.orderId} auto-matched! ₹${Number(data.amount).toLocaleString('en-IN')} credited`);
+      if (tab === 'orders') loadPendingOrders();
+      if (tab === 'webhook') loadWebhookTxns();
+      loadStats();
+    }));
+
+    // Order expired
+    unsubscribers.push(subscribe('deposit_order_expired', (data) => {
+      if (tab === 'orders' && orderFilter === 'expired') {
+        loadPendingOrders();
+      }
+      loadStats();
+    }));
+
+    // Order cancelled
+    unsubscribers.push(subscribe('deposit_order_cancelled', (data) => {
+      toastError(`Order #${data.orderId} cancelled`);
+      if (tab === 'orders') loadPendingOrders();
+      loadStats();
+    }));
+
+    // Order credited manually
+    unsubscribers.push(subscribe('deposit_order_credited', (data) => {
+      success(`Order #${data.orderId} credited manually! ₹${Number(data.amount).toLocaleString('en-IN')}`);
+      if (tab === 'orders') loadPendingOrders();
+      loadStats();
+    }));
+
+    // Webhook transaction received
+    unsubscribers.push(subscribe('webhook_transaction_received', (data) => {
+      if (tab === 'webhook') {
+        loadWebhookTxns();
+      }
+      loadStats();
+    }));
+
+    return () => {
+      unsubscribers.forEach(unsub => unsub());
+    };
+  }, [subscribe, tab, orderFilter, loadPendingOrders, loadWebhookTxns, loadStats, success, toastError]);
+
   // Update lastUpdated timestamp
   const [lastUpdated, setLastUpdated] = useState(null);
   useEffect(() => {
@@ -487,11 +556,11 @@ export default function AutoDeposits() {
       <ToastContainer toasts={toasts} dismiss={dismiss} />
 
 
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold text-dark-900">Auto Deposits</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <h1 className="text-xl sm:text-2xl font-bold text-dark-900">Auto Deposits</h1>
           {lastUpdated && (
-            <span className="text-xs text-dark-400">
+            <span className="text-xs text-dark-400 hidden sm:inline">
               Updated {fmtTimeAgo(lastUpdated)}
             </span>
           )}
@@ -499,11 +568,23 @@ export default function AutoDeposits() {
         {isAdmin && (
           <div className="flex gap-2 flex-wrap">
             <MatchAllUnmatchedButton onMatched={() => { loadStats(); loadUnmatchedTxns(); loadLogs(); }} />
-            <button onClick={handleExpireOrders} className="px-3 py-1.5 text-sm bg-yellow-600 text-white rounded hover:bg-yellow-700">
-              Expire Stale Orders
+            <button onClick={handleExpireOrders} className="px-3 py-1.5 text-sm bg-yellow-600 text-white rounded hover:bg-yellow-700 whitespace-nowrap">
+              Expire Stale
             </button>
           </div>
         )}
+        {/* Connection Status */}
+        <div className="flex items-center gap-2 text-xs">
+          <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
+          <span className={`${isConnected ? 'text-green-600' : 'text-red-600'} hidden sm:inline`}>
+            {isConnected ? 'Live' : 'Offline'}
+          </span>
+          {lastUpdated && (
+            <span className="text-dark-400 sm:hidden">
+              {fmtTimeAgo(lastUpdated)}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Tabs */}
@@ -657,7 +738,8 @@ export default function AutoDeposits() {
           )}
 
           {/* Filter buttons with count badges */}
-          <div className="flex flex-wrap gap-2 items-center">
+          <div className="flex flex-wrap gap-2 items-center justify-between">
+            <div className="flex flex-wrap gap-2 items-center">
             {['pending', 'matched', 'expired', 'cancelled'].map((s) => {
               const count = stats?.[`${s}_orders`] ?? (orderFilter === s ? orderPagination.total : '-');
               return (
@@ -679,6 +761,7 @@ export default function AutoDeposits() {
                 </button>
               );
             })}
+            </div>
           </div>
 
           {/* Toolbar: Search, Refresh, Page Size, Export */}
@@ -1392,22 +1475,22 @@ function Pagination({ pagination, page, setPage }) {
   if (!pagination || !pagination.totalPages || pagination.totalPages <= 1) return null;
 
   return (
-    <div className="flex items-center justify-between text-sm text-dark-500">
-      <span>Page {page} of {pagination.totalPages} ({pagination.total} total)</span>
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-sm text-dark-500">
+      <span className="text-xs sm:text-sm">Page {page} of {pagination.totalPages} ({pagination.total} total)</span>
       <div className="flex gap-2">
         <button
           onClick={() => setPage((p) => Math.max(1, p - 1))}
           disabled={page <= 1}
-          className="px-3 py-1 bg-dark-100 rounded disabled:opacity-40 hover:bg-dark-200"
+          className="px-3 py-1.5 text-sm bg-dark-100 rounded disabled:opacity-40 hover:bg-dark-200"
         >
-          Prev
+          ← Prev
         </button>
         <button
           onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
           disabled={page >= pagination.totalPages}
-          className="px-3 py-1 bg-dark-100 rounded disabled:opacity-40 hover:bg-dark-200"
+          className="px-3 py-1.5 text-sm bg-dark-100 rounded disabled:opacity-40 hover:bg-dark-200"
         >
-          Next
+          Next →
         </button>
       </div>
     </div>

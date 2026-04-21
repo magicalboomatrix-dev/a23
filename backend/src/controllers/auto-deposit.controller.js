@@ -16,6 +16,7 @@ const { resolveUpiForUser } = require('../services/upi-resolver');
 const { buildUpiLink, verifyQrLaunchToken, generateQrDataUri } = require('../services/qr-generator');
 const { clampPagination } = require('../utils/pagination');
 const { recordWalletTransaction } = require('../utils/wallet-ledger');
+const eventBus = require('../utils/event-bus');
 
 function getDepositPageUrl() {
   const frontendBase = process.env.FRONTEND_URL?.split(',')[0]?.trim();
@@ -153,6 +154,21 @@ exports.createDepositOrder = async (req, res, next) => {
       'INSERT INTO pending_deposit_orders (user_id, amount, order_ref, pay_amount, expires_at) VALUES (?, ?, ?, ?, ?)',
       [req.user.id, parsedAmount, orderRef, payAmount, expiresAt]
     );
+
+    // Get user details and moderator assignment for event
+    const [userRows] = await pool.query('SELECT name, phone, moderator_id FROM users WHERE id = ?', [req.user.id]);
+    const user = userRows[0] || {};
+
+    // Emit real-time event
+    eventBus.emit('deposit_order_created', {
+      orderId: result.insertId,
+      userId: req.user.id,
+      amount: parsedAmount,
+      payAmount,
+      userName: user.name,
+      userPhone: user.phone,
+      moderatorId: user.moderator_id,
+    });
 
     // Build UPI payment link with reference in transaction note
     const { upiLink, qrDataUri, downloadQrUrl, downloadQrDataUri } = await buildQrPayload({
@@ -558,7 +574,21 @@ exports.adminCancelOrder = async (req, res, next) => {
       [id, rows[0].user_id, JSON.stringify({ admin_id: adminId, amount: rows[0].amount })]
     );
 
+    // Get moderator ID for event
+    const [userRows] = await conn.query('SELECT moderator_id FROM users WHERE id = ?', [rows[0].user_id]);
+    const moderatorId = userRows[0]?.moderator_id;
+
     await conn.commit();
+
+    // Emit real-time event
+    eventBus.emit('deposit_order_cancelled', {
+      orderId: id,
+      userId: rows[0].user_id,
+      amount: rows[0].amount,
+      cancelledBy: adminId,
+      moderatorId,
+    });
+
     res.json({ message: 'Order cancelled successfully.' });
   } catch (error) {
     await conn.rollback();
@@ -661,7 +691,23 @@ exports.adminCreditOrder = async (req, res, next) => {
       [id, depositId, order.user_id, JSON.stringify({ admin_id: adminId, amount: creditAmount, utr, new_balance: newBalance })]
     );
 
+    // Get moderator ID for event
+    const [userRows] = await conn.query('SELECT moderator_id FROM users WHERE id = ?', [order.user_id]);
+    const moderatorId = userRows[0]?.moderator_id;
+
     await conn.commit();
+
+    // Emit real-time event
+    eventBus.emit('deposit_order_credited', {
+      orderId: id,
+      depositId,
+      userId: order.user_id,
+      amount: creditAmount,
+      utrNumber: utr,
+      creditedBy: adminId,
+      moderatorId,
+    });
+
     res.json({ message: `₹${creditAmount} credited successfully.`, deposit_id: depositId, new_balance: newBalance });
   } catch (error) {
     await conn.rollback();
@@ -1205,6 +1251,16 @@ exports.moderatorCancelOrder = async (req, res, next) => {
     );
 
     await conn.commit();
+
+    // Emit real-time event
+    eventBus.emit('deposit_order_cancelled', {
+      orderId: id,
+      userId: rows[0].user_id,
+      amount: rows[0].amount,
+      cancelledBy: moderatorId,
+      moderatorId,
+    });
+
     res.json({ message: 'Order cancelled successfully.' });
   } catch (error) {
     await conn.rollback();
@@ -1312,6 +1368,18 @@ exports.moderatorCreditOrder = async (req, res, next) => {
     );
 
     await conn.commit();
+
+    // Emit real-time event
+    eventBus.emit('deposit_order_credited', {
+      orderId: id,
+      depositId,
+      userId: order.user_id,
+      amount: creditAmount,
+      utrNumber: utr,
+      creditedBy: moderatorId,
+      moderatorId,
+    });
+
     res.json({ message: `₹${creditAmount} credited successfully.`, deposit_id: depositId, new_balance: newBalance });
   } catch (error) {
     await conn.rollback();

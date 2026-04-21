@@ -7,6 +7,7 @@
 const pool = require('../config/database');
 const { recordWalletTransaction } = require('../utils/wallet-ledger');
 const logger = require('../utils/logger');
+const eventBus = require('../utils/event-bus');
 
 function parseNonNegativeInt(value, fallback) {
   const parsed = Number.parseInt(value, 10);
@@ -419,9 +420,29 @@ async function logAutoDeposit(conn, { webhookTxnId = null, orderId = null, depos
  * Expire stale pending orders (run periodically)
  */
 async function expirePendingOrders() {
+  // Get orders that are about to expire with user details
+  const [ordersToExpire] = await pool.query(
+    `SELECT pdo.id, pdo.user_id, pdo.amount, u.moderator_id
+     FROM pending_deposit_orders pdo
+     JOIN users u ON u.id = pdo.user_id
+     WHERE pdo.status = 'pending' AND pdo.expires_at <= NOW()`
+  );
+
+  // Update status
   const [result] = await pool.query(
     "UPDATE pending_deposit_orders SET status = 'expired' WHERE status = 'pending' AND expires_at <= NOW()"
   );
+
+  // Emit events for each expired order
+  for (const order of ordersToExpire) {
+    eventBus.emit('deposit_order_expired', {
+      orderId: order.id,
+      userId: order.user_id,
+      amount: order.amount,
+      moderatorId: order.moderator_id,
+    });
+  }
+
   return result.affectedRows;
 }
 
