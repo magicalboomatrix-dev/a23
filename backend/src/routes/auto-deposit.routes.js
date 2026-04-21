@@ -65,4 +65,24 @@ router.get('/admin/unmatched-transactions', authenticate, authorize('admin'), au
 // Match all today's unmatched transactions
 router.post('/admin/match-today-unmatched', authenticate, authorize('admin'), autoDepositController.matchTodayUnmatched);
 
+// ========== MODERATOR ROUTES (filtered to their users only) ==========
+
+// Moderator views pending orders for their users only
+router.get('/moderator/pending-orders', authenticate, authorize('moderator'), autoDepositController.getModeratorPendingOrders);
+
+// Moderator cancels an order for their user
+router.post('/moderator/orders/:id/cancel', authenticate, authorize('moderator'), autoDepositController.moderatorCancelOrder);
+
+// Moderator manually credits an order for their user
+router.post('/moderator/orders/:id/credit', authenticate, authorize('moderator'), autoDepositController.moderatorCreditOrder);
+
+// Moderator dashboard stats for their users only
+router.get('/moderator/stats', authenticate, authorize('moderator'), autoDepositController.getModeratorStats);
+
+// Moderator views webhook transactions matched to their users
+router.get('/moderator/webhook-transactions', authenticate, authorize('moderator'), autoDepositController.getModeratorWebhookTransactions);
+
+// Moderator search UTR (limited to their users' deposits)
+router.get('/moderator/search-utr/:utr', authenticate, authorize('moderator'), autoDepositController.moderatorSearchByUtr);
+
 module.exports = router;

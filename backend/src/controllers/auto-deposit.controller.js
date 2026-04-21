@@ -430,7 +430,7 @@ exports.getPendingOrders = async (req, res, next) => {
     );
 
     const [orders] = await pool.query(
-      `SELECT pdo.id, pdo.user_id, pdo.amount, pdo.status, pdo.matched_deposit_id,
+      `SELECT pdo.id, pdo.user_id, pdo.amount, pdo.pay_amount, pdo.status, pdo.matched_deposit_id,
               pdo.created_at, pdo.expires_at,
               u.name as user_name, u.phone as user_phone
        FROM pending_deposit_orders pdo
@@ -1109,5 +1109,344 @@ exports.matchTodayUnmatched = async (req, res, next) => {
     next(error);
   } finally {
     conn.release();
+  }
+};
+
+// ========== MODERATOR ENDPOINTS (filtered to their assigned users only) ==========
+
+/**
+ * GET /api/auto-deposit/moderator/pending-orders
+ * Moderator views pending orders for their assigned users only
+ */
+exports.getModeratorPendingOrders = async (req, res, next) => {
+  try {
+    const { status = 'pending' } = req.query;
+    const { page, limit, offset } = clampPagination(req.query);
+    const moderatorId = req.user.id;
+
+    const [countResult] = await pool.query(
+      `SELECT COUNT(*) as total FROM pending_deposit_orders pdo
+       JOIN users u ON u.id = pdo.user_id
+       WHERE pdo.status = ? AND u.moderator_id = ?`,
+      [status, moderatorId]
+    );
+
+    const [orders] = await pool.query(
+      `SELECT pdo.id, pdo.user_id, pdo.amount, pdo.pay_amount, pdo.status, pdo.matched_deposit_id,
+              pdo.created_at, pdo.expires_at,
+              u.name as user_name, u.phone as user_phone
+       FROM pending_deposit_orders pdo
+       JOIN users u ON u.id = pdo.user_id
+       WHERE pdo.status = ? AND u.moderator_id = ?
+       ORDER BY pdo.created_at DESC
+       LIMIT ? OFFSET ?`,
+      [status, moderatorId, limit, offset]
+    );
+
+    res.json({
+      orders,
+      pagination: {
+        page,
+        limit,
+        total: countResult[0].total,
+        totalPages: Math.ceil(countResult[0].total / limit),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /api/auto-deposit/moderator/orders/:id/cancel
+ * Moderator cancels a pending order for their user only
+ */
+exports.moderatorCancelOrder = async (req, res, next) => {
+  const conn = await pool.getConnection();
+  try {
+    const { id } = req.params;
+    const moderatorId = req.user.id;
+
+    await conn.beginTransaction();
+
+    // Verify the order belongs to a user assigned to this moderator
+    const [rows] = await conn.query(
+      `SELECT pdo.id, pdo.user_id, pdo.amount, pdo.status
+       FROM pending_deposit_orders pdo
+       JOIN users u ON u.id = pdo.user_id
+       WHERE pdo.id = ? AND u.moderator_id = ?
+       LIMIT 1 FOR UPDATE`,
+      [id, moderatorId]
+    );
+
+    if (rows.length === 0) {
+      await conn.rollback();
+      return res.status(404).json({ error: 'Order not found or not assigned to you.' });
+    }
+
+    if (rows[0].status !== 'pending') {
+      await conn.rollback();
+      return res.status(409).json({ error: `Order is already ${rows[0].status} and cannot be cancelled.` });
+    }
+
+    await conn.query(
+      "UPDATE pending_deposit_orders SET status = 'cancelled' WHERE id = ?",
+      [id]
+    );
+
+    await conn.query(
+      `INSERT INTO auto_deposit_logs (order_id, user_id, action, details)
+       VALUES (?, ?, 'moderator_cancelled', ?)`,
+      [id, rows[0].user_id, JSON.stringify({ moderator_id: moderatorId, amount: rows[0].amount })]
+    );
+
+    await conn.commit();
+    res.json({ message: 'Order cancelled successfully.' });
+  } catch (error) {
+    await conn.rollback();
+    next(error);
+  } finally {
+    conn.release();
+  }
+};
+
+/**
+ * POST /api/auto-deposit/moderator/orders/:id/credit
+ * Moderator manually credits a pending order for their user only
+ */
+exports.moderatorCreditOrder = async (req, res, next) => {
+  const conn = await pool.getConnection();
+  try {
+    const { id } = req.params;
+    const { utr_number } = req.body;
+    const moderatorId = req.user.id;
+
+    if (!utr_number || !String(utr_number).trim()) {
+      return res.status(400).json({ error: 'UTR / reference number is required for manual credit.' });
+    }
+
+    const utr = String(utr_number).trim();
+
+    await conn.beginTransaction();
+
+    // Verify the order belongs to a user assigned to this moderator
+    const [orders] = await conn.query(
+      `SELECT pdo.id, pdo.user_id, pdo.amount, pdo.status
+       FROM pending_deposit_orders pdo
+       JOIN users u ON u.id = pdo.user_id
+       WHERE pdo.id = ? AND u.moderator_id = ? AND pdo.status IN ('pending','expired')
+       LIMIT 1 FOR UPDATE`,
+      [id, moderatorId]
+    );
+
+    if (orders.length === 0) {
+      await conn.rollback();
+      return res.status(404).json({ error: 'Order not found, already processed, or not assigned to you.' });
+    }
+
+    const order = orders[0];
+    const creditAmount = Math.round(parseFloat(order.amount) * 100) / 100;
+
+    // Duplicate UTR guard
+    const [dupUtr] = await conn.query(
+      'SELECT id FROM deposits WHERE utr_number = ? LIMIT 1',
+      [utr]
+    );
+    if (dupUtr.length > 0) {
+      await conn.rollback();
+      return res.status(409).json({ error: 'This UTR number has already been used.' });
+    }
+
+    // Idempotency: ensure order not already credited
+    const [dupOrder] = await conn.query(
+      "SELECT id FROM deposits WHERE order_id = ? LIMIT 1",
+      [id]
+    );
+    if (dupOrder.length > 0) {
+      await conn.rollback();
+      return res.status(409).json({ error: 'This order has already been credited.' });
+    }
+
+    // Create deposit record
+    const [depositResult] = await conn.query(
+      `INSERT INTO deposits (user_id, amount, utr_number, order_id, status)
+       VALUES (?, ?, ?, ?, 'completed')`,
+      [order.user_id, creditAmount, utr, id]
+    );
+    const depositId = depositResult.insertId;
+
+    // Credit wallet
+    const newBalance = await recordWalletTransaction(conn, {
+      userId: order.user_id,
+      type: 'deposit',
+      amount: creditAmount,
+      referenceType: 'deposit',
+      referenceId: `deposit_${depositId}`,
+      remark: `Manual deposit credit by moderator (UTR: ${utr})`,
+    });
+
+    // Apply bonuses
+    await applyDepositBonuses(conn, { depositId, userId: order.user_id, amount: creditAmount });
+
+    // Mark order as matched
+    await conn.query(
+      "UPDATE pending_deposit_orders SET status = 'matched', matched_deposit_id = ? WHERE id = ?",
+      [depositId, id]
+    );
+
+    // Notify user
+    await conn.query(
+      'INSERT INTO notifications (user_id, type, message) VALUES (?, ?, ?)',
+      [order.user_id, 'deposit', `Your deposit of ₹${creditAmount} has been manually verified and credited by your moderator. UTR: ${utr}`]
+    );
+
+    // Audit log
+    await conn.query(
+      `INSERT INTO auto_deposit_logs (order_id, deposit_id, user_id, action, details)
+       VALUES (?, ?, ?, 'moderator_manual_credit', ?)`,
+      [id, depositId, order.user_id, JSON.stringify({ moderator_id: moderatorId, amount: creditAmount, utr, new_balance: newBalance })]
+    );
+
+    await conn.commit();
+    res.json({ message: `₹${creditAmount} credited successfully.`, deposit_id: depositId, new_balance: newBalance });
+  } catch (error) {
+    await conn.rollback();
+    next(error);
+  } finally {
+    conn.release();
+  }
+};
+
+/**
+ * GET /api/auto-deposit/moderator/stats
+ * Moderator dashboard stats for their assigned users only
+ */
+exports.getModeratorStats = async (req, res, next) => {
+  try {
+    const moderatorId = req.user.id;
+
+    const [stats] = await pool.query(`
+      SELECT
+        (SELECT COUNT(*) FROM pending_deposit_orders pdo
+         JOIN users u ON u.id = pdo.user_id
+         WHERE pdo.status = 'pending' AND pdo.expires_at > NOW() AND u.moderator_id = ?) as active_orders,
+        (SELECT COUNT(*) FROM pending_deposit_orders pdo
+         JOIN users u ON u.id = pdo.user_id
+         WHERE pdo.status = 'matched' AND DATE(pdo.created_at) = CURDATE() AND u.moderator_id = ?) as matched_today,
+        (SELECT COUNT(*) FROM pending_deposit_orders pdo
+         JOIN users u ON u.id = pdo.user_id
+         WHERE pdo.status = 'expired' AND DATE(pdo.created_at) = CURDATE() AND u.moderator_id = ?) as expired_today,
+        (SELECT COALESCE(SUM(pdo.amount), 0) FROM pending_deposit_orders pdo
+         JOIN users u ON u.id = pdo.user_id
+         WHERE pdo.status = 'matched' AND DATE(pdo.created_at) = CURDATE() AND u.moderator_id = ?) as matched_amount_today,
+        (SELECT COUNT(*) FROM upi_webhook_transactions uwt
+         JOIN pending_deposit_orders pdo ON pdo.id = uwt.matched_order_id
+         JOIN users u ON u.id = pdo.user_id
+         WHERE DATE(uwt.created_at) = CURDATE() AND u.moderator_id = ?) as webhook_matched_today,
+        (SELECT COUNT(*) FROM users WHERE moderator_id = ? AND role = 'user' AND is_blocked = 0 AND COALESCE(is_deleted, 0) = 0) as total_users
+    `, [moderatorId, moderatorId, moderatorId, moderatorId, moderatorId, moderatorId]);
+
+    res.json(stats[0]);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/auto-deposit/moderator/webhook-transactions
+ * Moderator views webhook transactions matched to their users only
+ */
+exports.getModeratorWebhookTransactions = async (req, res, next) => {
+  try {
+    const { status } = req.query;
+    const { page, limit, offset } = clampPagination(req.query);
+    const moderatorId = req.user.id;
+
+    let whereClause = 'WHERE u.moderator_id = ?';
+    const params = [moderatorId];
+
+    if (status) {
+      whereClause += ' AND uwt.status = ?';
+      params.push(status);
+    }
+
+    const [countResult] = await pool.query(
+      `SELECT COUNT(*) as total FROM upi_webhook_transactions uwt
+       JOIN pending_deposit_orders pdo ON pdo.id = uwt.matched_order_id
+       JOIN users u ON u.id = pdo.user_id
+       ${whereClause}`,
+      params
+    );
+
+    const [transactions] = await pool.query(
+      `SELECT uwt.id, uwt.amount, uwt.reference_number, uwt.payer_name, uwt.txn_time,
+              uwt.status, uwt.error_message, uwt.matched_order_id, uwt.matched_deposit_id,
+              uwt.created_at,
+              CASE WHEN uwt.status IN ('parse_error','unmatched') THEN uwt.raw_message ELSE NULL END as raw_message,
+              u.name as matched_user_name, u.phone as matched_user_phone
+       FROM upi_webhook_transactions uwt
+       JOIN pending_deposit_orders pdo ON pdo.id = uwt.matched_order_id
+       JOIN users u ON u.id = pdo.user_id
+       ${whereClause}
+       ORDER BY uwt.created_at DESC
+       LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
+    );
+
+    res.json({
+      transactions,
+      pagination: {
+        page,
+        limit,
+        total: countResult[0].total,
+        totalPages: Math.ceil(countResult[0].total / limit),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/auto-deposit/moderator/search-utr/:utr
+ * Moderator searches UTR (limited to their users' deposits)
+ */
+exports.moderatorSearchByUtr = async (req, res, next) => {
+  try {
+    const utr = String(req.params.utr || '').trim();
+    const moderatorId = req.user.id;
+
+    if (!utr || utr.length < 6) {
+      return res.status(400).json({ error: 'Please provide at least 6 characters of the UTR.' });
+    }
+
+    // Search webhook transactions matched to moderator's users
+    const [webhookRows] = await pool.query(
+      `SELECT uwt.id, uwt.reference_number, uwt.amount, uwt.payer_name, uwt.status,
+              uwt.raw_message, uwt.matched_order_id, uwt.created_at,
+              pdo.order_ref
+       FROM upi_webhook_transactions uwt
+       JOIN pending_deposit_orders pdo ON pdo.id = uwt.matched_order_id
+       JOIN users u ON u.id = pdo.user_id
+       WHERE u.moderator_id = ? AND uwt.reference_number LIKE ?
+       ORDER BY uwt.created_at DESC
+       LIMIT 20`,
+      [moderatorId, `%${utr}%`]
+    );
+
+    // Also search deposits for moderator's users
+    const [depositRows] = await pool.query(
+      `SELECT d.id, d.user_id, d.amount, d.utr_number, d.status, d.created_at, u.phone, u.username
+       FROM deposits d
+       JOIN users u ON u.id = d.user_id
+       WHERE u.moderator_id = ? AND d.utr_number LIKE ?
+       ORDER BY d.created_at DESC
+       LIMIT 20`,
+      [moderatorId, `%${utr}%`]
+    );
+
+    res.json({ webhook_transactions: webhookRows, deposits: depositRows });
+  } catch (error) {
+    next(error);
   }
 };

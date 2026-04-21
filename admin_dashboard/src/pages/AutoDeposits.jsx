@@ -4,6 +4,7 @@ import api from '../utils/api';
 import { useToast, ToastContainer } from '../components/ui';
 import { cleanDisplayText } from '../utils/display';
 import { MatchAllUnmatchedButton } from '../components/MatchAllUnmatchedButton';
+import { useAuth } from '../context/AuthContext';
 
 const STATUS_COLORS = {
   received: 'bg-blue-100 text-blue-800',
@@ -34,6 +35,10 @@ function StatCard({ label, value, color = 'text-dark-900' }) {
 }
 
 export default function AutoDeposits() {
+  const { user } = useAuth();
+  const isModerator = user?.role === 'moderator';
+  const isAdmin = user?.role === 'admin';
+
   const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState(searchParams.get('tab') || 'stats');
     useEffect(() => {
@@ -82,19 +87,21 @@ export default function AutoDeposits() {
 
   const loadStats = useCallback(async () => {
     try {
-      const res = await api.get('/auto-deposit/admin/stats');
+      const endpoint = isModerator ? '/auto-deposit/moderator/stats' : '/auto-deposit/admin/stats';
+      const res = await api.get(endpoint);
       setStats(res.data);
     } catch (err) {
       console.error('Failed to load stats:', err);
     }
-  }, []);
+  }, [isModerator]);
 
   const loadWebhookTxns = useCallback(async () => {
     setLoading(true);
     try {
       const params = { page: webhookPage, limit: 20 };
       if (webhookFilter) params.status = webhookFilter;
-      const res = await api.get('/auto-deposit/admin/webhook-transactions', { params });
+      const endpoint = isModerator ? '/auto-deposit/moderator/webhook-transactions' : '/auto-deposit/admin/webhook-transactions';
+      const res = await api.get(endpoint, { params });
       setWebhookTxns(res.data.transactions || []);
       setWebhookPagination(res.data.pagination || {});
     } catch (err) {
@@ -102,12 +109,13 @@ export default function AutoDeposits() {
     } finally {
       setLoading(false);
     }
-  }, [webhookPage, webhookFilter]);
+  }, [webhookPage, webhookFilter, isModerator]);
 
   const loadPendingOrders = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get('/auto-deposit/admin/pending-orders', {
+      const endpoint = isModerator ? '/auto-deposit/moderator/pending-orders' : '/auto-deposit/admin/pending-orders';
+      const res = await api.get(endpoint, {
         params: { status: orderFilter, page: orderPage, limit: 20 },
       });
       setPendingOrders(res.data.orders || []);
@@ -117,7 +125,7 @@ export default function AutoDeposits() {
     } finally {
       setLoading(false);
     }
-  }, [orderPage, orderFilter]);
+  }, [orderPage, orderFilter, isModerator]);
 
   const loadLogs = useCallback(async () => {
     setLoading(true);
@@ -139,14 +147,15 @@ export default function AutoDeposits() {
     }
     setUtrSearchLoading(true);
     try {
-      const res = await api.get(`/auto-deposit/admin/search-utr/${encodeURIComponent(utrSearchQuery.trim())}`);
+      const endpoint = isModerator ? `/auto-deposit/moderator/search-utr/${encodeURIComponent(utrSearchQuery.trim())}` : `/auto-deposit/admin/search-utr/${encodeURIComponent(utrSearchQuery.trim())}`;
+      const res = await api.get(endpoint);
       setUtrSearchResults(res.data);
     } catch (err) {
       toastError(err.response?.data?.error || 'Search failed.');
     } finally {
       setUtrSearchLoading(false);
     }
-  }, [utrSearchQuery, toastError]);
+  }, [utrSearchQuery, toastError, isModerator]);
 
   const loadUnmatchedTxns = useCallback(async () => {
     setLoading(true);
@@ -163,7 +172,7 @@ export default function AutoDeposits() {
 
   useEffect(() => { loadStats(); }, [loadStats]);
   useEffect(() => { if (tab === 'webhook') loadWebhookTxns(); }, [tab, loadWebhookTxns]);
-  useEffect(() => { if (tab === 'orders') loadPendingOrders(); }, [tab, loadPendingOrders]);
+  useEffect(() => { if (tab === 'orders') loadPendingOrders(); }, [tab, loadPendingOrders, orderFilter, orderPage]);
   useEffect(() => { if (tab === 'logs') loadLogs(); }, [tab, loadLogs]);
   useEffect(() => { if (tab === 'unmatched') loadUnmatchedTxns(); }, [tab, loadUnmatchedTxns]);
 
@@ -180,7 +189,8 @@ export default function AutoDeposits() {
   const handleAdminCancel = async () => {
     setActionLoading(true);
     try {
-      await api.post(`/auto-deposit/admin/orders/${actionModal.order.id}/cancel`);
+      const endpoint = isModerator ? `/auto-deposit/moderator/orders/${actionModal.order.id}/cancel` : `/auto-deposit/admin/orders/${actionModal.order.id}/cancel`;
+      await api.post(endpoint);
       success('Order cancelled successfully.');
       setActionModal(null);
       loadPendingOrders();
@@ -196,7 +206,8 @@ export default function AutoDeposits() {
     if (!utrInput.trim()) { toastError('UTR / reference number is required.'); return; }
     setActionLoading(true);
     try {
-      const res = await api.post(`/auto-deposit/admin/orders/${actionModal.order.id}/credit`, { utr_number: utrInput.trim() });
+      const endpoint = isModerator ? `/auto-deposit/moderator/orders/${actionModal.order.id}/credit` : `/auto-deposit/admin/orders/${actionModal.order.id}/credit`;
+      const res = await api.post(endpoint, { utr_number: utrInput.trim() });
       success(res.data.message || 'Deposit credited successfully.');
       setActionModal(null);
       setUtrInput('');
@@ -242,11 +253,11 @@ export default function AutoDeposits() {
 
   const tabs = [
     { key: 'stats', label: 'Overview' },
-    { key: 'webhook', label: 'UPI Messages' },
+    ...(isAdmin ? [{ key: 'webhook', label: 'UPI Messages' }] : []),
     { key: 'orders', label: 'Deposit Orders' },
-    { key: 'unmatched', label: 'Unmatched' },
+    ...(isAdmin ? [{ key: 'unmatched', label: 'Unmatched' }] : []),
     { key: 'utr-search', label: 'UTR Search' },
-    { key: 'logs', label: 'Audit Logs' },
+    ...(isAdmin ? [{ key: 'logs', label: 'Audit Logs' }] : []),
   ];
 
   const fmt = (d) => d ? new Date(d).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '-';
@@ -258,12 +269,14 @@ export default function AutoDeposits() {
 
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <h1 className="text-2xl font-bold text-dark-900">Auto Deposits</h1>
-        <div className="flex gap-2 flex-wrap">
-          <MatchAllUnmatchedButton onMatched={() => { loadStats(); loadUnmatchedTxns(); loadLogs(); }} />
-          <button onClick={handleExpireOrders} className="px-3 py-1.5 text-sm bg-yellow-600 text-white rounded hover:bg-yellow-700">
-            Expire Stale Orders
-          </button>
-        </div>
+        {isAdmin && (
+          <div className="flex gap-2 flex-wrap">
+            <MatchAllUnmatchedButton onMatched={() => { loadStats(); loadUnmatchedTxns(); loadLogs(); }} />
+            <button onClick={handleExpireOrders} className="px-3 py-1.5 text-sm bg-yellow-600 text-white rounded hover:bg-yellow-700">
+              Expire Stale Orders
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Tabs */}
@@ -383,7 +396,7 @@ export default function AutoDeposits() {
                 <tr>
                   <th className="px-4 py-2 text-left">ID</th>
                   <th className="px-4 py-2 text-left">User</th>
-                  <th className="px-4 py-2 text-left">Amount</th>
+                  <th className="px-4 py-2 text-left">Base / QR Amount</th>
                   <th className="px-4 py-2 text-left">Status</th>
                   <th className="px-4 py-2 text-left">Deposit ID</th>
                   <th className="px-4 py-2 text-left">Created</th>
@@ -396,7 +409,12 @@ export default function AutoDeposits() {
                   <tr key={order.id} className="hover:bg-dark-50">
                     <td className="px-4 py-2">{order.id}</td>
                     <td className="px-4 py-2">{order.user_name} ({order.user_phone})</td>
-                    <td className="px-4 py-2 font-medium">₹{Number(order.amount).toLocaleString('en-IN')}</td>
+                    <td className="px-4 py-2">
+                      <div className="font-medium">₹{Number(order.amount).toLocaleString('en-IN')}</div>
+                      {order.pay_amount && order.pay_amount !== order.amount && (
+                        <div className="text-xs text-primary-600 font-medium">QR: ₹{Number(order.pay_amount).toLocaleString('en-IN')}</div>
+                      )}
+                    </td>
                     <td className="px-4 py-2"><Badge status={order.status} /></td>
                     <td className="px-4 py-2">{order.matched_deposit_id || '-'}</td>
                     <td className="px-4 py-2 text-xs">{fmt(order.created_at)}</td>
