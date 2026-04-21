@@ -44,7 +44,8 @@ export default function AutoDeposits() {
   const { user } = useAuth();
   const isModerator = user?.role === 'moderator';
   const isAdmin = user?.role === 'admin';
-  const { subscribe, isConnected } = useSocket();
+  const socket = useSocket();
+  const isConnected = !!socket?.connected;
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState(searchParams.get('tab') || 'stats');
@@ -285,19 +286,14 @@ export default function AutoDeposits() {
 
   // WebSocket real-time event listeners
   useEffect(() => {
-    const unsubscribers = [];
+    if (!socket) return;
 
     // New order created
-    unsubscribers.push(subscribe('deposit_order_created', (data) => {
+    const handleOrderCreated = (data) => {
       success(`New order #${data.orderId} - ₹${Number(data.amount).toLocaleString('en-IN')} from ${data.userName || 'User'}`);
       setNewOrderIds(prev => new Set([...prev, data.orderId]));
-      // Refresh orders if on orders tab and filter is pending
-      if (tab === 'orders' && orderFilter === 'pending') {
-        loadPendingOrders();
-      }
-      // Always refresh stats
+      if (tab === 'orders' && orderFilter === 'pending') loadPendingOrders();
       loadStats();
-      // Clear NEW badge after 30 seconds
       setTimeout(() => {
         setNewOrderIds(prev => {
           const next = new Set(prev);
@@ -305,50 +301,59 @@ export default function AutoDeposits() {
           return next;
         });
       }, 30000);
-    }));
+    };
 
     // Order matched
-    unsubscribers.push(subscribe('deposit_order_matched', (data) => {
+    const handleOrderMatched = (data) => {
       success(`Order #${data.orderId} auto-matched! ₹${Number(data.amount).toLocaleString('en-IN')} credited`);
       if (tab === 'orders') loadPendingOrders();
       if (tab === 'webhook') loadWebhookTxns();
       loadStats();
-    }));
+    };
 
     // Order expired
-    unsubscribers.push(subscribe('deposit_order_expired', (data) => {
-      if (tab === 'orders' && orderFilter === 'expired') {
-        loadPendingOrders();
-      }
+    const handleOrderExpired = (data) => {
+      if (tab === 'orders' && orderFilter === 'expired') loadPendingOrders();
       loadStats();
-    }));
+    };
 
     // Order cancelled
-    unsubscribers.push(subscribe('deposit_order_cancelled', (data) => {
+    const handleOrderCancelled = (data) => {
       toastError(`Order #${data.orderId} cancelled`);
       if (tab === 'orders') loadPendingOrders();
       loadStats();
-    }));
+    };
 
     // Order credited manually
-    unsubscribers.push(subscribe('deposit_order_credited', (data) => {
+    const handleOrderCredited = (data) => {
       success(`Order #${data.orderId} credited manually! ₹${Number(data.amount).toLocaleString('en-IN')}`);
       if (tab === 'orders') loadPendingOrders();
       loadStats();
-    }));
+    };
 
     // Webhook transaction received
-    unsubscribers.push(subscribe('webhook_transaction_received', (data) => {
-      if (tab === 'webhook') {
-        loadWebhookTxns();
-      }
+    const handleWebhookReceived = (data) => {
+      if (tab === 'webhook') loadWebhookTxns();
       loadStats();
-    }));
+    };
+
+    // Register listeners
+    socket.on('deposit_order_created', handleOrderCreated);
+    socket.on('deposit_order_matched', handleOrderMatched);
+    socket.on('deposit_order_expired', handleOrderExpired);
+    socket.on('deposit_order_cancelled', handleOrderCancelled);
+    socket.on('deposit_order_credited', handleOrderCredited);
+    socket.on('webhook_transaction_received', handleWebhookReceived);
 
     return () => {
-      unsubscribers.forEach(unsub => unsub());
+      socket.off('deposit_order_created', handleOrderCreated);
+      socket.off('deposit_order_matched', handleOrderMatched);
+      socket.off('deposit_order_expired', handleOrderExpired);
+      socket.off('deposit_order_cancelled', handleOrderCancelled);
+      socket.off('deposit_order_credited', handleOrderCredited);
+      socket.off('webhook_transaction_received', handleWebhookReceived);
     };
-  }, [subscribe, tab, orderFilter, loadPendingOrders, loadWebhookTxns, loadStats, success, toastError]);
+  }, [socket, tab, orderFilter, loadPendingOrders, loadWebhookTxns, loadStats, success, toastError]);
 
   // Update lastUpdated timestamp
   const [lastUpdated, setLastUpdated] = useState(null);
