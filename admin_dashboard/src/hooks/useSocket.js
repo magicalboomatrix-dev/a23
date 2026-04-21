@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import { useAuth } from '../context/AuthContext';
 
@@ -6,12 +6,16 @@ const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || window.l
 
 export function useSocket() {
   const { user, token } = useAuth();
-  const socketRef = useRef(null);
+  const [socket, setSocket] = useState(null);
+  const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    if (!token || !user) return;
+    if (!token || !user) {
+      setIsConnected(false);
+      return;
+    }
 
-    const socket = io(SOCKET_URL, {
+    const newSocket = io(SOCKET_URL, {
       auth: { token },
       transports: ['websocket', 'polling'],
       reconnection: true,
@@ -19,34 +23,40 @@ export function useSocket() {
       reconnectionDelay: 1000,
     });
 
-    socketRef.current = socket;
-
-    socket.on('connect', () => {
+    newSocket.on('connect', () => {
       console.log('Socket connected');
+      setIsConnected(true);
     });
 
-    socket.on('disconnect', () => {
+    newSocket.on('disconnect', () => {
       console.log('Socket disconnected');
+      setIsConnected(false);
     });
 
-    socket.on('connect_error', (err) => {
+    newSocket.on('connect_error', (err) => {
       console.error('Socket connection error:', err.message);
+      setIsConnected(false);
     });
+
+    setSocket(newSocket);
 
     return () => {
-      socket.disconnect();
+      newSocket.disconnect();
+      setIsConnected(false);
     };
   }, [token, user]);
 
   const subscribe = useCallback((event, handler) => {
-    if (!socketRef.current) return () => {};
-    socketRef.current.on(event, handler);
-    return () => socketRef.current?.off(event, handler);
-  }, []);
+    if (!socket) return () => {};
+    socket.on(event, handler);
+    return () => {
+      if (socket) socket.off(event, handler);
+    };
+  }, [socket]);
 
   const emit = useCallback((event, data) => {
-    socketRef.current?.emit(event, data);
-  }, []);
+    if (socket) socket.emit(event, data);
+  }, [socket]);
 
-  return { socket: socketRef.current, subscribe, emit, isConnected: !!socketRef.current?.connected };
+  return { socket, subscribe, emit, isConnected };
 }
