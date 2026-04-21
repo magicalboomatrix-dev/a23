@@ -646,6 +646,7 @@ exports.getOperationsCockpit = async (req, res, next) => {
         JOIN users u ON u.id = wr.user_id
         LEFT JOIN users moderator_user ON moderator_user.id = u.moderator_id
         WHERE wr.status = 'pending'
+          AND wr.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
         ORDER BY wr.created_at ASC
         LIMIT 6
       `),
@@ -656,6 +657,7 @@ exports.getOperationsCockpit = async (req, res, next) => {
         FROM upi_webhook_transactions uwt
         LEFT JOIN pending_deposit_orders pdo ON pdo.id = uwt.matched_order_id
         WHERE uwt.status IN ('unmatched', 'received')
+          AND uwt.created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
         ORDER BY uwt.created_at ASC
         LIMIT 6
       `),
@@ -665,6 +667,7 @@ exports.getOperationsCockpit = async (req, res, next) => {
         FROM auto_deposit_logs adl
         LEFT JOIN users u ON u.id = adl.user_id
         WHERE adl.action IN ('duplicate_ref', 'duplicate_utr', 'user_blocked')
+          AND adl.created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
         ORDER BY adl.created_at DESC
         LIMIT 4
       `),
@@ -684,10 +687,28 @@ exports.getOperationsCockpit = async (req, res, next) => {
         FROM fraud_alerts fa
         JOIN users u ON u.id = fa.user_id
         WHERE fa.is_resolved = 0
+          AND fa.created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
         ORDER BY fa.created_at DESC
         LIMIT 4
       `),
     ]);
+
+    // Helper to safely parse JSON details
+    const parseDetails = (details) => {
+      if (!details) return '';
+      if (typeof details === 'string') {
+        try {
+          const parsed = JSON.parse(details);
+          return Object.entries(parsed).map(([k, v]) => `${k}: ${v}`).join(', ');
+        } catch {
+          return details;
+        }
+      }
+      if (typeof details === 'object') {
+        return Object.entries(details).map(([k, v]) => `${k}: ${v}`).join(', ');
+      }
+      return String(details);
+    };
 
     const fraudAlerts = [
       ...aiAlerts[0].map((row) => ({
@@ -698,8 +719,8 @@ exports.getOperationsCockpit = async (req, res, next) => {
         user_name: row.user_name,
         user_phone: row.user_phone,
         created_at: row.created_at,
-        title: row.alert_type,
-        description: row.details,
+        title: row.alert_type?.replace(/_/g, ' ') || 'Alert',
+        description: parseDetails(row.details),
         path: '/fraud-logs',
       })),
       ...duplicateAttempts[0].map((row) => ({
@@ -710,8 +731,8 @@ exports.getOperationsCockpit = async (req, res, next) => {
         user_name: row.user_name,
         user_phone: row.user_phone,
         created_at: row.created_at,
-        title: row.action.replace(/_/g, ' '),
-        description: row.details,
+        title: row.action?.replace(/_/g, ' ') || 'Duplicate',
+        description: parseDetails(row.details),
         path: '/fraud-logs',
       })),
       ...largeNewUserDeposits[0].map((row) => ({
