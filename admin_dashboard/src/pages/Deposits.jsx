@@ -165,16 +165,7 @@ export default function Deposits() {
     setPage(1);
   }, [searchParams]);
 
-  useEffect(() => {
-    if (!isAdmin) return;
-
-    api.get('/moderators')
-      .then((res) => setModerators(Array.isArray(res.data.moderators) ? res.data.moderators : []))
-      .catch(console.error);
-  }, [isAdmin]);
-
-  useEffect(() => { loadDeposits(); }, [page, filters.search, filters.status, filters.moderator_id, filters.from_date, filters.to_date]);
-
+  // Define loadDeposits before useEffects that reference it
   const loadDeposits = async () => {
     setLoading(true);
     setError('');
@@ -196,6 +187,16 @@ export default function Deposits() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    api.get('/moderators')
+      .then((res) => setModerators(Array.isArray(res.data.moderators) ? res.data.moderators : []))
+      .catch(console.error);
+  }, [isAdmin]);
+
+  useEffect(() => { loadDeposits(); }, [page, filters.search, filters.status, filters.moderator_id, filters.from_date, filters.to_date]);
 
   const updateFilter = (key, value) => {
     setPage(1);

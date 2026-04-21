@@ -56,16 +56,7 @@ export default function Withdrawals() {
   const { confirmState, confirm, handleConfirm, handleCancel } = useConfirm();
   const [rejectModal, setRejectModal] = useState({ open: false, id: null, reason: '' });
 
-  useEffect(() => {
-    if (!isAdmin) return;
-
-    api.get('/moderators')
-      .then((res) => setModerators(Array.isArray(res.data.moderators) ? res.data.moderators : []))
-      .catch(console.error);
-  }, [isAdmin]);
-
-  useEffect(() => { loadData(); }, [page, filter, filters.search, filters.method, filters.moderator_id, filters.from_date, filters.to_date]);
-
+  // Define loadData before useEffect that references it
   const loadData = async () => {
     setLoading(true);
     try {
@@ -85,6 +76,16 @@ export default function Withdrawals() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    api.get('/moderators')
+      .then((res) => setModerators(Array.isArray(res.data.moderators) ? res.data.moderators : []))
+      .catch(console.error);
+  }, [isAdmin]);
+
+  useEffect(() => { loadData(); }, [page, filter, filters.search, filters.method, filters.moderator_id, filters.from_date, filters.to_date]);
 
   const approve = async (id) => {
     const confirmed = await confirm({

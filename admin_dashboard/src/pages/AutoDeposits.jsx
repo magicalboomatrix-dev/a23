@@ -63,6 +63,16 @@ export default function AutoDeposits() {
       });
     };
 
+  // Define tabs early since keyboard shortcuts useEffect references it
+  const tabs = [
+    { key: 'stats', label: 'Overview' },
+    ...(isAdmin ? [{ key: 'webhook', label: 'UPI Messages' }] : []),
+    { key: 'orders', label: 'Deposit Orders' },
+    ...(isAdmin ? [{ key: 'unmatched', label: 'Unmatched' }] : []),
+    { key: 'utr-search', label: 'UTR Search' },
+    ...(isAdmin ? [{ key: 'logs', label: 'Audit Logs' }] : []),
+  ];
+
   const [stats, setStats] = useState(null);
   const [webhookTxns, setWebhookTxns] = useState([]);
   const [pendingOrders, setPendingOrders] = useState([]);
@@ -362,16 +372,6 @@ export default function AutoDeposits() {
     setLastUpdated(new Date());
     return () => clearInterval(interval);
   }, []);
-
-  // Define tabs early since keyboard shortcuts useEffect references it
-  const tabs = [
-    { key: 'stats', label: 'Overview' },
-    ...(isAdmin ? [{ key: 'webhook', label: 'UPI Messages' }] : []),
-    { key: 'orders', label: 'Deposit Orders' },
-    ...(isAdmin ? [{ key: 'unmatched', label: 'Unmatched' }] : []),
-    { key: 'utr-search', label: 'UTR Search' },
-    ...(isAdmin ? [{ key: 'logs', label: 'Audit Logs' }] : []),
-  ];
 
   const [actionModal, setActionModal] = useState(null); // { type: 'cancel'|'credit', order }
   const [utrInput, setUtrInput] = useState('');
