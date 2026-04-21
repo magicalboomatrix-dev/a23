@@ -503,7 +503,11 @@ exports.getStats = async (req, res, next) => {
         (SELECT COUNT(*) FROM upi_webhook_transactions WHERE DATE(created_at) = CURDATE()) as webhook_messages_today,
         (SELECT COUNT(*) FROM upi_webhook_transactions WHERE status = 'matched' AND DATE(created_at) = CURDATE()) as webhook_matched_today,
         (SELECT COUNT(*) FROM upi_webhook_transactions WHERE status = 'unmatched' AND DATE(created_at) = CURDATE()) as webhook_unmatched_today,
-        (SELECT COUNT(*) FROM upi_webhook_transactions WHERE status = 'duplicate' AND DATE(created_at) = CURDATE()) as webhook_duplicate_today
+        (SELECT COUNT(*) FROM upi_webhook_transactions WHERE status = 'duplicate' AND DATE(created_at) = CURDATE()) as webhook_duplicate_today,
+        (SELECT COUNT(*) FROM pending_deposit_orders WHERE status = 'pending') as pending_orders,
+        (SELECT COUNT(*) FROM pending_deposit_orders WHERE status = 'matched') as matched_orders,
+        (SELECT COUNT(*) FROM pending_deposit_orders WHERE status = 'expired') as expired_orders,
+        (SELECT COUNT(*) FROM pending_deposit_orders WHERE status = 'cancelled') as cancelled_orders
     `);
 
     res.json(stats[0]);
@@ -1343,8 +1347,20 @@ exports.getModeratorStats = async (req, res, next) => {
          JOIN pending_deposit_orders pdo ON pdo.id = uwt.matched_order_id
          JOIN users u ON u.id = pdo.user_id
          WHERE DATE(uwt.created_at) = CURDATE() AND u.moderator_id = ?) as webhook_matched_today,
-        (SELECT COUNT(*) FROM users WHERE moderator_id = ? AND role = 'user' AND is_blocked = 0 AND COALESCE(is_deleted, 0) = 0) as total_users
-    `, [moderatorId, moderatorId, moderatorId, moderatorId, moderatorId, moderatorId]);
+        (SELECT COUNT(*) FROM users WHERE moderator_id = ? AND role = 'user' AND is_blocked = 0 AND COALESCE(is_deleted, 0) = 0) as total_users,
+        (SELECT COUNT(*) FROM pending_deposit_orders pdo
+         JOIN users u ON u.id = pdo.user_id
+         WHERE pdo.status = 'pending' AND u.moderator_id = ?) as pending_orders,
+        (SELECT COUNT(*) FROM pending_deposit_orders pdo
+         JOIN users u ON u.id = pdo.user_id
+         WHERE pdo.status = 'matched' AND u.moderator_id = ?) as matched_orders,
+        (SELECT COUNT(*) FROM pending_deposit_orders pdo
+         JOIN users u ON u.id = pdo.user_id
+         WHERE pdo.status = 'expired' AND u.moderator_id = ?) as expired_orders,
+        (SELECT COUNT(*) FROM pending_deposit_orders pdo
+         JOIN users u ON u.id = pdo.user_id
+         WHERE pdo.status = 'cancelled' AND u.moderator_id = ?) as cancelled_orders
+    `, [moderatorId, moderatorId, moderatorId, moderatorId, moderatorId, moderatorId, moderatorId, moderatorId, moderatorId, moderatorId]);
 
     res.json(stats[0]);
   } catch (error) {

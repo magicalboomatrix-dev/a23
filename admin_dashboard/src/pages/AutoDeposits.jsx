@@ -25,6 +25,11 @@ function Badge({ status }) {
   );
 }
 
+function SortIcon({ field, currentSort }) {
+  if (currentSort.field !== field) return <span className="text-dark-300 ml-1">↕</span>;
+  return <span className="text-primary-600 ml-1">{currentSort.direction === 'desc' ? '↓' : '↑'}</span>;
+}
+
 function StatCard({ label, value, color = 'text-dark-900' }) {
   return (
     <div className="bg-white rounded-lg shadow p-4">
@@ -75,6 +80,9 @@ export default function AutoDeposits() {
   const [utrSearchResults, setUtrSearchResults] = useState(null);
   const [utrSearchLoading, setUtrSearchLoading] = useState(false);
 
+  // Order search/filter state
+  const [orderSearch, setOrderSearch] = useState('');
+
   // Unmatched transactions state
   const [unmatchedTxns, setUnmatchedTxns] = useState([]);
   const [unmatchedPage, setUnmatchedPage] = useState(1);
@@ -84,6 +92,15 @@ export default function AutoDeposits() {
   const [creditModal, setCreditModal] = useState(null); // { txn }
   const [creditUserId, setCreditUserId] = useState('');
   const [creditLoading, setCreditLoading] = useState(false);
+
+  // New improvements state
+  const [orderPageSize, setOrderPageSize] = useState(20);
+  const [orderSort, setOrderSort] = useState({ field: 'created_at', direction: 'desc' });
+  const [selectedOrders, setSelectedOrders] = useState(new Set());
+  const [orderDetailsModal, setOrderDetailsModal] = useState(null);
+  const [staleDataWarning, setStaleDataWarning] = useState(false);
+  const [newOrderIds, setNewOrderIds] = useState(new Set());
+  const [lastRefreshTime, setLastRefreshTime] = useState(Date.now());
 
   const loadStats = useCallback(async () => {
     try {
@@ -116,16 +133,40 @@ export default function AutoDeposits() {
     try {
       const endpoint = isModerator ? '/auto-deposit/moderator/pending-orders' : '/auto-deposit/admin/pending-orders';
       const res = await api.get(endpoint, {
-        params: { status: orderFilter, page: orderPage, limit: 20 },
+        params: { status: orderFilter, page: orderPage, limit: orderPageSize, sort: orderSort.field, order: orderSort.direction },
       });
-      setPendingOrders(res.data.orders || []);
+      const orders = res.data.orders || [];
+      
+      // Track new orders (created in last 60 seconds)
+      const now = Date.now();
+      const newIds = new Set();
+      orders.forEach(o => {
+        if (now - new Date(o.created_at).getTime() < 60000) {
+          newIds.add(o.id);
+        }
+      });
+      if (newIds.size > 0) {
+        setNewOrderIds(prev => new Set([...prev, ...newIds]));
+        // Clear "NEW" badge after 30 seconds
+        setTimeout(() => {
+          setNewOrderIds(prev => {
+            const next = new Set(prev);
+            newIds.forEach(id => next.delete(id));
+            return next;
+          });
+        }, 30000);
+      }
+      
+      setPendingOrders(orders);
       setOrderPagination(res.data.pagination || {});
+      setLastRefreshTime(Date.now());
+      setStaleDataWarning(false);
     } catch (err) {
       console.error('Failed to load orders:', err);
     } finally {
       setLoading(false);
     }
-  }, [orderPage, orderFilter, isModerator]);
+  }, [orderPage, orderFilter, isModerator, orderPageSize, orderSort]);
 
   const loadLogs = useCallback(async () => {
     setLoading(true);
@@ -172,7 +213,7 @@ export default function AutoDeposits() {
 
   useEffect(() => { loadStats(); }, [loadStats]);
   useEffect(() => { if (tab === 'webhook') loadWebhookTxns(); }, [tab, loadWebhookTxns]);
-  useEffect(() => { if (tab === 'orders') loadPendingOrders(); }, [tab, loadPendingOrders, orderFilter, orderPage]);
+  useEffect(() => { if (tab === 'orders') loadPendingOrders(); }, [tab, loadPendingOrders, orderFilter, orderPage, orderPageSize, orderSort]);
   useEffect(() => { if (tab === 'logs') loadLogs(); }, [tab, loadLogs]);
   useEffect(() => { if (tab === 'unmatched') loadUnmatchedTxns(); }, [tab, loadUnmatchedTxns]);
 
@@ -181,6 +222,72 @@ export default function AutoDeposits() {
     const interval = setInterval(loadStats, 10000);
     return () => clearInterval(interval);
   }, [loadStats]);
+
+  // Auto-refresh orders every 10s when on orders tab
+  useEffect(() => {
+    if (tab !== 'orders') return;
+    const interval = setInterval(loadPendingOrders, 10000);
+    return () => clearInterval(interval);
+  }, [tab, loadPendingOrders]);
+
+  // Stale data warning (warn if data older than 5 minutes)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (Date.now() - lastRefreshTime > 300000) {
+        setStaleDataWarning(true);
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [lastRefreshTime]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      
+      switch(e.key.toLowerCase()) {
+        case 'r':
+          if (tab === 'orders') loadPendingOrders();
+          else if (tab === 'webhook') loadWebhookTxns();
+          else if (tab === 'logs') loadLogs();
+          else if (tab === 'unmatched') loadUnmatchedTxns();
+          break;
+        case 'escape':
+          setActionModal(null);
+          setCreditModal(null);
+          setOrderDetailsModal(null);
+          break;
+        case '1':
+          selectTab('stats');
+          break;
+        case '2':
+          if (isAdmin || tabs.find(t => t.key === 'webhook')) selectTab('webhook');
+          break;
+        case '3':
+          selectTab('orders');
+          break;
+        case '4':
+          if (isAdmin) selectTab('unmatched');
+          break;
+        case '5':
+          selectTab('utr-search');
+          break;
+        case '6':
+          if (isAdmin) selectTab('logs');
+          break;
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [tab, loadPendingOrders, loadWebhookTxns, loadLogs, loadUnmatchedTxns, selectTab, isAdmin, tabs]);
+
+  // Update lastUpdated timestamp
+  const [lastUpdated, setLastUpdated] = useState(null);
+  useEffect(() => {
+    const interval = setInterval(() => setLastUpdated(new Date()), 10000);
+    setLastUpdated(new Date());
+    return () => clearInterval(interval);
+  }, []);
 
   const [actionModal, setActionModal] = useState(null); // { type: 'cancel'|'credit', order }
   const [utrInput, setUtrInput] = useState('');
@@ -251,6 +358,102 @@ export default function AutoDeposits() {
     }
   };
 
+  // Helper: Copy to clipboard
+  const copyToClipboard = async (text, label) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      success(`${label} copied!`);
+    } catch {
+      toastError('Failed to copy');
+    }
+  };
+
+  // Helper: Export orders to CSV
+  const exportToCSV = () => {
+    const filtered = pendingOrders.filter(o => !orderSearch || 
+      o.user_name?.toLowerCase().includes(orderSearch.toLowerCase()) ||
+      o.user_phone?.includes(orderSearch));
+    
+    const headers = ['ID', 'User Name', 'Phone', 'Amount', 'QR Amount', 'Status', 'Deposit ID', 'Created', 'Expires'];
+    const rows = filtered.map(o => [
+      o.id,
+      o.user_name,
+      o.user_phone,
+      o.amount,
+      o.pay_amount || o.amount,
+      o.status,
+      o.matched_deposit_id || '',
+      new Date(o.created_at).toLocaleString('en-IN'),
+      new Date(o.expires_at).toLocaleString('en-IN')
+    ]);
+    
+    const csv = [headers.join(','), ...rows.map(r => r.map(v => `"${v}"`).join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `orders-${orderFilter}-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    success('CSV exported!');
+  };
+
+  // Helper: Toggle order selection for bulk actions
+  const toggleOrderSelection = (orderId) => {
+    setSelectedOrders(prev => {
+      const next = new Set(prev);
+      if (next.has(orderId)) next.delete(orderId);
+      else next.add(orderId);
+      return next;
+    });
+  };
+
+  // Helper: Select/deselect all
+  const selectAllOrders = () => {
+    const filtered = pendingOrders.filter(o => !orderSearch || 
+      o.user_name?.toLowerCase().includes(orderSearch.toLowerCase()) ||
+      o.user_phone?.includes(orderSearch));
+    if (selectedOrders.size === filtered.length) {
+      setSelectedOrders(new Set());
+    } else {
+      setSelectedOrders(new Set(filtered.map(o => o.id)));
+    }
+  };
+
+  // Helper: Bulk cancel selected orders
+  const handleBulkCancel = async () => {
+    if (selectedOrders.size === 0) return;
+    if (!window.confirm(`Cancel ${selectedOrders.size} orders?`)) return;
+    
+    let cancelled = 0;
+    let failed = 0;
+    
+    for (const orderId of selectedOrders) {
+      try {
+        const endpoint = isModerator 
+          ? `/auto-deposit/moderator/orders/${orderId}/cancel` 
+          : `/auto-deposit/admin/orders/${orderId}/cancel`;
+        await api.post(endpoint);
+        cancelled++;
+      } catch {
+        failed++;
+      }
+    }
+    
+    setSelectedOrders(new Set());
+    loadPendingOrders();
+    loadStats();
+    success(`Cancelled ${cancelled} orders${failed > 0 ? `, ${failed} failed` : ''}`);
+  };
+
+  // Helper: Handle sort
+  const handleSort = (field) => {
+    setOrderSort(prev => ({
+      field,
+      direction: prev.field === field && prev.direction === 'desc' ? 'asc' : 'desc'
+    }));
+  };
+
   const tabs = [
     { key: 'stats', label: 'Overview' },
     ...(isAdmin ? [{ key: 'webhook', label: 'UPI Messages' }] : []),
@@ -262,13 +465,37 @@ export default function AutoDeposits() {
 
   const fmt = (d) => d ? new Date(d).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '-';
 
+  const fmtTimeAgo = (d) => {
+    if (!d) return '-';
+    const diff = Math.floor((new Date() - new Date(d)) / 60000);
+    if (diff < 1) return 'Just now';
+    if (diff < 60) return `${diff}m ago`;
+    if (diff < 1440) return `${Math.floor(diff / 60)}h ago`;
+    return `${Math.floor(diff / 1440)}d ago`;
+  };
+
+  const isNearExpiry = (expiresAt, status) => {
+    if (status !== 'pending') return false;
+    const minsLeft = (new Date(expiresAt) - new Date()) / 60000;
+    return minsLeft > 0 && minsLeft < 5;
+  };
+
+  const isExpired = (expiresAt) => new Date(expiresAt) < new Date();
+
   return (
     <div className="space-y-4">
       <ToastContainer toasts={toasts} dismiss={dismiss} />
 
 
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <h1 className="text-2xl font-bold text-dark-900">Auto Deposits</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-dark-900">Auto Deposits</h1>
+          {lastUpdated && (
+            <span className="text-xs text-dark-400">
+              Updated {fmtTimeAgo(lastUpdated)}
+            </span>
+          )}
+        </div>
         {isAdmin && (
           <div className="flex gap-2 flex-wrap">
             <MatchAllUnmatchedButton onMatched={() => { loadStats(); loadUnmatchedTxns(); loadLogs(); }} />
@@ -309,22 +536,38 @@ export default function AutoDeposits() {
             <StatCard label="Webhook Unmatched" value={stats.webhook_unmatched_today} color="text-yellow-600" />
             <StatCard label="Webhook Duplicates" value={stats.webhook_duplicate_today} color="text-red-600" />
           </div>
+          
+          {/* Keyboard shortcuts hint */}
+          <div className="text-xs text-dark-400 flex flex-wrap gap-3 pt-4">
+            <span>Shortcuts:</span>
+            <span><kbd className="px-1 bg-dark-100 rounded">1-6</kbd> Tabs</span>
+            <span><kbd className="px-1 bg-dark-100 rounded">Esc</kbd> Close</span>
+          </div>
         </div>
       )}
 
       {/* Webhook Transactions Tab */}
       {tab === 'webhook' && (
         <div className="space-y-3">
-          <div className="flex gap-2">
-            {['', 'received', 'matched', 'unmatched', 'duplicate', 'parse_error'].map((s) => (
-              <button
-                key={s}
-                onClick={() => { setWebhookFilter(s); setWebhookPage(1); }}
-                className={`px-3 py-1 text-xs rounded ${webhookFilter === s ? 'bg-primary-600 text-white' : 'bg-dark-100 text-dark-600 hover:bg-dark-200'}`}
-              >
-                {s || 'All'}
-              </button>
-            ))}
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex gap-2 flex-wrap">
+              {['', 'received', 'matched', 'unmatched', 'duplicate', 'parse_error'].map((s) => (
+                <button
+                  key={s}
+                  onClick={() => { setWebhookFilter(s); setWebhookPage(1); }}
+                  className={`px-3 py-1 text-xs rounded ${webhookFilter === s ? 'bg-primary-600 text-white' : 'bg-dark-100 text-dark-600 hover:bg-dark-200'}`}
+                >
+                  {s || 'All'}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={loadWebhookTxns}
+              title="Refresh (R)"
+              className="p-2 text-dark-500 hover:text-primary-600 hover:bg-dark-100 rounded-lg transition-colors"
+            >
+              🔄
+            </button>
           </div>
 
           <div className="bg-white rounded-lg shadow overflow-x-auto">
@@ -347,7 +590,20 @@ export default function AutoDeposits() {
                   <tr key={txn.id} className="hover:bg-dark-50">
                     <td className="px-4 py-2">{txn.id}</td>
                     <td className="px-4 py-2 font-medium">₹{txn.amount ? Number(txn.amount).toLocaleString('en-IN') : '-'}</td>
-                    <td className="px-4 py-2 font-mono text-xs">{txn.reference_number || '-'}</td>
+                    <td className="px-4 py-2 font-mono text-xs">
+                      <div className="flex items-center gap-1">
+                        <span>{txn.reference_number || '-'}</span>
+                        {txn.reference_number && (
+                          <button
+                            onClick={() => copyToClipboard(txn.reference_number, 'UTR')}
+                            className="text-dark-400 hover:text-primary-600"
+                            title="Copy UTR"
+                          >
+                            📋
+                          </button>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-4 py-2">{txn.payer_name || '-'}</td>
                     <td className="px-4 py-2"><Badge status={txn.status} /></td>
                     <td className="px-4 py-2">{txn.matched_user_name ? `${txn.matched_user_name} (${txn.matched_user_phone})` : '-'}</td>
@@ -365,61 +621,242 @@ export default function AutoDeposits() {
                   </>
                 ))}
                 {webhookTxns.length === 0 && (
-                  <tr><td colSpan="8" className="px-4 py-8 text-center text-dark-400">No webhook transactions found.</td></tr>
+                  <tr>
+                    <td colSpan="8" className="px-4 py-12 text-center">
+                      <div className="text-4xl mb-2">📨</div>
+                      <div className="text-dark-400 text-sm">No webhook transactions found</div>
+                      <div className="text-dark-300 text-xs mt-1">Try changing filters or refreshing</div>
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>
           </div>
 
           <Pagination pagination={webhookPagination} page={webhookPage} setPage={setWebhookPage} />
+          
+          {/* Keyboard shortcuts hint */}
+          <div className="text-xs text-dark-400 flex flex-wrap gap-3 pt-2">
+            <span>Shortcuts:</span>
+            <span><kbd className="px-1 bg-dark-100 rounded">R</kbd> Refresh</span>
+            <span><kbd className="px-1 bg-dark-100 rounded">1-6</kbd> Tabs</span>
+            <span><kbd className="px-1 bg-dark-100 rounded">Esc</kbd> Close</span>
+          </div>
         </div>
       )}
 
       {/* Deposit Orders Tab */}
       {tab === 'orders' && (
         <div className="space-y-3">
-          <div className="flex gap-2">
-            {['pending', 'matched', 'expired', 'cancelled'].map((s) => (
-              <button
-                key={s}
-                onClick={() => { setOrderFilter(s); setOrderPage(1); }}
-                className={`px-3 py-1 text-xs rounded ${orderFilter === s ? 'bg-primary-600 text-white' : 'bg-dark-100 text-dark-600 hover:bg-dark-200'}`}
-              >
-                {s.charAt(0).toUpperCase() + s.slice(1)}
-              </button>
-            ))}
+          {/* Stale data warning */}
+          {staleDataWarning && (
+            <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-2 rounded-lg text-sm flex items-center gap-2">
+              <span>⚠️</span>
+              <span>Data is stale (last updated {fmtTimeAgo(lastRefreshTime)}). Press <kbd className="px-1 bg-yellow-200 rounded">R</kbd> to refresh.</span>
+            </div>
+          )}
+
+          {/* Filter buttons with count badges */}
+          <div className="flex flex-wrap gap-2 items-center">
+            {['pending', 'matched', 'expired', 'cancelled'].map((s) => {
+              const count = stats?.[`${s}_orders`] ?? (orderFilter === s ? orderPagination.total : '-');
+              return (
+                <button
+                  key={s}
+                  onClick={() => { setOrderFilter(s); setOrderPage(1); setSelectedOrders(new Set()); }}
+                  className={`px-3 py-1.5 text-xs rounded flex items-center gap-1.5 ${
+                    orderFilter === s 
+                      ? 'bg-primary-600 text-white' 
+                      : 'bg-dark-100 text-dark-600 hover:bg-dark-200'
+                  }`}
+                >
+                  <span>{s.charAt(0).toUpperCase() + s.slice(1)}</span>
+                  <span className={`px-1.5 py-0.5 rounded text-[10px] ${
+                    orderFilter === s ? 'bg-white/20' : 'bg-dark-200'
+                  }`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
           </div>
+
+          {/* Toolbar: Search, Refresh, Page Size, Export */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2 flex-1 min-w-[200px] max-w-md">
+              <input
+                type="text"
+                value={orderSearch}
+                onChange={(e) => setOrderSearch(e.target.value)}
+                placeholder="Search by user name or phone..."
+                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
+              <button
+                onClick={loadPendingOrders}
+                title="Refresh (R)"
+                className="p-2 text-dark-500 hover:text-primary-600 hover:bg-dark-100 rounded-lg transition-colors"
+              >
+                🔄
+              </button>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              {/* Page size selector */}
+              <select
+                value={orderPageSize}
+                onChange={(e) => { setOrderPageSize(Number(e.target.value)); setOrderPage(1); }}
+                className="rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value={20}>20/page</option>
+                <option value={50}>50/page</option>
+                <option value={100}>100/page</option>
+              </select>
+              
+              {/* Export CSV */}
+              <button
+                onClick={exportToCSV}
+                className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-1"
+              >
+                📥 CSV
+              </button>
+              
+              {/* Total amount */}
+              <div className="text-sm font-medium text-dark-700 px-2">
+                Total: <span className="text-primary-600">
+                  ₹{pendingOrders
+                    .filter(o => !orderSearch || 
+                      o.user_name?.toLowerCase().includes(orderSearch.toLowerCase()) ||
+                      o.user_phone?.includes(orderSearch))
+                    .reduce((sum, o) => sum + Number(o.amount), 0)
+                    .toLocaleString('en-IN')}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Bulk actions bar */}
+          {orderFilter === 'pending' && selectedOrders.size > 0 && (
+            <div className="flex items-center justify-between bg-dark-50 px-3 py-2 rounded-lg">
+              <span className="text-sm text-dark-600">{selectedOrders.size} selected</span>
+              <button
+                onClick={handleBulkCancel}
+                className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+              >
+                Bulk Cancel
+              </button>
+            </div>
+          )}
 
           <div className="bg-white rounded-lg shadow overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-dark-50 text-dark-600">
                 <tr>
-                  <th className="px-4 py-2 text-left">ID</th>
-                  <th className="px-4 py-2 text-left">User</th>
-                  <th className="px-4 py-2 text-left">Base / QR Amount</th>
+                  {orderFilter === 'pending' && (
+                    <th className="px-2 py-2 text-left">
+                      <input
+                        type="checkbox"
+                        checked={selectedOrders.size === pendingOrders.length && pendingOrders.length > 0}
+                        onChange={selectAllOrders}
+                        className="rounded border-gray-300"
+                      />
+                    </th>
+                  )}
+                  <th className="px-4 py-2 text-left cursor-pointer hover:bg-dark-100" onClick={() => handleSort('id')}>
+                    ID <SortIcon field="id" currentSort={orderSort} />
+                  </th>
+                  <th className="px-4 py-2 text-left cursor-pointer hover:bg-dark-100" onClick={() => handleSort('user_name')}>
+                    User <SortIcon field="user_name" currentSort={orderSort} />
+                  </th>
+                  <th className="px-4 py-2 text-left cursor-pointer hover:bg-dark-100" onClick={() => handleSort('amount')}>
+                    Amount <SortIcon field="amount" currentSort={orderSort} />
+                  </th>
                   <th className="px-4 py-2 text-left">Status</th>
                   <th className="px-4 py-2 text-left">Deposit ID</th>
-                  <th className="px-4 py-2 text-left">Created</th>
-                  <th className="px-4 py-2 text-left">Expires</th>
+                  <th className="px-4 py-2 text-left cursor-pointer hover:bg-dark-100" onClick={() => handleSort('created_at')}>
+                    Created <SortIcon field="created_at" currentSort={orderSort} />
+                  </th>
+                  <th className="px-4 py-2 text-left">Time Left</th>
                   <th className="px-4 py-2 text-left">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-dark-100">
-                {pendingOrders.map((order) => (
-                  <tr key={order.id} className="hover:bg-dark-50">
-                    <td className="px-4 py-2">{order.id}</td>
-                    <td className="px-4 py-2">{order.user_name} ({order.user_phone})</td>
+                {pendingOrders
+                  .filter(o => !orderSearch || 
+                    o.user_name?.toLowerCase().includes(orderSearch.toLowerCase()) ||
+                    o.user_phone?.includes(orderSearch))
+                  .map((order) => (
+                  <tr 
+                    key={order.id} 
+                    onClick={() => setOrderDetailsModal(order)}
+                    className={`hover:bg-dark-50 cursor-pointer ${
+                      isNearExpiry(order.expires_at, order.status) ? 'bg-red-50' : ''
+                    } ${order.status === 'expired' ? 'bg-gray-50' : ''} ${
+                      order.status === 'cancelled' ? 'bg-red-50/50' : ''
+                    }`}
+                  >
+                    {orderFilter === 'pending' && (
+                      <td className="px-2 py-2" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selectedOrders.has(order.id)}
+                          onChange={() => toggleOrderSelection(order.id)}
+                          className="rounded border-gray-300"
+                        />
+                      </td>
+                    )}
+                    <td className="px-4 py-2">
+                      <div className="flex items-center gap-1">
+                        <span>#{order.id}</span>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); copyToClipboard(order.id.toString(), 'Order ID'); }}
+                          className="text-dark-400 hover:text-primary-600"
+                          title="Copy Order ID"
+                        >
+                          📋
+                        </button>
+                        {newOrderIds.has(order.id) && (
+                          <span className="animate-pulse bg-red-500 text-white text-[10px] px-1 rounded">NEW</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-2">
+                      <div className="font-medium">{order.user_name}</div>
+                      <div className="text-xs text-dark-500">{order.user_phone}</div>
+                    </td>
                     <td className="px-4 py-2">
                       <div className="font-medium">₹{Number(order.amount).toLocaleString('en-IN')}</div>
                       {order.pay_amount && order.pay_amount !== order.amount && (
                         <div className="text-xs text-primary-600 font-medium">QR: ₹{Number(order.pay_amount).toLocaleString('en-IN')}</div>
                       )}
                     </td>
-                    <td className="px-4 py-2"><Badge status={order.status} /></td>
-                    <td className="px-4 py-2">{order.matched_deposit_id || '-'}</td>
-                    <td className="px-4 py-2 text-xs">{fmt(order.created_at)}</td>
-                    <td className="px-4 py-2 text-xs">{fmt(order.expires_at)}</td>
                     <td className="px-4 py-2">
+                      <Badge status={order.status} />
+                      {isNearExpiry(order.expires_at, order.status) && (
+                        <div className="text-xs text-red-600 font-medium mt-1">⚠️ Expires soon!</div>
+                      )}
+                    </td>
+                    <td className="px-4 py-2">
+                      {order.matched_deposit_id ? (
+                        <span className="font-mono text-xs">#{order.matched_deposit_id}</span>
+                      ) : (
+                        '-'
+                      )}
+                    </td>
+                    <td className="px-4 py-2 text-xs">{fmt(order.created_at)}</td>
+                    <td className="px-4 py-2 text-xs">
+                      {order.status === 'pending' ? (
+                        isExpired(order.expires_at) ? (
+                          <span className="text-red-600 font-medium">Expired {fmtTimeAgo(order.expires_at)}</span>
+                        ) : (
+                          <span className={isNearExpiry(order.expires_at, order.status) ? 'text-red-600 font-medium' : 'text-dark-500'}>
+                            Expires {fmtTimeAgo(order.expires_at)}
+                          </span>
+                        )
+                      ) : (
+                        <span className="text-dark-400">-</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
                       {(order.status === 'pending' || order.status === 'expired') && (
                         <div className="flex gap-1">
                           <button
@@ -442,19 +879,44 @@ export default function AutoDeposits() {
                   </tr>
                 ))}
                 {pendingOrders.length === 0 && (
-                  <tr><td colSpan="8" className="px-4 py-8 text-center text-dark-400">No orders found.</td></tr>
+                  <tr>
+                    <td colSpan={orderFilter === 'pending' ? 9 : 8} className="px-4 py-12 text-center">
+                      <div className="text-4xl mb-2">📭</div>
+                      <div className="text-dark-400 text-sm">No {orderFilter} orders found</div>
+                      <div className="text-dark-300 text-xs mt-1">Try changing filters or refreshing</div>
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>
           </div>
 
           <Pagination pagination={orderPagination} page={orderPage} setPage={setOrderPage} />
+          
+          {/* Keyboard shortcuts hint */}
+          <div className="text-xs text-dark-400 flex flex-wrap gap-3 pt-2">
+            <span>Shortcuts:</span>
+            <span><kbd className="px-1 bg-dark-100 rounded">R</kbd> Refresh</span>
+            <span><kbd className="px-1 bg-dark-100 rounded">1-6</kbd> Tabs</span>
+            <span><kbd className="px-1 bg-dark-100 rounded">Esc</kbd> Close</span>
+            <span><kbd className="px-1 bg-dark-100 rounded">Click row</kbd> Details</span>
+          </div>
         </div>
       )}
 
       {/* Audit Logs Tab */}
       {tab === 'logs' && (
         <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-dark-500">Audit trail of all auto-deposit actions</div>
+            <button
+              onClick={loadLogs}
+              title="Refresh (R)"
+              className="p-2 text-dark-500 hover:text-primary-600 hover:bg-dark-100 rounded-lg transition-colors"
+            >
+              🔄
+            </button>
+          </div>
           <div className="bg-white rounded-lg shadow overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-dark-50 text-dark-600">
@@ -478,26 +940,48 @@ export default function AutoDeposits() {
                     <td className="px-4 py-2">{log.webhook_txn_id || '-'}</td>
                     <td className="px-4 py-2">{log.order_id || '-'}</td>
                     <td className="px-4 py-2">{log.deposit_id || '-'}</td>
-                    <td className="px-4 py-2 text-xs max-w-xs truncate">{log.details || '-'}</td>
-                      <td className="px-4 py-2 text-xs max-w-xs truncate">{cleanDisplayText(log.details)}</td>
+                    <td className="px-4 py-2 text-xs max-w-xs truncate" title={log.details}>{cleanDisplayText(log.details)}</td>
                     <td className="px-4 py-2 text-xs">{fmt(log.created_at)}</td>
                   </tr>
                 ))}
                 {logs.length === 0 && (
-                  <tr><td colSpan="8" className="px-4 py-8 text-center text-dark-400">No logs found.</td></tr>
+                  <tr>
+                    <td colSpan="8" className="px-4 py-12 text-center">
+                      <div className="text-4xl mb-2">📋</div>
+                      <div className="text-dark-400 text-sm">No audit logs found</div>
+                      <div className="text-dark-300 text-xs mt-1">Logs will appear when actions are taken</div>
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>
           </div>
 
           <Pagination pagination={logPagination} page={logPage} setPage={setLogPage} />
+          
+          {/* Keyboard shortcuts hint */}
+          <div className="text-xs text-dark-400 flex flex-wrap gap-3 pt-2">
+            <span>Shortcuts:</span>
+            <span><kbd className="px-1 bg-dark-100 rounded">R</kbd> Refresh</span>
+            <span><kbd className="px-1 bg-dark-100 rounded">1-6</kbd> Tabs</span>
+            <span><kbd className="px-1 bg-dark-100 rounded">Esc</kbd> Close</span>
+          </div>
         </div>
       )}
 
       {/* Unmatched Transactions Tab */}
       {tab === 'unmatched' && (
         <div className="space-y-3">
-          <p className="text-sm text-dark-500">UPI payments received via Telegram that haven't been matched to any deposit order. You can manually credit these to a user.</p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm text-dark-500">UPI payments received via Telegram that haven't been matched to any deposit order.</p>
+            <button
+              onClick={loadUnmatchedTxns}
+              title="Refresh (R)"
+              className="p-2 text-dark-500 hover:text-primary-600 hover:bg-dark-100 rounded-lg transition-colors"
+            >
+              🔄
+            </button>
+          </div>
           <div className="bg-white rounded-lg shadow overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-dark-50 text-dark-600">
@@ -518,7 +1002,20 @@ export default function AutoDeposits() {
                   <tr key={txn.id} className="hover:bg-dark-50">
                     <td className="px-4 py-2">{txn.id}</td>
                     <td className="px-4 py-2 font-medium">₹{txn.amount ? Number(txn.amount).toLocaleString('en-IN') : '-'}</td>
-                    <td className="px-4 py-2 font-mono text-xs">{txn.reference_number || '-'}</td>
+                    <td className="px-4 py-2 font-mono text-xs">
+                      <div className="flex items-center gap-1">
+                        <span>{txn.reference_number || '-'}</span>
+                        {txn.reference_number && (
+                          <button
+                            onClick={() => copyToClipboard(txn.reference_number, 'UTR')}
+                            className="text-dark-400 hover:text-primary-600"
+                            title="Copy UTR"
+                          >
+                            📋
+                          </button>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-4 py-2">{txn.payer_name || '-'}</td>
                     <td className="px-4 py-2"><Badge status={txn.status} /></td>
                     <td className="px-4 py-2 font-mono text-xs">{txn.order_ref || '-'}</td>
@@ -542,12 +1039,26 @@ export default function AutoDeposits() {
                   </tr>
                 ))}
                 {unmatchedTxns.length === 0 && (
-                  <tr><td colSpan="9" className="px-4 py-8 text-center text-dark-400">No unmatched transactions.</td></tr>
+                  <tr>
+                    <td colSpan="9" className="px-4 py-12 text-center">
+                      <div className="text-4xl mb-2">✅</div>
+                      <div className="text-dark-400 text-sm">No unmatched transactions</div>
+                      <div className="text-dark-300 text-xs mt-1">All payments have been matched!</div>
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>
           </div>
           <Pagination pagination={unmatchedPagination} page={unmatchedPage} setPage={setUnmatchedPage} />
+          
+          {/* Keyboard shortcuts hint */}
+          <div className="text-xs text-dark-400 flex flex-wrap gap-3 pt-2">
+            <span>Shortcuts:</span>
+            <span><kbd className="px-1 bg-dark-100 rounded">R</kbd> Refresh</span>
+            <span><kbd className="px-1 bg-dark-100 rounded">1-6</kbd> Tabs</span>
+            <span><kbd className="px-1 bg-dark-100 rounded">Esc</kbd> Close</span>
+          </div>
         </div>
       )}
 
@@ -596,7 +1107,20 @@ export default function AutoDeposits() {
                         <tr key={txn.id} className="hover:bg-dark-50">
                           <td className="px-4 py-2">{txn.id}</td>
                           <td className="px-4 py-2 font-medium">₹{txn.amount ? Number(txn.amount).toLocaleString('en-IN') : '-'}</td>
-                          <td className="px-4 py-2 font-mono text-xs">{txn.reference_number || '-'}</td>
+                          <td className="px-4 py-2 font-mono text-xs">
+                            <div className="flex items-center gap-1">
+                              <span>{txn.reference_number || '-'}</span>
+                              {txn.reference_number && (
+                                <button
+                                  onClick={() => copyToClipboard(txn.reference_number, 'UTR')}
+                                  className="text-dark-400 hover:text-primary-600"
+                                  title="Copy UTR"
+                                >
+                                  📋
+                                </button>
+                              )}
+                            </div>
+                          </td>
                           <td className="px-4 py-2">{txn.payer_name || '-'}</td>
                           <td className="px-4 py-2"><Badge status={txn.status} /></td>
                           <td className="px-4 py-2 font-mono text-xs">{txn.order_ref || '-'}</td>
@@ -614,7 +1138,12 @@ export default function AutoDeposits() {
                         </tr>
                       ))}
                       {(utrSearchResults.webhook_transactions || []).length === 0 && (
-                        <tr><td colSpan="8" className="px-4 py-6 text-center text-dark-400">No webhook transactions found for this UTR.</td></tr>
+                        <tr>
+                          <td colSpan="8" className="px-4 py-12 text-center">
+                            <div className="text-4xl mb-2">🔍</div>
+                            <div className="text-dark-400 text-sm">No webhook transactions found</div>
+                          </td>
+                        </tr>
                       )}
                     </tbody>
                   </table>
@@ -642,13 +1171,29 @@ export default function AutoDeposits() {
                           <td className="px-4 py-2">{d.id}</td>
                           <td className="px-4 py-2">{d.username || d.phone || `#${d.user_id}`}</td>
                           <td className="px-4 py-2 font-medium">₹{Number(d.amount).toLocaleString('en-IN')}</td>
-                          <td className="px-4 py-2 font-mono text-xs">{d.utr_number}</td>
+                          <td className="px-4 py-2 font-mono text-xs">
+                            <div className="flex items-center gap-1">
+                              <span>{d.utr_number}</span>
+                              <button
+                                onClick={() => copyToClipboard(d.utr_number, 'UTR')}
+                                className="text-dark-400 hover:text-primary-600"
+                                title="Copy UTR"
+                              >
+                                📋
+                              </button>
+                            </div>
+                          </td>
                           <td className="px-4 py-2"><Badge status={d.status} /></td>
                           <td className="px-4 py-2 text-xs">{fmt(d.created_at)}</td>
                         </tr>
                       ))}
                       {(utrSearchResults.deposits || []).length === 0 && (
-                        <tr><td colSpan="6" className="px-4 py-6 text-center text-dark-400">No deposits found for this UTR.</td></tr>
+                        <tr>
+                          <td colSpan="6" className="px-4 py-12 text-center">
+                            <div className="text-4xl mb-2">💰</div>
+                            <div className="text-dark-400 text-sm">No deposits found for this UTR</div>
+                          </td>
+                        </tr>
                       )}
                     </tbody>
                   </table>
@@ -656,6 +1201,14 @@ export default function AutoDeposits() {
               </div>
             </div>
           )}
+          
+          {/* Keyboard shortcuts hint */}
+          <div className="text-xs text-dark-400 flex flex-wrap gap-3 pt-2">
+            <span>Shortcuts:</span>
+            <span><kbd className="px-1 bg-dark-100 rounded">Enter</kbd> Search</span>
+            <span><kbd className="px-1 bg-dark-100 rounded">1-6</kbd> Tabs</span>
+            <span><kbd className="px-1 bg-dark-100 rounded">Esc</kbd> Close</span>
+          </div>
         </div>
       )}
 
@@ -725,6 +1278,108 @@ export default function AutoDeposits() {
               <button onClick={handleCreditByUtr} disabled={creditLoading || !creditUserId.trim()} className="flex-1 px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-60">
                 {creditLoading ? 'Crediting…' : 'Credit Wallet'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Order Details Modal */}
+      {orderDetailsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-gray-900">Order #{orderDetailsModal.id}</h2>
+                <button onClick={() => setOrderDetailsModal(null)} className="text-dark-400 hover:text-dark-600 text-2xl">&times;</button>
+              </div>
+              
+              <div className="space-y-4">
+                {/* Status badge */}
+                <div className="flex items-center gap-2">
+                  <Badge status={orderDetailsModal.status} />
+                  {isNearExpiry(orderDetailsModal.expires_at, orderDetailsModal.status) && (
+                    <span className="text-xs text-red-600 font-medium">⚠️ Expires soon!</span>
+                  )}
+                </div>
+
+                {/* User info */}
+                <div className="bg-dark-50 rounded-lg p-4">
+                  <h3 className="text-sm font-semibold text-dark-700 mb-2">User Information</h3>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="text-dark-500">Name:</div>
+                    <div className="font-medium">{orderDetailsModal.user_name}</div>
+                    <div className="text-dark-500">Phone:</div>
+                    <div className="font-medium">{orderDetailsModal.user_phone}</div>
+                  </div>
+                </div>
+
+                {/* Amount info */}
+                <div className="bg-dark-50 rounded-lg p-4">
+                  <h3 className="text-sm font-semibold text-dark-700 mb-2">Amount Details</h3>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="text-dark-500">Base Amount:</div>
+                    <div className="font-medium">₹{Number(orderDetailsModal.amount).toLocaleString('en-IN')}</div>
+                    {orderDetailsModal.pay_amount && orderDetailsModal.pay_amount !== orderDetailsModal.amount && (
+                      <>
+                        <div className="text-dark-500">QR Amount:</div>
+                        <div className="font-medium text-primary-600">₹{Number(orderDetailsModal.pay_amount).toLocaleString('en-IN')}</div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Timeline */}
+                <div className="bg-dark-50 rounded-lg p-4">
+                  <h3 className="text-sm font-semibold text-dark-700 mb-2">Order Timeline</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-dark-500">Created:</span>
+                      <span>{fmt(orderDetailsModal.created_at)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-dark-500">Expires:</span>
+                      <span>{fmt(orderDetailsModal.expires_at)}</span>
+                    </div>
+                    {orderDetailsModal.matched_deposit_id && (
+                      <div className="flex justify-between">
+                        <span className="text-dark-500">Deposit ID:</span>
+                        <span className="font-mono">#{orderDetailsModal.matched_deposit_id}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Time remaining for pending orders */}
+                {orderDetailsModal.status === 'pending' && (
+                  <div className={`rounded-lg p-3 text-center ${isNearExpiry(orderDetailsModal.expires_at, orderDetailsModal.status) ? 'bg-red-100 text-red-800' : 'bg-blue-50 text-blue-800'}`}>
+                    {isExpired(orderDetailsModal.expires_at) ? (
+                      <span className="font-medium">Order has expired</span>
+                    ) : (
+                      <span className="font-medium">Expires in {fmtTimeAgo(orderDetailsModal.expires_at)}</span>
+                    )}
+                  </div>
+                )}
+
+                {/* Actions */}
+                {(orderDetailsModal.status === 'pending' || orderDetailsModal.status === 'expired') && (
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      onClick={() => { setOrderDetailsModal(null); setActionModal({ type: 'credit', order: orderDetailsModal }); setUtrInput(''); }}
+                      className="flex-1 px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700"
+                    >
+                      Credit Order
+                    </button>
+                    {orderDetailsModal.status === 'pending' && (
+                      <button
+                        onClick={() => { setOrderDetailsModal(null); setActionModal({ type: 'cancel', order: orderDetailsModal }); }}
+                        className="flex-1 px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700"
+                      >
+                        Cancel Order
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
