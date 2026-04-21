@@ -363,6 +363,16 @@ export default function AutoDeposits() {
     return () => clearInterval(interval);
   }, []);
 
+  // Define tabs early since keyboard shortcuts useEffect references it
+  const tabs = [
+    { key: 'stats', label: 'Overview' },
+    ...(isAdmin ? [{ key: 'webhook', label: 'UPI Messages' }] : []),
+    { key: 'orders', label: 'Deposit Orders' },
+    ...(isAdmin ? [{ key: 'unmatched', label: 'Unmatched' }] : []),
+    { key: 'utr-search', label: 'UTR Search' },
+    ...(isAdmin ? [{ key: 'logs', label: 'Audit Logs' }] : []),
+  ];
+
   const [actionModal, setActionModal] = useState(null); // { type: 'cancel'|'credit', order }
   const [utrInput, setUtrInput] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
@@ -527,15 +537,6 @@ export default function AutoDeposits() {
       direction: prev.field === field && prev.direction === 'desc' ? 'asc' : 'desc'
     }));
   };
-
-  const tabs = [
-    { key: 'stats', label: 'Overview' },
-    ...(isAdmin ? [{ key: 'webhook', label: 'UPI Messages' }] : []),
-    { key: 'orders', label: 'Deposit Orders' },
-    ...(isAdmin ? [{ key: 'unmatched', label: 'Unmatched' }] : []),
-    { key: 'utr-search', label: 'UTR Search' },
-    ...(isAdmin ? [{ key: 'logs', label: 'Audit Logs' }] : []),
-  ];
 
   const fmt = (d) => d ? new Date(d).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '-';
 
