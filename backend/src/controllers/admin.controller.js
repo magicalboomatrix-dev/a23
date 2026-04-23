@@ -1286,7 +1286,7 @@ exports.getFinancialReport = async (req, res, next) => {
     const bonusUsedDate = buildDateFilter('wt');
 
     const [[platformBonusUsed]] = await pool.query(
-      `SELECT COALESCE(SUM(amount), 0) as total
+      `SELECT COALESCE(SUM(wt.amount), 0) as total
        FROM wallet_transactions wt
        JOIN users u ON u.id = wt.user_id
        WHERE wt.reference_type = 'bet_bonus'${bonusUsedDate.clause}${moderatorFilter}`,
