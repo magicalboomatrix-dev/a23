@@ -43,6 +43,12 @@ exports.handleWebhook = async (req, res) => {
       return;
     }
 
+    // Skip system alert messages (not UPI messages)
+    if (rawText.includes('Ledger Drift Detected') || rawText.includes('A23 — Ledger') || rawText.startsWith('🔴 **A23')) {
+      logger.info('telegram', 'Skipping system alert message', { messageId, preview: rawText.substring(0, 60) });
+      return;
+    }
+
     // Check if this message was already processed (idempotency)
     const [existing] = await pool.query(
       `SELECT id FROM upi_webhook_transactions
