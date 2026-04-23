@@ -3,6 +3,7 @@ import Footer from "./components/Footer";
 import AuthGate from "./components/AuthGate";
 import PWAHandler from "./components/PWAHandler";
 import { AuthProvider } from "./lib/AuthContext";
+import { LanguageProvider } from "./lib/LanguageContext";
 import "./globals.css";
 
 import { Exo_2, Mona_Sans } from "next/font/google";
@@ -55,15 +56,17 @@ export default async function RootLayout({ children }) {
         className={`${exo2.variable} ${monaSans.variable} flex min-h-screen justify-center bg-[#eef1f5] text-[#171717] antialiased`}
         {...(nonce ? { 'data-nonce': nonce } : {})}
       >
-        <AuthProvider>
-          <PWAHandler />
-          <div className="relative flex w-full max-w-[430px] flex-col overflow-x-hidden bg-white">
-            <AuthGate>
-              {children}
-              <Footer />
-            </AuthGate>
-          </div>
-        </AuthProvider>
+        <LanguageProvider>
+          <AuthProvider>
+            <PWAHandler />
+            <div className="relative flex w-full max-w-[430px] flex-col overflow-x-hidden bg-white">
+              <AuthGate>
+                {children}
+                <Footer />
+              </AuthGate>
+            </div>
+          </AuthProvider>
+        </LanguageProvider>
       </body>
     </html>
   );
