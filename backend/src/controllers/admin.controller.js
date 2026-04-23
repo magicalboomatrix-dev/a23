@@ -1416,7 +1416,7 @@ exports.getFinancialReport = async (req, res, next) => {
        FROM users m
        WHERE m.role = 'moderator' AND m.is_deleted = 0
        ORDER BY total_deposit_amount DESC`,
-      [...depositDate.params, ...depositDate.params, ...withdrawalDate.params, ...withdrawalDate.params, ...bonusDate.params, ...bonusDate.params, ...betDate.params, ...gameParams, ...betDate.params, ...gameParams, ...betDate.params, ...gameParams]
+      [...depositDate.params, ...depositDate.params, ...withdrawalDate.params, ...withdrawalDate.params, ...bonusDate.params, ...bonusDate.params, ...betDate.params, ...gameParams, ...betDate.params, ...gameParams, ...betDate.params, ...gameParams, ...betDate.params, ...gameParams]
     );
 
     // Calculate comprehensive P&L for each moderator
