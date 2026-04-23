@@ -8,7 +8,7 @@
 
   "scope": "/",
   "display": "standalone",
-  "display_override": ["standalone", "window-controls-overlay"],
+  "display_override": ["standalone"],
 
   "orientation": "portrait",
 

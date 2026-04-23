@@ -7,7 +7,25 @@
 html,
 body {
   overflow-x: hidden;
+}
+
+/* Standalone/TWA mode - hide browser UI */
+@media all and (display-mode: standalone) {
+  html {
+    /* Ensure full height without browser chrome */
+    height: 100vh;
+    height: 100dvh;
+  }
   
+  body {
+    /* Prevent pull-to-refresh */
+    overscroll-behavior-y: none;
+  }
+}
+
+/* Force standalone look in TWA */
+body.standalone-mode {
+  overscroll-behavior-y: none;
 }
 
 html {

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '../lib/AuthContext';
 
@@ -11,10 +11,24 @@ const PUBLIC_ROUTES = ['/login', '/login-account'];
 const OPEN_ROUTES = ['/download'];
 
 function AppSplash({ message }) {
+  const [imgError, setImgError] = useState(false);
+  
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-[radial-gradient(circle_at_top,#f8efcc_0%,#ffffff_48%,#eef1f5_100%)] px-6 text-center">
       <div className="rounded-[28px] border border-[#d9c07a] bg-white/90 px-8 py-10 shadow-[0_18px_50px_rgba(0,0,0,0.12)] backdrop-blur">
-        <img src="/images/logo.png" alt="A23" className="mx-auto h-14 w-auto object-contain" />
+        {!imgError && (
+          <img 
+            src="/images/logo.png" 
+            alt="A23" 
+            className="mx-auto h-14 w-auto object-contain"
+            onError={() => setImgError(true)}
+          />
+        )}
+        {imgError && (
+          <div className="mx-auto h-14 w-14 rounded-full bg-[#d5b363] flex items-center justify-center">
+            <span className="text-white text-2xl font-bold">A23</span>
+          </div>
+        )}
         <div className="mt-5 flex justify-center">
           <span className="h-10 w-10 animate-spin rounded-full border-[3px] border-[#d5b363] border-t-transparent" />
         </div>
@@ -29,9 +43,11 @@ export default function AuthGate({ children }) {
   const router = useRouter();
   const pathname = usePathname();
   const { isLoggedIn, loading } = useAuth();
+  const [redirecting, setRedirecting] = useState(false);
+  const redirectTimeoutRef = useRef(null);
 
   useEffect(() => {
-    if (loading) {
+    if (loading || redirecting) {
       return;
     }
 
@@ -42,15 +58,29 @@ export default function AuthGate({ children }) {
       return; // accessible to everyone, no redirect
     }
 
-    if (!isLoggedIn && !isPublicRoute) {
-      router.replace('/login');
-      return;
+    // Prevent rapid redirects that cause TWA to close/refresh
+    const shouldRedirect = (!isLoggedIn && !isPublicRoute) || (isLoggedIn && isPublicRoute);
+    
+    if (shouldRedirect) {
+      setRedirecting(true);
+      
+      // Small delay to prevent rapid navigation loops
+      redirectTimeoutRef.current = setTimeout(() => {
+        if (!isLoggedIn && !isPublicRoute) {
+          router.replace('/login');
+        } else if (isLoggedIn && isPublicRoute) {
+          router.replace('/');
+        }
+        setRedirecting(false);
+      }, 300);
     }
 
-    if (isLoggedIn && isPublicRoute) {
-      router.replace('/');
-    }
-  }, [isLoggedIn, loading, pathname, router]);
+    return () => {
+      if (redirectTimeoutRef.current) {
+        clearTimeout(redirectTimeoutRef.current);
+      }
+    };
+  }, [isLoggedIn, loading, pathname, router, redirecting]);
 
   if (loading) {
     return <AppSplash message="Loading your session..." />;
