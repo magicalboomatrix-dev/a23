@@ -1444,6 +1444,48 @@ exports.getFinancialReport = async (req, res, next) => {
       };
     });
 
+    // ===================== ADMIN DIRECT (UNASSIGNED USERS) BREAKDOWN =====================
+
+    // Get stats for users not assigned to any moderator (direct admin users)
+    const [[adminDirectUserCount]] = await pool.query(
+      `SELECT COUNT(*) as count FROM users WHERE role = 'user' AND moderator_id IS NULL AND is_blocked = 0 AND COALESCE(is_deleted, 0) = 0`,
+    );
+
+    const [[adminDirectBetStats]] = await pool.query(
+      `SELECT COUNT(*) as count,
+        COALESCE(SUM(b.total_amount), 0) as total_stake,
+        COALESCE(SUM(b.win_amount), 0) as total_win,
+        COALESCE(SUM(CASE WHEN b.status = 'loss' THEN b.total_amount ELSE 0 END), 0) as retained_stake
+       FROM bets b
+       JOIN users u ON u.id = b.user_id
+       WHERE u.moderator_id IS NULL${betDate.clause}${gameFilter}`,
+      [...betDate.params, ...gameParams]
+    );
+
+    const adminDirectEntry = {
+      moderator_id: 'admin',
+      moderator_name: 'Admin (Unassigned Users)',
+      upi_id: 'N/A',
+      user_count: adminDirectUserCount.count || 0,
+      total_deposits: Number(adminDirectDeposits.count || 0),
+      total_deposit_amount: Number(adminDirectDeposits.total || 0),
+      total_withdrawals: Number(adminDirectWithdrawals.count || 0),
+      total_withdrawal_amount: Number(adminDirectWithdrawals.total || 0),
+      total_bonuses_given: Number(adminDirectBonus.count || 0),
+      total_bonus_amount: Number(adminDirectBonus.total || 0),
+      total_bets: Number(adminDirectBetStats.count || 0),
+      total_stake: Number(adminDirectBetStats.total_stake || 0),
+      total_win: Number(adminDirectBetStats.total_win || 0),
+      retained_stake: Number(adminDirectBetStats.retained_stake || 0),
+      gaming_profit_loss: Number(adminDirectBetStats.retained_stake || 0) - Number(adminDirectBetStats.total_win || 0),
+      net_profit_loss: Number(adminDirectDeposits.total || 0) - Number(adminDirectWithdrawals.total || 0) - Number(adminDirectBonus.total || 0) - Number(adminDirectBetStats.total_win || 0) + Number(adminDirectBetStats.retained_stake || 0),
+      cash_in: Number(adminDirectDeposits.total || 0),
+      cash_out: Number(adminDirectWithdrawals.total || 0) + Number(adminDirectBonus.total || 0) + Number(adminDirectBetStats.total_win || 0) - Number(adminDirectBetStats.retained_stake || 0),
+    };
+
+    // Add admin entry to the beginning of the array
+    moderatorsWithProfit.unshift(adminDirectEntry);
+
     // ===================== PLATFORM CALCULATIONS =====================
 
     const totalDeposits = Number(platformDeposits.total || 0);

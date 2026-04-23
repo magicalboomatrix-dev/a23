@@ -355,9 +355,13 @@ export default function FinancialReport() {
             {moderatorStats.map((mod) => (
               <tr key={mod.moderator_id} className="hover:bg-gray-50">
                 <td className="px-4 py-3">
-                  <Link to={`/moderators/${mod.moderator_id}`} className="text-blue-600 hover:underline font-medium">
-                    {mod.moderator_name}
-                  </Link>
+                  {mod.moderator_id === 'admin' ? (
+                    <span className="font-medium text-gray-800">{mod.moderator_name}</span>
+                  ) : (
+                    <Link to={`/moderators/${mod.moderator_id}`} className="text-blue-600 hover:underline font-medium">
+                      {mod.moderator_name}
+                    </Link>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-center">{mod.user_count || 0}</td>
                 <td className="px-4 py-3 text-right">{mod.total_deposits || 0}</td>
