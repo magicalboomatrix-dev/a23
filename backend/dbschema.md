@@ -1,4 +1,3 @@
- 
 # Database Schema
 
 ## admin_activity_logs
