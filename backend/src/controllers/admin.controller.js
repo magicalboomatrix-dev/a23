@@ -1216,3 +1216,129 @@ exports.listReferrals = async (req, res, next) => {
     next(error);
   }
 };
+
+exports.getFinancialReport = async (req, res, next) => {
+  try {
+    const { from_date, to_date, game_id, moderator_id } = req.query;
+
+    // Date filter clause builder
+    const buildDateFilter = (tableAlias) => {
+      let clause = '';
+      const params = [];
+      if (from_date) {
+        clause += ` AND DATE(${tableAlias}.created_at) >= ?`;
+        params.push(from_date);
+      }
+      if (to_date) {
+        clause += ` AND DATE(${tableAlias}.created_at) <= ?`;
+        params.push(to_date);
+      }
+      return { clause, params };
+    };
+
+    // Build filters
+    const depositDate = buildDateFilter('d');
+    const withdrawalDate = buildDateFilter('wr');
+    const betDate = buildDateFilter('b');
+    const bonusDate = buildDateFilter('bo');
+
+    // Moderator filter
+    let moderatorFilter = '';
+    const moderatorParams = [];
+    if (moderator_id) {
+      moderatorFilter = ' AND u.moderator_id = ?';
+      moderatorParams.push(moderator_id);
+    }
+
+    // Game filter
+    let gameFilter = '';
+    const gameParams = [];
+    if (game_id) {
+      gameFilter = ' AND b.game_id = ?';
+      gameParams.push(game_id);
+    }
+
+    // Platform totals
+    const [[platformDeposits]] = await pool.query(
+      `SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as total
+       FROM deposits d
+       JOIN users u ON u.id = d.user_id
+       WHERE d.status = 'completed'${depositDate.clause}${moderatorFilter}`,
+      [...depositDate.params, ...moderatorParams]
+    );
+
+    const [[platformWithdrawals]] = await pool.query(
+      `SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as total
+       FROM withdraw_requests wr
+       JOIN users u ON u.id = wr.user_id
+       WHERE wr.status = 'approved'${withdrawalDate.clause}${moderatorFilter}`,
+      [...withdrawalDate.params, ...moderatorParams]
+    );
+
+    const [[platformBonusCredited]] = await pool.query(
+      `SELECT COALESCE(SUM(amount), 0) as total
+       FROM bonuses bo
+       JOIN users u ON u.id = bo.user_id
+       WHERE 1=1${bonusDate.clause}${moderatorFilter}`,
+      [...bonusDate.params, ...moderatorParams]
+    );
+
+    const [[platformBonusUsed]] = await pool.query(
+      `SELECT COALESCE(SUM(amount), 0) as total
+       FROM wallet_transactions wt
+       JOIN users u ON u.id = wt.user_id
+       WHERE wt.reference_type = 'bet_bonus'${betDate.clause}${moderatorFilter}`,
+      [...betDate.params, ...moderatorParams]
+    );
+
+    const [[platformBets]] = await pool.query(
+      `SELECT COUNT(*) as count, COALESCE(SUM(b.total_amount), 0) as total_stake, COALESCE(SUM(b.win_amount), 0) as total_win
+       FROM bets b
+       JOIN users u ON u.id = b.user_id
+       WHERE 1=1${betDate.clause}${gameFilter}${moderatorFilter}`,
+      [...betDate.params, ...gameParams, ...moderatorParams]
+    );
+
+    // Per-moderator breakdown
+    const [moderatorStats] = await pool.query(
+      `SELECT 
+        m.id as moderator_id,
+        m.name as moderator_name,
+        (SELECT COUNT(*) FROM users WHERE role = 'user' AND moderator_id = m.id) as user_count,
+        COALESCE((SELECT COUNT(*) FROM deposits d JOIN users u ON u.id = d.user_id WHERE d.status = 'completed' AND u.moderator_id = m.id${depositDate.clause}), 0) as total_deposits,
+        COALESCE((SELECT SUM(d.amount) FROM deposits d JOIN users u ON u.id = d.user_id WHERE d.status = 'completed' AND u.moderator_id = m.id${depositDate.clause}), 0) as total_deposit_amount,
+        COALESCE((SELECT COUNT(*) FROM withdraw_requests wr JOIN users u ON u.id = wr.user_id WHERE wr.status = 'approved' AND u.moderator_id = m.id${withdrawalDate.clause}), 0) as total_withdrawals,
+        COALESCE((SELECT SUM(wr.amount) FROM withdraw_requests wr JOIN users u ON u.id = wr.user_id WHERE wr.status = 'approved' AND u.moderator_id = m.id${withdrawalDate.clause}), 0) as total_withdrawal_amount,
+        COALESCE((SELECT COUNT(*) FROM bets b JOIN users u ON u.id = b.user_id WHERE u.moderator_id = m.id${betDate.clause}${gameFilter}), 0) as total_bets,
+        COALESCE((SELECT SUM(b.total_amount) FROM bets b JOIN users u ON u.id = b.user_id WHERE u.moderator_id = m.id${betDate.clause}${gameFilter}), 0) as total_stake,
+        COALESCE((SELECT SUM(b.win_amount) FROM bets b JOIN users u ON u.id = b.user_id WHERE u.moderator_id = m.id${betDate.clause}${gameFilter}), 0) as total_win
+       FROM users m
+       WHERE m.role = 'moderator' AND m.is_deleted = 0
+       ORDER BY total_deposit_amount DESC`,
+      [...depositDate.params, ...depositDate.params, ...withdrawalDate.params, ...withdrawalDate.params, ...betDate.params, ...gameParams, ...betDate.params, ...gameParams, ...betDate.params, ...gameParams]
+    );
+
+    // Calculate net profit/loss for each moderator
+    const moderatorsWithProfit = moderatorStats.map((mod) => ({
+      ...mod,
+      net_profit_loss: Number(mod.total_stake || 0) - Number(mod.total_win || 0),
+    }));
+
+    const platform = {
+      totalDeposits: Number(platformDeposits.count || 0),
+      totalDepositAmount: Number(platformDeposits.total || 0),
+      totalWithdrawals: Number(platformWithdrawals.count || 0),
+      totalWithdrawalAmount: Number(platformWithdrawals.total || 0),
+      bonusCredited: Number(platformBonusCredited.total || 0),
+      bonusUsed: Number(platformBonusUsed.total || 0),
+      totalBets: Number(platformBets.count || 0),
+      totalStake: Number(platformBets.total_stake || 0),
+      totalWin: Number(platformBets.total_win || 0),
+      netProfitLoss: Number(platformBets.total_stake || 0) - Number(platformBets.total_win || 0),
+    };
+
+    res.json({ platform, moderators: moderatorsWithProfit });
+  } catch (error) {
+    next(error);
+  }
+};

@@ -20,6 +20,7 @@ const navItems = [
   { path: '/settlement-monitor', label: 'Settlement Monitor', icon: '⚙️' },
   { path: '/wallet-transactions', label: 'Wallet Transactions', icon: '🔍' },
   { path: '/bonus-transactions', label: 'Bonus Transactions', icon: '🎁' },
+  { path: '/financial-report', label: 'Financial Report', icon: '📈' },
   { path: '/custom-ads', label: 'Custom Ads', icon: '📢' },
   { path: '/settings', label: 'Settings', icon: '🛠️' },
   { path: '/my-scanner', label: 'My UPI / Scanner', icon: '📲' },
@@ -28,7 +29,7 @@ const navItems = [
   { path: '/support', label: 'Support', icon: '🎫' },
 ];
 
-const MODERATOR_HIDDEN_LABELS = new Set(['Moderators', 'Games', 'Results', 'Settings', 'Fraud Alerts', 'UPI Management', 'Settlement Monitor', 'Wallet Transactions', 'Bonus Transactions', 'Wallet Audit', 'Custom Ads', 'How To Play', 'Referrals']);
+const MODERATOR_HIDDEN_LABELS = new Set(['Moderators', 'Games', 'Results', 'Settings', 'Fraud Alerts', 'UPI Management', 'Settlement Monitor', 'Wallet Transactions', 'Bonus Transactions', 'Financial Report', 'Wallet Audit', 'Custom Ads', 'How To Play', 'Referrals']);
 const ADMIN_HIDDEN_LABELS = new Set(['My UPI / Scanner']);
 
 function isNavItemActive(locationPathname, itemPath) {

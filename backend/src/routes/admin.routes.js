@@ -27,5 +27,6 @@ router.put('/bonus-rates', authenticate, authorize('admin'), adminActivity('upda
 router.get('/upi-management', authenticate, authorize('admin'), adminController.getUpiManagement);
 router.put('/upi-management/admin-upi', authenticate, authorize('admin'), adminActivity('update_admin_upi', 'settings'), adminController.updateAdminUpi);
 router.get('/referrals', authenticate, authorize('admin'), adminController.listReferrals);
+router.get('/financial-report', authenticate, authorize('admin'), adminController.getFinancialReport);
 
 module.exports = router;

@@ -135,7 +135,7 @@ function MobileTable({ headers, children, emptyMessage = "No data available" }) 
   return (
     <div className="overflow-x-auto -mx-3 sm:-mx-6">
       <div className="inline-block min-w-full align-middle">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm" style={{ marginLeft: '20px' }}  >
           <thead className="bg-gray-50 sticky top-0 z-10">
             <tr>
               {headers.map((header, i) => (

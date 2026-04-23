@@ -22,6 +22,7 @@ import UpiManagement from './pages/UpiManagement';
 import SettlementMonitor from './pages/SettlementMonitor';
 import WalletTransactions from './pages/WalletTransactions';
 import BonusTransactions from './pages/BonusTransactions';
+import FinancialReport from './pages/FinancialReport';
 import MyScanner from './pages/MyScanner';
 import HowToPlay from './pages/HowToPlay';
 import Referrals from './pages/Referrals';
@@ -47,6 +48,7 @@ const APP_ROUTES = [
   { path: 'custom-ads', element: <CustomAds /> },
   { path: 'settlement-monitor', element: <SettlementMonitor /> },
   { path: 'wallet-transactions', element: <WalletTransactions /> },
+  { path: 'financial-report', element: <FinancialReport /> },
   { path: 'bonus-transactions', element: <BonusTransactions /> },
   { path: 'wallet-audit', element: <Navigate to="/wallet-transactions" replace /> },
   { path: 'my-scanner', element: <MyScanner /> },
