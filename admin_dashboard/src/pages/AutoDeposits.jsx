@@ -594,12 +594,12 @@ export default function AutoDeposits() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-dark-200 overflow-x-auto whitespace-nowrap scrollbar-none">
+      <div className="flex flex-wrap gap-1 border-b border-dark-200">
         {tabs.map((t) => (
           <button
             key={t.key}
             onClick={() => selectTab(t.key)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            className={`px-3 py-2 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
               tab === t.key ? 'border-primary-500 text-primary-600' : 'border-transparent text-dark-500 hover:text-dark-700'
             }`}
           >
