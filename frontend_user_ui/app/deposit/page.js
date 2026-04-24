@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation'
 import QRCode from 'react-qr-code'
 import DepositWithdrawBtns from '../components/DepositWithdrawBtns'
 import { autoDepositAPI, userAPI } from '../lib/api'
+import { useTranslation } from '../lib/LanguageContext'
+import { translations } from '../lib/translations'
 
 function getOrderStatusClasses(status) {
   switch (status) {
@@ -52,6 +54,7 @@ function buildPaymentDetails(order) {
 
 const DepositPage = () => {
   const router = useRouter();
+  const { t } = useTranslation();
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -313,7 +316,7 @@ const DepositPage = () => {
     <div>
       <header className="sticky top-0 z-40 mx-auto flex w-full max-w-107.5 items-center bg-white px-4 py-3 shadow-sm">
         <a href="/home" className="mr-3 inline-flex"><img alt="back" src="/images/back-btn.png" className="h-5 w-5" /></a>
-        <h3 className="flex-1 text-center text-sm font-semibold text-[#111]">Deposit</h3>
+        <h3 className="flex-1 text-center text-sm font-semibold text-[#111]">{t(translations.deposit.title)}</h3>
       </header>
 
       <div className="bg-white pb-6">
@@ -329,7 +332,7 @@ const DepositPage = () => {
             {activeOrder && paymentDetails ? (
               <div className="mt-2">
                 <div className="mb-3 border border-[#fdba74] bg-[#fff7ed] p-3.5">
-                  <div className="mb-2 text-sm font-bold text-[#9a3412]">Complete Your Payment</div>
+                  <div className="mb-2 text-sm font-bold text-[#9a3412]">{t(translations.deposit.title)}</div>
 
                   {paymentDetails.order_ref && (
                     <div className="mb-2 rounded bg-[#fef3c7] border border-[#fcd34d] p-2 text-center">
@@ -369,7 +372,7 @@ const DepositPage = () => {
                       )}
                     </div>
                   </div>
-                  <p className="text-center text-[10px] text-[#9a3412] mb-2">Scan this on-screen QR with any UPI app while the timer is active</p>
+                  <p className="text-center text-[10px] text-[#9a3412] mb-2">स्कैन करें इस ऑन-स्क्रीन क्यूआर को किसी भी यूपीआई ऐप के साथ जबकि टाइमर सक्रिय है</p>
 
                   <button
                     type="button"
@@ -377,11 +380,11 @@ const DepositPage = () => {
                     className="mt-2 flex w-full items-center justify-center gap-2 rounded bg-[#f97316] py-2.5 text-sm font-bold text-white"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
-                    Download QR
+                    {t(translations.common.download)}
                   </button>
 
                   <p className="mt-2 text-center text-[10px] text-[#9a3412]">
-                    Downloaded QR copies use the same direct UPI payment details shown on screen.
+                    डाउनलोड किए गए क्यूआर कॉपी स्क्रीन पर दिखाए गए समान सीधे यूपीआई भुगतान विवरण का उपयोग करते हैं।
                   </p>
 
                   <div className="mt-3 flex items-center justify-between">
@@ -435,19 +438,19 @@ const DepositPage = () => {
                   onClick={handleCancel}
                   className="mt-3 h-10 w-full border border-[#d1d5db] bg-white text-xs font-semibold text-[#6b7280] hover:bg-[#f9fafb]"
                 >
-                  Cancel Order
+                  {t(translations.common.cancel)}
                 </button>
               </div>
             ) : (
               /* Amount input form */
               <div className="mt-4">
                 <form onSubmit={handleCreateOrder}>
-                  <label className="mb-1 block text-sm"><b>Amount</b></label>
+                  <label className="mb-1 block text-sm"><b>{t(translations.deposit.enterAmount)}</b></label>
                   <div>
                     <input
                       className="h-11 w-full border border-[#d8d1c4] bg-[#faf7f0] px-4 text-sm"
                       type="number"
-                      placeholder={`Enter amount (min ₹${depositLimits.min})`}
+                      placeholder={`${t(translations.deposit.minDeposit)} ₹${depositLimits.min}`}
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
                       min={depositLimits.min}
@@ -459,7 +462,7 @@ const DepositPage = () => {
                     type="submit"
                     disabled={loading}
                   >
-                    {loading ? 'Creating...' : 'Deposit'}
+                    {loading ? t(translations.common.loading) : t(translations.deposit.title)}
                   </button>
                 </form>
               </div>
@@ -506,7 +509,7 @@ const DepositPage = () => {
                     <td className="border-b px-3 py-2">{order.created_at ? new Date(order.created_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
                   </tr>
                 ))}
-                {orderHistory.length === 0 && <tr><td className="px-3 py-6 text-center" colSpan="5">No deposit orders yet</td></tr>}
+                {orderHistory.length === 0 && <tr><td className="px-3 py-6 text-center" colSpan="5">{t(translations.accountStatement.noTransactions)}</td></tr>}
               </tbody>
             </table>
           </div>

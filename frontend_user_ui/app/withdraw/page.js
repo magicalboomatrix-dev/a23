@@ -7,15 +7,18 @@ import SkeletonBlock from '../components/SkeletonBlock'
 import Toast from '../components/Toast'
 import { userAPI, walletAPI, withdrawAPI } from '../lib/api'
 import { formatStatusLabel } from '../lib/formatters'
+import { useTranslation } from '../lib/LanguageContext'
+import { translations } from '../lib/translations'
 
-const METHODS = [
-  { key: 'bank', label: 'Bank Account' },
+const getMethods = (t) => [
+  { key: 'bank', label: t(translations.bankAccounts.title) },
   { key: 'upi', label: 'UPI ID' },
   { key: 'phone', label: 'Phone / UPI Number' },
 ]
 
 const WithDrawPage = () => {
   const router = useRouter()
+  const { t } = useTranslation()
   const [bankAccounts, setBankAccounts] = useState([])
   const [history, setHistory] = useState([])
   const [selectedAccountId, setSelectedAccountId] = useState('')
@@ -205,7 +208,7 @@ const WithDrawPage = () => {
 
       <header className="sticky top-0 z-40 mx-auto flex w-full max-w-107.5 items-center bg-white px-4 py-3 shadow-sm">
         <a href="/home" className="mr-3 inline-flex"><img alt="back" src="/images/back-btn.png" className="h-5 w-5" /></a>
-        <h3 className="flex-1 text-center text-sm font-semibold text-[#111]">Withdraw</h3>
+        <h3 className="flex-1 text-center text-sm font-semibold text-[#111]">{t(translations.withdraw.title)}</h3>
       </header>
 
       <div className="bg-white pb-6">
@@ -232,14 +235,14 @@ const WithDrawPage = () => {
             ) : (
               <form onSubmit={handleWithdraw} className="space-y-3">
                 <div className="rounded border border-[#ead8ab] bg-[#f7f0e3] px-3 py-2 text-sm font-medium text-[#3f2b03]">
-                  Withdrawable Amount: ₹{withdrawableAmount.toFixed(2)}
+                  {t(translations.wallet.totalBalance)}: ₹{withdrawableAmount.toFixed(2)}
                 </div>
 
                 <p className="text-xs text-[#6b5a3a]">Only main wallet balance is withdrawable. Bonus wallet balance cannot be withdrawn directly.</p>
 
                 {/* Withdrawal Method Tabs */}
                 <div className="flex border border-[#d8d1c4] overflow-hidden">
-                  {METHODS.map((m) => (
+                  {getMethods(t).map((m) => (
                     <button
                       key={m.key}
                       type="button"
@@ -260,7 +263,7 @@ const WithDrawPage = () => {
                   type="number"
                   min="1"
                   step="0.01"
-                  placeholder="Withdrawal Amount"
+                  placeholder={t(translations.withdraw.enterAmount)}
                   value={amount}
                   onChange={(event) => setAmount(event.target.value)}
                   required
@@ -324,21 +327,21 @@ const WithDrawPage = () => {
                   type="submit"
                   disabled={submitting || (withdrawMethod === 'bank' && bankAccounts.length === 0)}
                 >
-                  {submitting ? 'Submitting...' : 'Submit Withdrawal Request'}
+                  {submitting ? t(translations.common.loading) : t(translations.withdraw.requestWithdraw)}
                 </button>
               </form>
             )}
 
             {!loadingData && withdrawMethod === 'bank' && bankAccounts.length === 0 && (
-              <p className="pt-2.5 text-center text-sm text-[#666]">No bank accounts added yet.</p>
+              <p className="pt-2.5 text-center text-sm text-[#666]">{t(translations.bankAccounts.noAccounts)}</p>
             )}
 
             <div className="mt-3 flex gap-2">
               <Link className="inline-flex flex-1 border border-[#d8d1c4] items-center justify-center gap-2 bg-[#ffffff] px-4 py-3 text-sm font-semibold text-[#111]" href="/bind-bank-card">
-                <img alt="Add Bank" className="h-4 w-4" src="/images/addicon.png" /> Add Bank Account
+                <img alt="Add Bank" className="h-4 w-4" src="/images/addicon.png" /> {t(translations.bankAccounts.addAccount)}
               </Link>
               <Link className="inline-flex flex-1 items-center justify-center border border-[#d8d1c4] bg-white px-4 py-3 text-sm font-semibold text-[#111]" href="/bank-accounts">
-                Manage Accounts
+                {t(translations.common.manage)}
               </Link>
             </div>
           </section>
@@ -405,7 +408,7 @@ const WithDrawPage = () => {
                   </div>
                 )
               })}
-              {history.length === 0 && <p className="py-6 text-center text-sm text-[#6b5a3a]">No withdrawals yet</p>}
+              {history.length === 0 && <p className="py-6 text-center text-sm text-[#6b5a3a]">{t(translations.wallet.pendingWithdrawals)}</p>}
             </div>
           </div>
         </div>
