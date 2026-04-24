@@ -29,7 +29,6 @@ export const metadata = {
 export const viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
   viewportFit: "cover",
   themeColor: "#111111",
 };
@@ -59,7 +58,7 @@ export default async function RootLayout({ children }) {
         <LanguageProvider>
           <AuthProvider>
             <PWAHandler />
-            <div className="relative flex w-full max-w-[430px] flex-col overflow-x-hidden overflow-y-auto bg-white" style={{ touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' }}>
+            <div className="relative flex w-full max-w-[430px] flex-col overflow-x-hidden overflow-y-auto bg-white">
               <AuthGate>
                 {children}
                 <Footer />
