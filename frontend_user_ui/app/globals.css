@@ -18,14 +18,14 @@ body {
   }
   
   body {
-    /* Prevent pull-to-refresh */
-    overscroll-behavior-y: none;
+    /* Prevent pull-to-refresh but allow scrolling */
+    overscroll-behavior-y: contain;
   }
 }
 
 /* Force standalone look in TWA */
 body.standalone-mode {
-  overscroll-behavior-y: none;
+  overscroll-behavior-y: contain;
 }
 
 html {
