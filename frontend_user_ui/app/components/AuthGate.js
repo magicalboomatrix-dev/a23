@@ -45,9 +45,10 @@ export default function AuthGate({ children }) {
   const { isLoggedIn, loading } = useAuth();
   const [redirecting, setRedirecting] = useState(false);
   const redirectTimeoutRef = useRef(null);
+  const hasScheduledRef = useRef(false);
 
   useEffect(() => {
-    if (loading || redirecting) {
+    if (loading) {
       return;
     }
 
@@ -60,10 +61,11 @@ export default function AuthGate({ children }) {
 
     // Prevent rapid redirects that cause TWA to close/refresh
     const shouldRedirect = (!isLoggedIn && !isPublicRoute) || (isLoggedIn && isPublicRoute);
-    
-    if (shouldRedirect) {
+
+    if (shouldRedirect && !hasScheduledRef.current) {
+      hasScheduledRef.current = true;
       setRedirecting(true);
-      
+
       // Small delay to prevent rapid navigation loops
       redirectTimeoutRef.current = setTimeout(() => {
         if (!isLoggedIn && !isPublicRoute) {
@@ -72,15 +74,17 @@ export default function AuthGate({ children }) {
           router.replace('/');
         }
         setRedirecting(false);
+        hasScheduledRef.current = false;
       }, 300);
     }
 
     return () => {
       if (redirectTimeoutRef.current) {
         clearTimeout(redirectTimeoutRef.current);
+        redirectTimeoutRef.current = null;
       }
     };
-  }, [isLoggedIn, loading, pathname, router, redirecting]);
+  }, [isLoggedIn, loading, pathname, router]);
 
   if (loading) {
     return <AppSplash message="Loading your session..." />;
