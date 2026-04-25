@@ -24,25 +24,34 @@ async function request(endpoint, options = {}) {
   // Authentication is handled exclusively via the HttpOnly `token` cookie
   // sent automatically by credentials:'include'. No localStorage token read.
 
-  const res = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers,
-    credentials: 'include', // always send HttpOnly cookie
-  });
+  try {
+    const res = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers,
+      credentials: 'include', // always send HttpOnly cookie
+    });
 
-  const data = await res.json();
+    const data = await res.json();
 
-  if (!res.ok) {
-    if (res.status === 401) {
-      localStorage.removeItem('user');
-      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
-        window.location.href = '/login';
+    if (!res.ok) {
+      if (res.status === 401) {
+        localStorage.removeItem('user');
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+          window.location.href = '/login';
+        }
       }
+      throw new Error(data.error || 'Request failed');
     }
-    throw new Error(data.error || 'Request failed');
-  }
 
-  return data;
+    return data;
+  } catch (error) {
+    // Handle network/fetch errors gracefully
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      throw new Error('Unable to connect to server. Please check your internet connection.');
+    }
+    // Re-throw other errors (like the ones we created above)
+    throw error;
+  }
 }
 
 // Auth

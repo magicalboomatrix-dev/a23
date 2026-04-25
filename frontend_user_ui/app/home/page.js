@@ -172,10 +172,7 @@ const HomePage = () => {
       }
     } catch (error) {
       if (!isMounted.current) return;
-      setToast({
-        message: error?.message || "Failed to load games.",
-        type: "error",
-      });
+      console.error('[home] Failed to load games:', error);
       setGames([]);
     } finally {
       if (isMounted.current) setGamesLoading(false);
@@ -191,10 +188,7 @@ const HomePage = () => {
       setLiveResults(Array.isArray(data?.results) ? data.results : []);
     } catch (error) {
       if (!isMounted.current) return;
-      setToast({
-        message: error?.message || "Failed to load live results.",
-        type: "error",
-      });
+      console.error('[home] Failed to load live results:', error);
       setLiveResults([]);
     } finally {
       if (isMounted.current) setResultsLoading(false);
@@ -211,10 +205,7 @@ const HomePage = () => {
         setMonthlyData(response || {});
       } catch (error) {
         if (!isMounted.current) return;
-        setToast({
-          message: error?.message || "Failed to load monthly chart.",
-          type: "error",
-        });
+        console.error('[home] Failed to load monthly chart:', error);
         setMonthlyData({});
       } finally {
         if (isMounted.current) setChartLoading(false);
@@ -232,11 +223,8 @@ const HomePage = () => {
       setRecentWinners(Array.isArray(data?.winners) ? data.winners : []);
     } catch (error) {
       if (!isMounted.current) return;
+      console.error('[home] Failed to load recent winners:', error);
       setRecentWinners([]);
-      setToast({
-        message: error?.message || "Failed to load recent winners.",
-        type: "error",
-      });
     } finally {
       if (isMounted.current) setWinnersLoading(false);
     }
