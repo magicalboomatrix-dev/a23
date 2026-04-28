@@ -26,6 +26,32 @@ exports.listGames = async (req, res, next) => {
       ORDER BY g.open_time
     `);
 
+    // Fetch pending bets grouped by session date for each game
+    const gameIds = games.map(g => g.id);
+    let pendingByDate = [];
+    if (gameIds.length > 0) {
+      const [rows] = await pool.query(`
+        SELECT game_id, session_date, COUNT(*) as count
+        FROM bets
+        WHERE status = 'pending' AND game_id IN (?)
+        GROUP BY game_id, session_date
+        ORDER BY session_date DESC
+      `, [gameIds]);
+      pendingByDate = rows;
+    }
+
+    // Group pending bets by game_id
+    const pendingByGame = {};
+    for (const row of pendingByDate) {
+      if (!pendingByGame[row.game_id]) {
+        pendingByGame[row.game_id] = [];
+      }
+      pendingByGame[row.game_id].push({
+        session_date: row.session_date,
+        count: row.count
+      });
+    }
+
     const now = new Date();
 
     // For each game, compute the current session's result_date (= close date).
@@ -101,6 +127,9 @@ exports.listGames = async (req, res, next) => {
       g.is_last_result_settled = lastResult ? !!lastResult.is_settled : null;
 
       g.is_overnight = isOvernightGame(g);
+
+      // Add pending bets grouped by session date
+      g.pending_by_date = pendingByGame[g.id] || [];
     }
 
     res.json({ games, server_now: new Date().toISOString() });
@@ -437,5 +466,56 @@ exports.settleBets = async (req, res, next) => {
     next(error);
   } finally {
     conn.release();
+  }
+};
+
+// Get pending bets for a game, optionally filtered by session date
+exports.getPendingBets = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { session_date } = req.query;
+
+    const [games] = await pool.query('SELECT * FROM games WHERE id = ?', [id]);
+    if (games.length === 0) {
+      return res.status(404).json({ error: 'Game not found.' });
+    }
+
+    let query = `
+      SELECT b.id, b.user_id, b.type, b.total_amount, b.session_date, b.created_at,
+             u.name as user_name, u.phone as user_phone,
+             GROUP_CONCAT(CONCAT(bn.number, ':', bn.amount) SEPARATOR ', ') as numbers
+      FROM bets b
+      JOIN users u ON u.id = b.user_id
+      LEFT JOIN bet_numbers bn ON bn.bet_id = b.id
+      WHERE b.game_id = ? AND b.status = 'pending'
+    `;
+    const params = [id];
+
+    if (session_date) {
+      query += ' AND b.session_date = ?';
+      params.push(session_date);
+    }
+
+    query += ' GROUP BY b.id ORDER BY b.session_date DESC, b.created_at DESC';
+
+    const [bets] = await pool.query(query, params);
+
+    // Also get summary by date
+    const [summary] = await pool.query(`
+      SELECT session_date, COUNT(*) as count, SUM(total_amount) as total_amount
+      FROM bets
+      WHERE game_id = ? AND status = 'pending'
+      GROUP BY session_date
+      ORDER BY session_date DESC
+    `, [id]);
+
+    res.json({
+      game: games[0],
+      bets,
+      summary,
+      filtered_by_date: session_date || null
+    });
+  } catch (error) {
+    next(error);
   }
 };
