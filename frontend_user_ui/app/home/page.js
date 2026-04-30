@@ -65,6 +65,14 @@ function getGameWindow(timeOpen, timeClose, referenceDate = new Date()) {
 }
 
 function getGameAvailability(game, referenceDate = new Date()) {
+  // Check if game is disabled
+  if (game.is_active === 0 || game.is_active === false) {
+    return {
+      canPlay: false,
+      label: "game_closed",
+    };
+  }
+
   const { openTime, closeTime } = getGameWindow(
     game.open_time,
     game.close_time,
@@ -487,7 +495,7 @@ const HomePage = () => {
                   const availability = getGameAvailability(game, new Date(Date.now() + serverOffsetMs));
                   return (
                     <div
-                      className="border border-[#efe1c6] bg-[#fffdfa] p-2"
+                      className={`border border-[#efe1c6] bg-[#fffdfa] p-2 ${game.is_active === 0 || game.is_active === false ? 'opacity-60' : ''}`}
                       key={game.id}
                     >
                       <div className="flex items-start gap-3">
@@ -558,7 +566,9 @@ const HomePage = () => {
                                   ? `${t(translations.home.opensAt)} ${availability.openTime}`
                                   : availability.label === 'closed'
                                     ? t(translations.home.closed)
-                                    : availability.label
+                                    : availability.label === 'game_closed'
+                                      ? 'GAME CLOSED'
+                                      : availability.label
                                 }
                               </span>
                             </div>

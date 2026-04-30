@@ -88,6 +88,7 @@ function GamePageInner() {
   const [gameInfo, setGameInfo] = useState(null)
   const [countdown, setCountdown] = useState('00:00')
   const [bettingClosed, setBettingClosed] = useState(false)
+  const [gameDisabled, setGameDisabled] = useState(false)
   const [serverOffsetMs, setServerOffsetMs] = useState(0)
   // Removed favorites state and related logic
 
@@ -100,7 +101,9 @@ function GamePageInner() {
       try {
         const response = await gameAPI.getInfo(gameId)
         if (cancelled) return
-        setGameInfo(response.game || null)
+        const game = response.game || null
+        setGameInfo(game)
+        setGameDisabled(game && game.is_active !== 1 && game.is_active !== true)
         if (response.server_now) {
           setServerOffsetMs(new Date(response.server_now).getTime() - Date.now())
         }
@@ -339,6 +342,10 @@ function GamePageInner() {
       setError('Betting Closed');
       return;
     }
+    if (gameDisabled) {
+      setError('Game Closed');
+      return;
+    }
     setError('');
     setSuccess('');
     const totalAmount = getTotal();
@@ -413,9 +420,11 @@ function GamePageInner() {
         {success && <div className="mt-2 text-center text-sm font-semibold text-[#15803d]">{success}</div>}
 
         <div className="mt-2 border border-[#eadcc0] bg-white p-3 text-center shadow-[0_10px_20px_rgba(15,23,42,0.08)]">
-          <div className="text-[11px] font-black uppercase tracking-[0.14em] text-[#6b5a3a]">Game closes in</div>
-          <div className={`mt-1 text-xl font-black ${bettingClosed ? 'text-[#b91c1c]' : 'text-[#111]'}`}>
-            {bettingClosed ? 'Betting Closed' : countdown}
+          <div className="text-[11px] font-black uppercase tracking-[0.14em] text-[#6b5a3a]">
+            {gameDisabled ? 'Status' : 'Game closes in'}
+          </div>
+          <div className={`mt-1 text-xl font-black ${bettingClosed || gameDisabled ? 'text-[#b91c1c]' : 'text-[#111]'}`}>
+            {gameDisabled ? 'Game Closed' : (bettingClosed ? 'Betting Closed' : countdown)}
           </div>
         </div>
 
@@ -445,7 +454,7 @@ function GamePageInner() {
             {/* Removed favorites UI */}
             <div className="grid grid-cols-5 gap-1 p-2 sm:gap-2 sm:p-3">
                 {jodiNumbers.map((num) => (
-                  <div key={num} className={`${cardBoxClass(Boolean(savedAmounts[num]))} ${bettingClosed ? 'opacity-60 cursor-not-allowed' : ''}`} onClick={() => openPopup(num)}>
+                  <div key={num} className={`${cardBoxClass(Boolean(savedAmounts[num]))} ${bettingClosed || gameDisabled ? 'opacity-60 cursor-not-allowed' : ''}`} onClick={() => !gameDisabled && openPopup(num)}>
                     <div className="flex items-center justify-center gap-0.5">
                       <div className="text-xs font-semibold text-[#111] sm:text-sm">{num}</div>
                     </div>
@@ -459,7 +468,7 @@ function GamePageInner() {
             <div className="px-2 pt-1 text-xs font-black uppercase tracking-[0.14em] text-[#111] sm:px-3 sm:text-sm">Andar</div>
             <div className="grid grid-cols-5 gap-1 px-2 py-2 sm:gap-2 sm:px-3 sm:py-3">
                   {harufDigits.map(d => (
-                    <div key={`a${d}`} className={cardBoxClass(Boolean(harufAndar[d]))} onClick={() => openHarufPopup(d, 'andar')}>
+                    <div key={`a${d}`} className={`${cardBoxClass(Boolean(harufAndar[d]))} ${gameDisabled ? 'opacity-60 cursor-not-allowed' : ''}`} onClick={() => !gameDisabled && openHarufPopup(d, 'andar')}>
                       <span className="text-xs font-semibold sm:text-sm">{d}</span> {harufAndar[d] && <div className="mt-0.5 text-[9px] font-bold text-[#d62828] sm:text-[10px]">₹{harufAndar[d]}</div>}
                     </div>
                   ))}
@@ -467,7 +476,7 @@ function GamePageInner() {
             <div className="px-2 pt-1 text-xs font-black uppercase tracking-[0.14em] text-[#111] sm:px-3 sm:text-sm">Bahar</div>
             <div className="grid grid-cols-5 gap-1 px-2 py-2 sm:gap-2 sm:px-3 sm:py-3">
                   {harufDigits.map(d => (
-                    <div key={`b${d}`} className={cardBoxClass(Boolean(harufBahar[d]))} onClick={() => openHarufPopup(d, 'bahar')}>
+                    <div key={`b${d}`} className={`${cardBoxClass(Boolean(harufBahar[d]))} ${gameDisabled ? 'opacity-60 cursor-not-allowed' : ''}`} onClick={() => !gameDisabled && openHarufPopup(d, 'bahar')}>
                       <span className="text-xs font-semibold sm:text-sm">{d}</span> {harufBahar[d] && <div className="mt-0.5 text-[9px] font-bold text-[#d62828] sm:text-[10px]">₹{harufBahar[d]}</div>}
                     </div>
                   ))}
@@ -481,24 +490,26 @@ function GamePageInner() {
                   inputMode="numeric"
                   placeholder="Enter Numbers" 
                   value={crossDigits} 
+                  disabled={gameDisabled}
                   onChange={e => {
                     const val = e.target.value.replace(/\D/g, '').slice(0, 7);
                     setCrossDigits(val);
                   }} 
-                  className={inputClass}
+                  className={`${inputClass} disabled:opacity-50 disabled:cursor-not-allowed`}
                 />
                 <input 
                   type="text" 
                   inputMode="numeric"
                   placeholder="Amount" 
                   value={crossAmount} 
+                  disabled={gameDisabled}
                   onChange={e => handleNumericInput(e.target.value, setCrossAmount)} 
-                  className={`${inputClass} mt-3`}
+                  className={`${inputClass} mt-3 disabled:opacity-50 disabled:cursor-not-allowed`}
         
                 />
                 
                 <div className="mb-3 mt-3 flex items-center gap-2">
-                  <input type="checkbox" id="cj" checked={crossIncludeJodi} onChange={() => setCrossIncludeJodi(!crossIncludeJodi)} />
+                  <input type="checkbox" id="cj" disabled={gameDisabled} checked={crossIncludeJodi} onChange={() => setCrossIncludeJodi(!crossIncludeJodi)} />
                   <label htmlFor="cj" className="font-bold text-black">with joda</label>
                 </div>
 
@@ -528,9 +539,10 @@ function GamePageInner() {
               <textarea
                 rows={5}
                 value={messageText}
+                disabled={gameDisabled}
                 onChange={e => setMessageText(e.target.value)}
-                placeholder='...'
-                className="w-full resize-none border-2 border-[#e0e0e0] bg-white px-4 py-3 text-sm text-[#1a1a1a] outline-none transition focus:border-[#b88422]"
+                placeholder={gameDisabled ? 'Game Closed' : '...'}
+                className="w-full resize-none border-2 border-[#e0e0e0] bg-white px-4 py-3 text-sm text-[#1a1a1a] outline-none transition focus:border-[#b88422] disabled:opacity-50 disabled:cursor-not-allowed"
               />
 
               {messageError && <div className="mt-2 text-xs font-semibold text-[#b91c1c]">{messageError}</div>}
@@ -570,10 +582,10 @@ function GamePageInner() {
               <button
                 type="button"
                 onClick={addMessageBets}
-                disabled={bettingClosed || messageBets.length === 0}
+                disabled={bettingClosed || gameDisabled || messageBets.length === 0}
                 className={`${primaryButtonClass} mt-4`}
               >
-                ADD BETS
+                {gameDisabled ? 'Game Closed' : 'ADD BETS'}
               </button>
             </div>
           </div>
@@ -622,7 +634,7 @@ function GamePageInner() {
 
         <div className="fixed bottom-0 left-1/2 z-30 flex w-full max-w-107.5 -translate-x-1/2 items-center justify-between border-t border-[#eee] bg-white  shadow-[0_-10px_24px_rgba(15,23,42,0.08)]">
           <div className="bg-black px-5 py-3 font-bold text-white">Total: ₹{getTotal()}</div>
-          <button onClick={placeBet} disabled={loading || bettingClosed} className="bg-black px-7 py-3 font-bold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60">{bettingClosed ? 'Betting Closed' : (loading ? '...' : 'PLAY')}</button>
+          <button onClick={placeBet} disabled={loading || bettingClosed || gameDisabled} className="bg-black px-7 py-3 font-bold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60">{gameDisabled ? 'Game Closed' : (bettingClosed ? 'Betting Closed' : (loading ? '...' : 'PLAY'))}</button>
       </div>
     </div>
   )
