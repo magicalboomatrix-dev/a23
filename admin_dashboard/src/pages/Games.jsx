@@ -310,7 +310,7 @@ export default function Games() {
                       onClick={() => openPendingBetsModal(g, pd.session_date)}
                       className="block w-full text-left text-xs bg-orange-50 hover:bg-orange-100 px-2 py-1 rounded text-orange-700 transition-colors"
                     >
-                      {pd.session_date}: {pd.count} bet(s)
+                      {new Date(pd.session_date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}: {pd.count} bet(s)
                     </button>
                   ))}
                 </div>
@@ -371,7 +371,7 @@ export default function Games() {
                   Pending Bets - {pendingBetsModal.name}
                 </h3>
                 {pendingBetsData?.filtered_by_date && (
-                  <p className="text-sm text-gray-600">Filtered by: {pendingBetsData.filtered_by_date}</p>
+                  <p className="text-sm text-gray-600">Filtered by: {new Date(pendingBetsData.filtered_by_date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}</p>
                 )}
               </div>
               <button
@@ -402,7 +402,7 @@ export default function Games() {
                                 : 'bg-gray-50 hover:bg-gray-100 border border-gray-200'
                             }`}
                           >
-                            <div className="font-medium">{s.session_date}</div>
+                            <div className="font-medium">{new Date(s.session_date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}</div>
                             <div className="text-xs text-gray-600">
                               {s.count} bets · ₹{parseFloat(s.total_amount).toLocaleString('en-IN')}
                             </div>
@@ -456,9 +456,9 @@ export default function Games() {
                                 <td className="px-3 py-2 text-right font-medium">
                                   ₹{parseFloat(bet.total_amount).toLocaleString('en-IN')}
                                 </td>
-                                <td className="px-3 py-2">{bet.session_date}</td>
+                                <td className="px-3 py-2">{new Date(bet.session_date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}</td>
                                 <td className="px-3 py-2 text-xs text-gray-500">
-                                  {new Date(bet.created_at).toLocaleString('en-IN')}
+                                  {new Date(bet.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
                                 </td>
                               </tr>
                             ))}
