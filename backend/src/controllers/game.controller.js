@@ -22,8 +22,7 @@ exports.listGames = async (req, res, next) => {
         WHERE status = 'pending'
         GROUP BY game_id
       ) pb ON pb.game_id = g.id
-      WHERE g.is_active = 1
-      ORDER BY g.open_time
+      ORDER BY g.is_active DESC, g.open_time
     `);
 
     // Fetch pending bets grouped by session date for each game
