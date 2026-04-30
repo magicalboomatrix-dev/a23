@@ -178,14 +178,15 @@ export default function Results() {
     await loadHistory(historyFilters);
   };
 
-  const handleResultSave = async (event) => {
+  const handleResultSave = async (event, force = false) => {
     event.preventDefault();
     setError('');
     setMessage('');
     try {
+      const payload = force ? { ...resultForm, force: true } : resultForm;
       const response = editingResultId
-        ? await api.put(`/results/${editingResultId}`, resultForm)
-        : await api.post('/results/manage', resultForm);
+        ? await api.put(`/results/${editingResultId}`, payload)
+        : await api.post('/results/manage', payload);
       setMessage(response.data.message || (editingResultId ? 'Result updated successfully.' : 'Result saved successfully.'));
       setEditingResultId(null);
       setResultForm((current) => ({ ...current, result_number: '' }));
@@ -195,7 +196,22 @@ export default function Results() {
         loadYearlyChart(yearlyFilters.year, yearlyFilters.game_name),
       ]);
     } catch (requestError) {
-      setError(requestError.response?.data?.error || requestError.message || 'Failed to save result.');
+      const errorMsg = requestError.response?.data?.error || '';
+      const status = requestError.response?.status;
+      // Handle locked result (403) or linked bets (409) - offer force override
+      if (!force && (status === 403 || status === 409)) {
+        const confirmed = await confirm({
+          title: status === 403 ? 'Result Locked - Force Override?' : 'Result Has Settled Bets - Force Override?',
+          message: `${errorMsg}\n\nDo you want to FORCE update this result? This will:\n1. Reverse all settled bets (deduct winnings from wallets)\n2. Update the result number\n3. Re-settle bets with the new number\n\nUse with caution!`,
+          confirmText: 'Force Update & Re-Settle',
+          variant: 'danger',
+        });
+        if (confirmed) {
+          return handleResultSave(event, true);
+        }
+        return;
+      }
+      setError(errorMsg || requestError.message || 'Failed to save result.');
     }
   };
 
