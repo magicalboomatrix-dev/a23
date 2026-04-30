@@ -299,7 +299,7 @@ export default function Games() {
                 );
               })()}
               {g.declared_at && (
-                <p className="text-xs text-gray-400">Declared: {new Date(g.declared_at).toLocaleString('en-IN')}</p>
+                <p className="text-xs text-gray-400">Declared: {new Date(g.declared_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</p>
               )}
               {g.pending_by_date && g.pending_by_date.length > 0 && (
                 <div className="mt-2 space-y-1">

@@ -861,7 +861,7 @@ exports.globalSearch = async (req, res, next) => {
         items: users.map((row) => ({
           id: `user-${row.id}`,
           title: row.name,
-          subtitle: `${row.phone} • Ref ${row.referral_code || '-'}`,
+          subtitle: `ID: ${row.id} • ${row.phone} • Ref ${row.referral_code || '-'}`,
           meta: row.moderator_name ? `Moderator: ${row.moderator_name}` : 'No moderator',
           path: `/users/${row.id}`,
         })),
