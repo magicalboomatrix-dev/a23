@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.a23satta.admin.twa",
+        "sha256_cert_fingerprints": ["FF:78:AC:13:33:F0:EE:B4:D0:3A:B0:66:71:F0:37:9B:44:68:92:32:56:4D:00:CC:2B:FA:C6:F0:1C:6B:4F:B7"]
+      }
+    }]
