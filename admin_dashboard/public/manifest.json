@@ -1,0 +1,51 @@
+{
+  "name": "A23 Admin Panel",
+  "short_name": "A23 Admin",
+  "description": "A23 Official Administration Panel",
+
+  "id": "/",
+  "start_url": "/",
+
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone"],
+
+  "orientation": "portrait",
+
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+
+  "icons": [
+    {
+      "src": "/icons/a23_icon_72.png",
+      "sizes": "72x72",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/a23_icon_96.png",
+      "sizes": "96x96",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/a23_icon_128.png",
+      "sizes": "128x128",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/a23_icon_192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/a23_icon_256.png",
+      "sizes": "256x256",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/a23_icon_512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
