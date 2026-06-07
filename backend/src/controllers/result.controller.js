@@ -486,9 +486,18 @@ exports.upsertResult = async (req, res, next) => {
     if (resultId) {
       const resultStr = resultNumber.padStart(2, '0');
       await pool.query(
-        `INSERT IGNORE INTO settlement_queue
-           (game_result_id, game_id, result_number, result_date, status)
-         VALUES (?, ?, ?, ?, 'pending')`,
+        `INSERT INTO settlement_queue
+           (game_result_id, game_id, result_number, result_date, status, attempts, error_message, started_at, completed_at)
+         VALUES (?, ?, ?, ?, 'pending', 0, NULL, NULL, NULL)
+         ON DUPLICATE KEY UPDATE
+           game_id = VALUES(game_id),
+           result_number = VALUES(result_number),
+           result_date = VALUES(result_date),
+           status = 'pending',
+           attempts = 0,
+           error_message = NULL,
+           started_at = NULL,
+           completed_at = NULL`,
         [resultId, gameId, resultStr, result_date]
       );
       eventBus.emit('result_declared', { gameId, resultId, resultDate: result_date, resultNumber: resultStr });
@@ -581,17 +590,26 @@ exports.updateResultById = async (req, res, next) => {
       [gameId, resultNumber, result_date, effectiveDeclaredAt, resultId]
     );
 
-    // Enqueue for re-settlement if we reversed bets
-    if (force && reversedCount > 0) {
-      await pool.query(
-        `INSERT IGNORE INTO settlement_queue
-           (game_result_id, game_id, result_number, result_date, status)
-         VALUES (?, ?, ?, ?, 'pending')`,
-        [resultId, gameId, resultNumber.padStart(2, '0'), result_date]
-      );
-      eventBus.emit('result_declared', { gameId, resultId, resultDate: result_date, resultNumber: resultNumber.padStart(2, '0') });
+    // Enqueue/update settlement job
+    await pool.query(
+      `INSERT INTO settlement_queue
+         (game_result_id, game_id, result_number, result_date, status, attempts, error_message, started_at, completed_at)
+       VALUES (?, ?, ?, ?, 'pending', 0, NULL, NULL, NULL)
+       ON DUPLICATE KEY UPDATE
+         game_id = VALUES(game_id),
+         result_number = VALUES(result_number),
+         result_date = VALUES(result_date),
+         status = 'pending',
+         attempts = 0,
+         error_message = NULL,
+         started_at = NULL,
+         completed_at = NULL`,
+      [resultId, gameId, resultNumber.padStart(2, '0'), result_date]
+    );
+    eventBus.emit('result_declared', { gameId, resultId, resultDate: result_date, resultNumber: resultNumber.padStart(2, '0') });
 
-      // Reconcile wallets for reversed bets
+    // Reconcile wallets for reversed bets if any
+    if (force && reversedCount > 0) {
       for (const betId of reversedBetIds) {
         await reconcileWalletForBet(betId);
       }
