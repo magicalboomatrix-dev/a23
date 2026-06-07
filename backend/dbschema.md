@@ -468,3 +468,5 @@
 | reject_reason | varchar(255) | YES |  |  |  |
 | created_at | timestamp | YES | MUL | CURRENT_TIMESTAMP | DEFAULT_GENERATED |
 | updated_at | timestamp | YES |  | CURRENT_TIMESTAMP | DEFAULT_GENERATED on update CURRENT_TIMESTAMP |
+
+
