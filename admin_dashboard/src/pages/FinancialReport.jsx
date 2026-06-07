@@ -67,10 +67,11 @@ function buildFinancialReportCsv({ filters, platform, moderators }) {
     ['Total Bets', platform.totalBets || 0],
     ['Total Stake', Number(platform.totalStake || 0).toLocaleString('en-IN')],
     ['Total Win', Number(platform.totalWin || 0).toLocaleString('en-IN')],
+    ['Gaming Revenue', Number(platform.gamingRevenue || 0).toLocaleString('en-IN')],
     ['Platform Net Profit/Loss', Number(platform.netProfitLoss || 0).toLocaleString('en-IN')],
     [],
     ['Moderator Breakdown'],
-    ['Moderator', 'Users', 'Deposits', 'Deposit Amount', 'Withdrawals', 'Withdrawal Amount', 'Bets', 'Stake', 'Win', 'Net P/L'],
+    ['Moderator', 'Users', 'Deposits', 'Deposit Amount', 'Withdrawals', 'Withdrawal Amount', 'Bets', 'Stake', 'Win', 'Gaming P/L', 'Net P/L'],
     ...moderators.map((mod) => [
       mod.moderator_name,
       mod.user_count || 0,
@@ -81,6 +82,7 @@ function buildFinancialReportCsv({ filters, platform, moderators }) {
       mod.total_bets || 0,
       Number(mod.total_stake || 0).toLocaleString('en-IN'),
       Number(mod.total_win || 0).toLocaleString('en-IN'),
+      Number(mod.gaming_profit_loss || 0).toLocaleString('en-IN'),
       Number(mod.net_profit_loss || 0).toLocaleString('en-IN'),
     ]),
   ];
@@ -96,6 +98,7 @@ export default function FinancialReport() {
   const [moderators, setModerators] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showGuide, setShowGuide] = useState(false);
 
   const [filters, setFilters] = useState({
     from_date: getIstDateInputValue(6), // Last 7 days default
@@ -114,6 +117,7 @@ export default function FinancialReport() {
     totalBets: 0,
     totalStake: 0,
     totalWin: 0,
+    gamingRevenue: 0,
     netProfitLoss: 0,
   });
 
@@ -273,6 +277,96 @@ export default function FinancialReport() {
         </div>
       )}
 
+      {/* Calculation Guide / गणना मार्गदर्शिका */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-lg shadow-sm">
+        <button
+          type="button"
+          onClick={() => setShowGuide(!showGuide)}
+          className="w-full flex items-center justify-between p-4 focus:outline-none"
+        >
+          <div className="flex items-center space-x-3 text-blue-900">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <div className="text-left">
+              <h4 className="font-semibold text-base">Calculation Guide & Formulas / गणना मार्गदर्शिका एवं सूत्र</h4>
+              <p className="text-xs text-blue-700">Click to expand and view how financial stats are calculated (Hindi & English)</p>
+            </div>
+          </div>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className={`h-5 w-5 text-blue-600 transform transition-transform duration-200 ${showGuide ? 'rotate-180' : ''}`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+
+        {showGuide && (
+          <div className="border-t border-blue-100 p-4 sm:p-5 bg-white rounded-b-lg">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* English Section */}
+              <div className="space-y-4">
+                <h5 className="font-bold text-blue-900 border-b pb-1 text-sm uppercase tracking-wider">English Explanation</h5>
+                <ul className="space-y-3 text-sm text-gray-700">
+                  <li>
+                    <strong className="text-blue-950">1. Total Deposits:</strong> Total cash amount uploaded/deposited by players.
+                  </li>
+                  <li>
+                    <strong className="text-blue-950">2. Total Withdrawals:</strong> Total cash amount withdrawn by or paid to players.
+                  </li>
+                  <li>
+                    <strong className="text-blue-950">3. Net Cash Flow:</strong> <code className="bg-gray-100 px-1 py-0.5 rounded font-mono text-xs">Total Deposits - Total Withdrawals</code>. Shows actual net cash movement in/out of the platform.
+                  </li>
+                  <li>
+                    <strong className="text-blue-950">4. Total Stake:</strong> Total value of all bets placed by players (includes stakes of both wins and losses).
+                  </li>
+                  <li>
+                    <strong className="text-blue-950">5. Total Win Paid:</strong> Total payout amount credited to players for winning bets.
+                  </li>
+                  <li>
+                    <strong className="text-blue-950">6. Gaming Revenue (Gaming P&L):</strong> <code className="bg-gray-100 px-1 py-0.5 rounded font-mono text-xs">Total Stake - Total Win Paid</code>. Platform's gross profit from wagering activities.
+                  </li>
+                  <li>
+                    <strong className="text-blue-950">7. Net Business P&L:</strong> <code className="bg-gray-100 px-1 py-0.5 rounded font-mono text-xs">Gaming Revenue - Bonus Credited</code>. The ultimate business profit/loss after factoring in marketing/bonus costs.
+                  </li>
+                </ul>
+              </div>
+
+              {/* Hindi Section */}
+              <div className="space-y-4">
+                <h5 className="font-bold text-blue-900 border-b pb-1 text-sm uppercase tracking-wider">हिन्दी व्याख्या (Hindi Translation)</h5>
+                <ul className="space-y-3 text-sm text-gray-700">
+                  <li>
+                    <strong className="text-blue-950">1. कुल डिपॉजिट (Total Deposits):</strong> खिलाड़ियों द्वारा गेम में जमा या अपलोड की गई कुल राशि।
+                  </li>
+                  <li>
+                    <strong className="text-blue-950">2. कुल निकासी (Total Withdrawals):</strong> खिलाड़ियों को भुगतान की गई या उनके द्वारा निकाली गई कुल नकद राशि।
+                  </li>
+                  <li>
+                    <strong className="text-blue-950">3. शुद्ध नकद प्रवाह (Net Cash Flow):</strong> <code className="bg-gray-100 px-1 py-0.5 rounded font-mono text-xs">कुल डिपॉजिट - कुल निकासी</code>। प्लेटफॉर्म में नकद के वास्तविक लेन-देन को दर्शाता है।
+                  </li>
+                  <li>
+                    <strong className="text-blue-950">4. कुल दांव राशि (Total Stake):</strong> खिलाड़ियों द्वारा लगाए गए सभी दांवों का योग (जीतने और हारने वाले दोनों दांव शामिल हैं)।
+                  </li>
+                  <li>
+                    <strong className="text-blue-950">5. कुल भुगतान जीत (Total Win Paid):</strong> जीतने वाले दांवों के लिए खिलाड़ियों के खातों में जमा की गई कुल राशि।
+                  </li>
+                  <li>
+                    <strong className="text-blue-950">6. गेमिंग राजस्व (Gaming Revenue / Gaming P&L):</strong> <code className="bg-gray-100 px-1 py-0.5 rounded font-mono text-xs">कुल दांव राशि - कुल भुगतान जीत</code>। सट्टेबाजी गतिविधियों से प्लेटफॉर्म की सकल कमाई।
+                  </li>
+                  <li>
+                    <strong className="text-blue-950">7. शुद्ध व्यावसायिक लाभ/हानि (Net Business P&L):</strong> <code className="bg-gray-100 px-1 py-0.5 rounded font-mono text-xs">गेमिंग राजस्व - दिया गया बोनस</code>। प्रचार बोनस (bonuses) के खर्चों को घटाने के बाद व्यापार का वास्तविक लाभ या हानि।
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Platform Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="bg-white border p-4 sm:p-5">
@@ -300,7 +394,7 @@ export default function FinancialReport() {
       </div>
 
       {/* Betting Summary */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
         <div className="bg-white border p-4 sm:p-5">
           <p className="text-xs sm:text-sm text-gray-500">Total Bets</p>
           <p className="text-xl sm:text-2xl font-bold text-gray-800">{platform.totalBets?.toLocaleString('en-IN') || 0}</p>
@@ -314,11 +408,18 @@ export default function FinancialReport() {
           <p className="text-xl sm:text-2xl font-bold text-green-700">{formatCurrency(platform.totalWin)}</p>
         </div>
         <div className="bg-white border p-4 sm:p-5">
+          <p className="text-xs sm:text-sm text-gray-500">Gaming Revenue</p>
+          <p className={`text-xl sm:text-2xl font-bold ${profitLossClass(platform.gamingRevenue)}`}>
+            {formatCurrency(platform.gamingRevenue)}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">Stake - Win</p>
+        </div>
+        <div className="bg-white border p-4 sm:p-5">
           <p className="text-xs sm:text-sm text-gray-500">Platform Net P/L</p>
           <p className={`text-xl sm:text-2xl font-bold ${profitLossClass(platform.netProfitLoss)}`}>
             {formatCurrency(platform.netProfitLoss)}
           </p>
-          <p className="text-xs text-gray-500 mt-1">Stake - Win</p>
+          <p className="text-xs text-gray-500 mt-1">Gaming P/L - Bonus</p>
         </div>
       </div>
 
@@ -348,6 +449,7 @@ export default function FinancialReport() {
               <th className="text-right px-4 py-3 font-medium text-gray-600">Bets</th>
               <th className="text-right px-4 py-3 font-medium text-gray-600">Stake</th>
               <th className="text-right px-4 py-3 font-medium text-gray-600">Win</th>
+              <th className="text-right px-4 py-3 font-medium text-gray-600">Gaming P/L</th>
               <th className="text-right px-4 py-3 font-medium text-gray-600">Net P/L</th>
             </tr>
           </thead>
@@ -371,6 +473,9 @@ export default function FinancialReport() {
                 <td className="px-4 py-3 text-right">{mod.total_bets?.toLocaleString('en-IN') || 0}</td>
                 <td className="px-4 py-3 text-right">{formatCurrency(mod.total_stake)}</td>
                 <td className="px-4 py-3 text-right text-green-700">{formatCurrency(mod.total_win)}</td>
+                <td className={`px-4 py-3 text-right font-semibold ${profitLossClass(mod.gaming_profit_loss)}`}>
+                  {formatCurrency(mod.gaming_profit_loss)}
+                </td>
                 <td className={`px-4 py-3 text-right font-semibold ${profitLossClass(mod.net_profit_loss)}`}>
                   {formatCurrency(mod.net_profit_loss)}
                 </td>
@@ -378,7 +483,7 @@ export default function FinancialReport() {
             ))}
             {moderatorStats.length === 0 && (
               <tr>
-                <td colSpan={10} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={11} className="px-4 py-8 text-center text-gray-400">
                   {loading ? 'Loading...' : 'No data found for selected filters'}
                 </td>
               </tr>

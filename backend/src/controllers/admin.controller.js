@@ -1426,21 +1426,19 @@ exports.getFinancialReport = async (req, res, next) => {
       const bonusAmount = Number(mod.total_bonus_amount || 0);
       const totalStake = Number(mod.total_stake || 0);
       const totalWin = Number(mod.total_win || 0);
-      const retainedStake = Number(mod.retained_stake || 0);
 
-      // Gaming P&L: Money kept from losing bets minus money paid out on winning bets
-      const gamingProfitLoss = retainedStake - totalWin;
+      // Gaming P&L: Total stake placed minus total winnings paid out
+      const gamingProfitLoss = totalStake - totalWin;
 
-      // Net P&L: Deposits coming in minus (withdrawals + bonuses + wins paid out)
-      // This represents the actual cash flow for this moderator's users
-      const netProfitLoss = depositAmount - withdrawalAmount - bonusAmount - totalWin + retainedStake;
+      // Net P&L: Gaming P&L minus bonuses credited
+      const netProfitLoss = gamingProfitLoss - bonusAmount;
 
       return {
         ...mod,
         gaming_profit_loss: gamingProfitLoss,
         net_profit_loss: netProfitLoss,
         cash_in: depositAmount,
-        cash_out: withdrawalAmount + bonusAmount + totalWin - retainedStake,
+        cash_out: withdrawalAmount,
       };
     });
 
@@ -1462,6 +1460,11 @@ exports.getFinancialReport = async (req, res, next) => {
       [...betDate.params, ...gameParams]
     );
 
+    const adminDirectStake = Number(adminDirectBetStats.total_stake || 0);
+    const adminDirectWin = Number(adminDirectBetStats.total_win || 0);
+    const adminDirectGamingPnl = adminDirectStake - adminDirectWin;
+    const adminDirectBonusAmt = Number(adminDirectBonus.total || 0);
+
     const adminDirectEntry = {
       moderator_id: 'admin',
       moderator_name: 'Admin (Unassigned Users)',
@@ -1472,15 +1475,15 @@ exports.getFinancialReport = async (req, res, next) => {
       total_withdrawals: Number(adminDirectWithdrawals.count || 0),
       total_withdrawal_amount: Number(adminDirectWithdrawals.total || 0),
       total_bonuses_given: Number(adminDirectBonus.count || 0),
-      total_bonus_amount: Number(adminDirectBonus.total || 0),
+      total_bonus_amount: adminDirectBonusAmt,
       total_bets: Number(adminDirectBetStats.count || 0),
-      total_stake: Number(adminDirectBetStats.total_stake || 0),
-      total_win: Number(adminDirectBetStats.total_win || 0),
+      total_stake: adminDirectStake,
+      total_win: adminDirectWin,
       retained_stake: Number(adminDirectBetStats.retained_stake || 0),
-      gaming_profit_loss: Number(adminDirectBetStats.retained_stake || 0) - Number(adminDirectBetStats.total_win || 0),
-      net_profit_loss: Number(adminDirectDeposits.total || 0) - Number(adminDirectWithdrawals.total || 0) - Number(adminDirectBonus.total || 0) - Number(adminDirectBetStats.total_win || 0) + Number(adminDirectBetStats.retained_stake || 0),
+      gaming_profit_loss: adminDirectGamingPnl,
+      net_profit_loss: adminDirectGamingPnl - adminDirectBonusAmt,
       cash_in: Number(adminDirectDeposits.total || 0),
-      cash_out: Number(adminDirectWithdrawals.total || 0) + Number(adminDirectBonus.total || 0) + Number(adminDirectBetStats.total_win || 0) - Number(adminDirectBetStats.retained_stake || 0),
+      cash_out: Number(adminDirectWithdrawals.total || 0),
     };
 
     // Add admin entry to the beginning of the array
@@ -1496,11 +1499,11 @@ exports.getFinancialReport = async (req, res, next) => {
     const totalWin = Number(platformBets.total_win || 0);
     const totalRetained = Number(platformBets.total_retained || 0);
 
-    // Gaming Revenue = Retained stake - Wins paid
-    const gamingRevenue = totalRetained - totalWin;
+    // Gaming Revenue = Total Stake - Total Win Paid
+    const gamingRevenue = totalStake - totalWin;
 
-    // Platform Net = All money in - All money out
-    const platformNetProfit = totalDeposits - totalWithdrawals - totalBonusCredited + gamingRevenue;
+    // Platform Net = Gaming Revenue - Total Bonus Credited
+    const platformNetProfit = gamingRevenue - totalBonusCredited;
 
     const platform = {
       // Deposits

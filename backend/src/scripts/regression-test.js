@@ -442,19 +442,27 @@ async function t7_noDuplicateCredits(conn) {
 
 // ── T8: Wallet balance integrity ─────────────────────────────────────────
 async function t8_walletIntegrity(conn) {
-  // In this codebase recordWalletTransaction() receives SIGNED amounts:
-  //   bets/withdrawals  → caller passes a negative amount
-  //   deposits/wins     → caller passes a positive amount
-  // Therefore wallet_transactions.amount is already signed and the
-  // ledger balance is simply SUM(amount).
   const [rows] = await conn.query(`
     SELECT w.user_id,
            w.balance                                   AS wallet_balance,
-           ROUND(SUM(wt.amount), 2)                    AS ledger_balance
+           w.bonus_balance                             AS bonus_balance,
+           ROUND(COALESCE(wt.main_sum, 0), 2)          AS ledger_balance,
+           ROUND(COALESCE(wb.bonus_sum, 0), 2)         AS ledger_bonus
     FROM wallets w
-    JOIN wallet_transactions wt ON wt.user_id = w.user_id
-    GROUP BY w.user_id, w.balance
-    HAVING ABS(w.balance - ROUND(SUM(wt.amount), 2)) > 0.01
+    LEFT JOIN (
+      SELECT user_id, SUM(amount) AS main_sum
+      FROM wallet_transactions
+      WHERE status = 'completed' AND type != 'bonus' AND reference_type != 'bet_bonus'
+      GROUP BY user_id
+    ) wt ON wt.user_id = w.user_id
+    LEFT JOIN (
+      SELECT user_id, SUM(amount) AS bonus_sum
+      FROM wallet_transactions
+      WHERE status = 'completed' AND (type = 'bonus' OR reference_type = 'bet_bonus')
+      GROUP BY user_id
+    ) wb ON wb.user_id = w.user_id
+    WHERE ABS(w.balance - ROUND(COALESCE(wt.main_sum, 0), 2)) > 0.01
+       OR ABS(w.bonus_balance - ROUND(COALESCE(wb.bonus_sum, 0), 2)) > 0.01
   `);
   const ok = rows.length === 0;
   record(
@@ -462,7 +470,7 @@ async function t8_walletIntegrity(conn) {
     ok,
     ok ? null :
       `${rows.length} mismatch(es):\n` +
-      rows.map(r => `user_id=${r.user_id} wallet=${r.wallet_balance} ledger=${r.ledger_balance}`).join('\n')
+      rows.map(r => `user_id=${r.user_id} wallet=${r.wallet_balance} (ledger=${r.ledger_balance}) | bonus=${r.bonus_balance} (ledger=${r.ledger_bonus})`).join('\n')
   );
 }
 

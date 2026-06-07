@@ -136,7 +136,7 @@ exports.requestWithdraw = async (req, res, next) => {
       userId: req.user.id,
       type: 'withdraw',
       amount: -parsedAmount,
-      status: 'pending',
+      status: 'completed',
       referenceType: 'withdraw',
       referenceId: `withdraw_${result.insertId}`,
       remark: 'Withdrawal request',
@@ -218,10 +218,6 @@ exports.approveWithdraw = async (req, res, next) => {
     await conn.query('UPDATE withdraw_requests SET status = ?, approved_by = ? WHERE id = ?',
       ['approved', req.user.id, id]);
 
-    // Update wallet transaction status
-    await conn.query("UPDATE wallet_transactions SET status = 'completed' WHERE reference_id = ?",
-      [`withdraw_${id}`]);
-
     // Notification
     await conn.query('INSERT INTO notifications (user_id, type, message) VALUES (?, ?, ?)',
       [requests[0].user_id, 'withdraw', `Your withdrawal of ₹${requests[0].amount} has been approved.`]);
@@ -267,10 +263,6 @@ exports.rejectWithdraw = async (req, res, next) => {
     // Refund to wallet
     await conn.query('UPDATE withdraw_requests SET status = ?, reject_reason = ?, approved_by = ? WHERE id = ?',
       ['rejected', reason || 'Rejected', req.user.id, id]);
-
-    // Update wallet transaction
-    await conn.query("UPDATE wallet_transactions SET status = 'failed' WHERE reference_id = ?",
-      [`withdraw_${id}`]);
 
     // Refund transaction
     const newBalance = await recordWalletTransaction(conn, {

@@ -75,8 +75,21 @@ async function getBetCreditSummary(conn, betId) {
           ELSE 0
         END), 0) AS net_credited
       FROM wallet_transactions wt
-      WHERE wt.status = 'completed'`,
+      WHERE wt.status = 'completed'
+        AND wt.reference_type IN ('bet', 'bet_reversal')
+        AND (
+          wt.reference_id = ?
+          OR wt.reference_id LIKE ?
+          OR wt.reference_id LIKE ?
+          OR wt.reference_id LIKE ?
+          OR wt.reference_id LIKE ?
+        )`,
     [
+      patterns.baseReference,
+      patterns.creditPattern,
+      patterns.reversedPattern,
+      patterns.legacyFixPattern,
+      patterns.reversalPattern,
       patterns.baseReference,
       patterns.creditPattern,
       patterns.reversedPattern,
@@ -276,31 +289,26 @@ async function findDriftedWinningBetIds(limit = DEFAULT_BATCH_LIMIT) {
   const [rows] = await pool.query(
     `SELECT b.id
      FROM bets b
+     LEFT JOIN (
+       SELECT
+         CAST(CASE
+           WHEN reference_id LIKE 'bet_reversal_%' THEN SUBSTRING_INDEX(SUBSTRING(reference_id, 14), '_', 1)
+           WHEN reference_id LIKE 'win_credit_fix_%' THEN SUBSTRING_INDEX(SUBSTRING(reference_id, 16), '_', 1)
+           WHEN reference_id LIKE 'bet_%' THEN SUBSTRING_INDEX(SUBSTRING(reference_id, 5), '_', 1)
+           ELSE NULL
+         END AS UNSIGNED) AS bet_id,
+         SUM(amount) AS net_credited
+       FROM wallet_transactions
+       WHERE status = 'completed'
+         AND (
+           (reference_type = 'bet' AND type = 'win')
+           OR reference_type = 'bet_reversal'
+         )
+       GROUP BY bet_id
+     ) wt ON b.id = wt.bet_id
      WHERE b.status = 'win'
        AND b.win_amount > 0
-       AND ABS(
-         b.win_amount - (
-           SELECT COALESCE(SUM(wt.amount), 0)
-           FROM wallet_transactions wt
-           WHERE wt.status = 'completed'
-             AND (
-               (
-                 wt.type = 'win'
-                 AND wt.reference_type = 'bet'
-                 AND (
-                   wt.reference_id = CONCAT('bet_', b.id)
-                   OR wt.reference_id LIKE CONCAT('bet_', b.id, '_credit_%')
-                   OR wt.reference_id LIKE CONCAT('bet_', b.id, '_reversed_%')
-                   OR wt.reference_id LIKE CONCAT('win_credit_fix_', b.id, '_%')
-                 )
-               )
-               OR (
-                 wt.reference_type = 'bet_reversal'
-                 AND wt.reference_id LIKE CONCAT('bet_reversal_', b.id, '_%')
-               )
-             )
-         )
-       ) >= 0.01
+       AND ABS(b.win_amount - COALESCE(wt.net_credited, 0)) >= 0.01
      ORDER BY COALESCE(b.settled_at, b.created_at) ASC
      LIMIT ?`,
     [limit]
