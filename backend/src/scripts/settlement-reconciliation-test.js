@@ -238,6 +238,25 @@ async function testNegativeWalletRecovery(conn) {
   record('missing win credit can recover a wallet that is already negative', passed, JSON.stringify({ summary, wallet }));
 }
 
+async function testReversalNegativeWallet(conn) {
+  const fixture = await createWinningBetFixture(conn, 6);
+  await settleBetsForGame(conn, fixture.gameId, '07', fixture.resultId, fixture.game, fixture.sessionDate);
+
+  // Spend/withdraw winnings, so wallet balance becomes 0 (before reversal)
+  await conn.query('UPDATE wallets SET balance = 0.00 WHERE user_id = ?', [fixture.userId]);
+
+  // Try to reverse settlement (which should deduct 900 and result in wallet balance -900)
+  const reverseResult = await reverseSettlement(conn, fixture.resultId);
+  const afterReverse = await getBetCreditSummary(conn, fixture.betId);
+  const [[wallet]] = await conn.query('SELECT balance FROM wallets WHERE user_id = ?', [fixture.userId]);
+
+  const passed = reverseResult.reversedCount === 1
+    && afterReverse.netCredited === 0
+    && roundCurrency(wallet.balance) === -900;
+
+  record('reversal succeeds and balance goes negative when wallet has insufficient funds', passed, JSON.stringify({ reverseResult, afterReverse, wallet }));
+}
+
 async function main() {
   const conn = await pool.getConnection();
 
@@ -250,6 +269,7 @@ async function main() {
     await testPartialCredit(conn);
     await testDuplicateSettlementAttempt(conn);
     await testNegativeWalletRecovery(conn);
+    await testReversalNegativeWallet(conn);
 
     await conn.rollback();
   } catch (error) {
