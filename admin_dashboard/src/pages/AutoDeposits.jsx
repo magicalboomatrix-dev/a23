@@ -6,6 +6,7 @@ import { cleanDisplayText } from '../utils/display';
 import { MatchAllUnmatchedButton } from '../components/MatchAllUnmatchedButton';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../hooks/useSocket';
+import { Copy, MessageSquareText, RefreshCw, Trash2, X } from 'lucide-react';
 
 const STATUS_COLORS = {
   received: 'bg-blue-100 text-blue-800',
@@ -86,6 +87,8 @@ export default function AutoDeposits() {
   const [orderPagination, setOrderPagination] = useState({});
   const [logPagination, setLogPagination] = useState({});
   const [loading, setLoading] = useState(false);
+  const [clearWebhookLoading, setClearWebhookLoading] = useState(false);
+  const [rawSmsModal, setRawSmsModal] = useState(null);
   const { toasts, success, error: toastError, dismiss } = useToast();
 
   // UTR Search state
@@ -269,6 +272,7 @@ export default function AutoDeposits() {
           setActionModal(null);
           setCreditModal(null);
           setOrderDetailsModal(null);
+          setRawSmsModal(null);
           break;
         case '1':
           selectTab('stats');
@@ -419,6 +423,23 @@ export default function AutoDeposits() {
       if (tab === 'orders') loadPendingOrders();
     } catch (err) {
       toastError('Failed to expire orders.');
+    }
+  };
+
+  const handleClearOldWebhookMessages = async () => {
+    if (!window.confirm('Clear all UPI messages older than 24 hours? Deposit records and audit logs will stay, but old SMS rows will be removed from this list.')) return;
+
+    setClearWebhookLoading(true);
+    try {
+      const res = await api.delete('/auto-deposit/admin/webhook-transactions/older-than-24h');
+      success(res.data.message || `Cleared ${res.data.deleted_count || 0} old messages.`);
+      setRawSmsModal(null);
+      setWebhookPage(1);
+      await Promise.all([loadStats(), loadWebhookTxns()]);
+    } catch (err) {
+      toastError(err.response?.data?.error || 'Failed to clear old UPI messages.');
+    } finally {
+      setClearWebhookLoading(false);
     }
   };
 
@@ -636,7 +657,7 @@ export default function AutoDeposits() {
       {/* Webhook Transactions Tab */}
       {tab === 'webhook' && (
         <div className="space-y-3">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex gap-2 flex-wrap">
               {['', 'received', 'matched', 'unmatched', 'duplicate', 'parse_error'].map((s) => (
                 <button
@@ -648,16 +669,79 @@ export default function AutoDeposits() {
                 </button>
               ))}
             </div>
-            <button
-              onClick={loadWebhookTxns}
-              title="Refresh (R)"
-              className="p-2 text-dark-500 hover:text-primary-600 hover:bg-dark-100 rounded-lg transition-colors"
-            >
-              🔄
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={handleClearOldWebhookMessages}
+                disabled={clearWebhookLoading}
+                className="inline-flex items-center justify-center gap-2 rounded bg-red-600 px-3 py-2 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-60 sm:text-sm"
+              >
+                <Trash2 size={15} />
+                {clearWebhookLoading ? 'Clearing...' : 'Clear 24h Old'}
+              </button>
+              <button
+                onClick={loadWebhookTxns}
+                title="Refresh (R)"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-dark-500 transition-colors hover:bg-dark-100 hover:text-primary-600"
+              >
+                <RefreshCw size={17} />
+              </button>
+            </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow overflow-x-auto">
+          <div className="grid gap-3 md:hidden">
+            {webhookTxns.map((txn) => (
+              <div key={txn.id} className="rounded-lg border border-dark-100 bg-white p-3 shadow-sm">
+                <div className="mb-3 flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-xs text-dark-400">#{txn.id}</div>
+                    <div className="text-lg font-semibold text-dark-900">₹{txn.amount ? Number(txn.amount).toLocaleString('en-IN') : '-'}</div>
+                  </div>
+                  <Badge status={txn.status} />
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div className="grid grid-cols-[88px_1fr] gap-2">
+                    <span className="text-dark-500">Reference</span>
+                    <span className="break-all font-mono text-xs">{txn.reference_number || '-'}</span>
+                  </div>
+                  <div className="grid grid-cols-[88px_1fr] gap-2">
+                    <span className="text-dark-500">Payer</span>
+                    <span>{txn.payer_name || '-'}</span>
+                  </div>
+                  <div className="grid grid-cols-[88px_1fr] gap-2">
+                    <span className="text-dark-500">User</span>
+                    <span>{txn.matched_user_name ? `${txn.matched_user_name} (${txn.matched_user_phone})` : '-'}</span>
+                  </div>
+                  <div className="grid grid-cols-[88px_1fr] gap-2">
+                    <span className="text-dark-500">Time</span>
+                    <span className="text-xs">{fmt(txn.created_at)}</span>
+                  </div>
+                  {(txn.error_message || txn.raw_message) && (
+                    <div className="border-t border-dark-100 pt-2">
+                      {txn.error_message && <div className="mb-2 text-xs text-red-600">{txn.error_message}</div>}
+                      {txn.raw_message && (
+                        <button
+                          onClick={() => setRawSmsModal(txn)}
+                          className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700"
+                        >
+                          <MessageSquareText size={14} />
+                          View raw SMS
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+            {webhookTxns.length === 0 && (
+              <div className="rounded-lg bg-white px-4 py-12 text-center shadow">
+                <div className="text-4xl mb-2">📨</div>
+                <div className="text-dark-400 text-sm">No webhook transactions found</div>
+                <div className="text-dark-300 text-xs mt-1">Try changing filters or refreshing</div>
+              </div>
+            )}
+          </div>
+
+          <div className="hidden bg-white rounded-lg shadow overflow-x-auto md:block">
             <table className="w-full text-sm">
               <thead className="bg-dark-50 text-dark-600">
                 <tr>
@@ -673,7 +757,6 @@ export default function AutoDeposits() {
               </thead>
               <tbody className="divide-y divide-dark-100">
                 {webhookTxns.map((txn) => (
-                  <>
                   <tr key={txn.id} className="hover:bg-dark-50">
                     <td className="px-4 py-2">{txn.id}</td>
                     <td className="px-4 py-2 font-medium">₹{txn.amount ? Number(txn.amount).toLocaleString('en-IN') : '-'}</td>
@@ -686,7 +769,7 @@ export default function AutoDeposits() {
                             className="text-dark-400 hover:text-primary-600"
                             title="Copy UTR"
                           >
-                            📋
+                            <Copy size={14} />
                           </button>
                         )}
                       </div>
@@ -698,14 +781,16 @@ export default function AutoDeposits() {
                     <td className="px-4 py-2 text-xs text-red-600 max-w-xs">
                       {txn.error_message || ''}
                       {txn.raw_message && (
-                        <details className="mt-1">
-                          <summary className="cursor-pointer text-blue-600 hover:underline">View raw SMS</summary>
-                          <pre className="mt-1 text-xs bg-gray-100 p-2 rounded whitespace-pre-wrap break-all max-w-xs text-gray-800">{txn.raw_message}</pre>
-                        </details>
+                        <button
+                          onClick={() => setRawSmsModal(txn)}
+                          className="mt-1 inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-700"
+                        >
+                          <MessageSquareText size={14} />
+                          View raw SMS
+                        </button>
                       )}
                     </td>
                   </tr>
-                  </>
                 ))}
                 {webhookTxns.length === 0 && (
                   <tr>
@@ -1366,6 +1451,75 @@ export default function AutoDeposits() {
               <button onClick={() => setCreditModal(null)} className="flex-1 px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
               <button onClick={handleCreditByUtr} disabled={creditLoading || !creditUserId.trim()} className="flex-1 px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-60">
                 {creditLoading ? 'Crediting…' : 'Credit Wallet'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Raw SMS modal */}
+      {rawSmsModal && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4">
+          <div className="flex max-h-[92vh] w-full flex-col rounded-t-xl bg-white shadow-xl sm:max-w-2xl sm:rounded-xl">
+            <div className="flex items-start justify-between gap-3 border-b border-gray-200 px-4 py-3 sm:px-5">
+              <div className="min-w-0">
+                <h2 className="text-base font-bold text-gray-900 sm:text-lg">Raw SMS #{rawSmsModal.id}</h2>
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                  <span>{fmt(rawSmsModal.created_at)}</span>
+                  <Badge status={rawSmsModal.status} />
+                </div>
+              </div>
+              <button
+                onClick={() => setRawSmsModal(null)}
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+                title="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto px-4 py-4 sm:px-5">
+              <div className="grid gap-3 text-sm sm:grid-cols-2">
+                <div>
+                  <div className="text-xs font-medium uppercase text-gray-500">Amount</div>
+                  <div className="mt-1 font-semibold text-gray-900">₹{rawSmsModal.amount ? Number(rawSmsModal.amount).toLocaleString('en-IN') : '-'}</div>
+                </div>
+                <div>
+                  <div className="text-xs font-medium uppercase text-gray-500">Reference</div>
+                  <div className="mt-1 break-all font-mono text-xs text-gray-900">{rawSmsModal.reference_number || '-'}</div>
+                </div>
+                <div>
+                  <div className="text-xs font-medium uppercase text-gray-500">Payer</div>
+                  <div className="mt-1 text-gray-900">{rawSmsModal.payer_name || '-'}</div>
+                </div>
+                <div>
+                  <div className="text-xs font-medium uppercase text-gray-500">Matched User</div>
+                  <div className="mt-1 text-gray-900">{rawSmsModal.matched_user_name ? `${rawSmsModal.matched_user_name} (${rawSmsModal.matched_user_phone})` : '-'}</div>
+                </div>
+              </div>
+
+              {rawSmsModal.error_message && (
+                <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {rawSmsModal.error_message}
+                </div>
+              )}
+
+              <pre className="mt-4 max-h-[42vh] overflow-auto whitespace-pre-wrap break-words rounded-lg border border-gray-200 bg-gray-50 p-3 font-mono text-sm leading-6 text-gray-900">{rawSmsModal.raw_message}</pre>
+            </div>
+
+            <div className="flex flex-col-reverse gap-2 border-t border-gray-200 px-4 py-3 sm:flex-row sm:justify-end sm:px-5">
+              <button
+                onClick={() => setRawSmsModal(null)}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => copyToClipboard(rawSmsModal.raw_message || '', 'Raw SMS')}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+              >
+                <Copy size={16} />
+                Copy SMS
               </button>
             </div>
           </div>

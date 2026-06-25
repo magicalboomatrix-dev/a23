@@ -727,6 +727,63 @@ exports.triggerExpireOrders = async (req, res, next) => {
 };
 
 /**
+ * DELETE /api/auto-deposit/admin/webhook-transactions/older-than-24h
+ * Admin cleanup for old UPI webhook messages.
+ */
+exports.clearOldWebhookTransactions = async (req, res, next) => {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    const [[{ total }]] = await conn.query(
+      'SELECT COUNT(*) as total FROM upi_webhook_transactions WHERE created_at < DATE_SUB(NOW(), INTERVAL 24 HOUR)'
+    );
+
+    if (total === 0) {
+      await conn.commit();
+      return res.json({ message: 'No UPI messages older than 24 hours found.', deleted_count: 0 });
+    }
+
+    await conn.query(
+      `UPDATE pending_deposit_orders
+       SET matched_webhook_id = NULL
+       WHERE matched_webhook_id IN (
+         SELECT id FROM upi_webhook_transactions WHERE created_at < DATE_SUB(NOW(), INTERVAL 24 HOUR)
+       )`
+    );
+    await conn.query(
+      `UPDATE deposits
+       SET webhook_txn_id = NULL
+       WHERE webhook_txn_id IN (
+         SELECT id FROM upi_webhook_transactions WHERE created_at < DATE_SUB(NOW(), INTERVAL 24 HOUR)
+       )`
+    );
+    await conn.query(
+      `UPDATE auto_deposit_logs
+       SET webhook_txn_id = NULL
+       WHERE webhook_txn_id IN (
+         SELECT id FROM upi_webhook_transactions WHERE created_at < DATE_SUB(NOW(), INTERVAL 24 HOUR)
+       )`
+    );
+
+    const [deleteResult] = await conn.query(
+      'DELETE FROM upi_webhook_transactions WHERE created_at < DATE_SUB(NOW(), INTERVAL 24 HOUR)'
+    );
+
+    await conn.commit();
+    res.json({
+      message: `Cleared ${deleteResult.affectedRows} UPI messages older than 24 hours.`,
+      deleted_count: deleteResult.affectedRows,
+    });
+  } catch (error) {
+    await conn.rollback();
+    next(error);
+  } finally {
+    conn.release();
+  }
+};
+
+/**
  * GET /api/auto-deposit/admin/search-utr/:utr
  * Search webhook transactions by UTR / reference number.
  */
