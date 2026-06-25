@@ -35,14 +35,20 @@ router.post('/order/:id/cancel', authenticate, autoDepositController.cancelOrder
 // View webhook transactions (UPI messages from Telegram)
 router.get('/admin/webhook-transactions', authenticate, authorize('admin'), autoDepositController.getWebhookTransactions);
 
-// Clear webhook transactions and closed orders older than 24 hours
+// Clear webhook transactions older than 24 hours
 router.delete('/admin/webhook-transactions/older-than-24h', authenticate, authorize('admin'), autoDepositController.clearOldWebhookTransactions);
 
 // View pending deposit orders
 router.get('/admin/pending-orders', authenticate, authorize('admin'), autoDepositController.getPendingOrders);
 
+// Clear cancelled/expired deposit orders older than 24 hours
+router.delete('/admin/closed-orders/older-than-24h', authenticate, authorize('admin'), autoDepositController.clearOldClosedOrders);
+
 // View audit logs
 router.get('/admin/logs', authenticate, authorize('admin'), autoDepositController.getAutoDepositLogs);
+
+// Clear audit logs older than 24 hours
+router.delete('/admin/logs/older-than-24h', authenticate, authorize('admin'), autoDepositController.clearOldAutoDepositLogs);
 
 // Dashboard stats
 router.get('/admin/stats', authenticate, authorize('admin'), autoDepositController.getStats);

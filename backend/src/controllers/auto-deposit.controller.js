@@ -728,31 +728,20 @@ exports.triggerExpireOrders = async (req, res, next) => {
 
 /**
  * DELETE /api/auto-deposit/admin/webhook-transactions/older-than-24h
- * Admin cleanup for old UPI webhook messages and closed deposit orders.
+ * Admin cleanup for old UPI webhook messages.
  */
 exports.clearOldWebhookTransactions = async (req, res, next) => {
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
 
-    const [[{ total: oldWebhookTotal }]] = await conn.query(
+    const [[{ total }]] = await conn.query(
       'SELECT COUNT(*) as total FROM upi_webhook_transactions WHERE created_at < DATE_SUB(NOW(), INTERVAL 24 HOUR)'
     );
-    const [[{ total: oldClosedOrderTotal }]] = await conn.query(
-      `SELECT COUNT(*) as total
-       FROM pending_deposit_orders
-       WHERE status IN ('cancelled', 'expired')
-         AND updated_at < DATE_SUB(NOW(), INTERVAL 24 HOUR)`
-    );
 
-    if (oldWebhookTotal === 0 && oldClosedOrderTotal === 0) {
+    if (total === 0) {
       await conn.commit();
-      return res.json({
-        message: 'No UPI messages or closed orders older than 24 hours found.',
-        deleted_count: 0,
-        deleted_webhook_count: 0,
-        deleted_closed_order_count: 0,
-      });
+      return res.json({ message: 'No UPI messages older than 24 hours found.', deleted_count: 0 });
     }
 
     await conn.query(
@@ -780,6 +769,40 @@ exports.clearOldWebhookTransactions = async (req, res, next) => {
     const [deleteResult] = await conn.query(
       'DELETE FROM upi_webhook_transactions WHERE created_at < DATE_SUB(NOW(), INTERVAL 24 HOUR)'
     );
+
+    await conn.commit();
+    res.json({
+      message: `Cleared ${deleteResult.affectedRows} UPI messages older than 24 hours.`,
+      deleted_count: deleteResult.affectedRows,
+    });
+  } catch (error) {
+    await conn.rollback();
+    next(error);
+  } finally {
+    conn.release();
+  }
+};
+
+/**
+ * DELETE /api/auto-deposit/admin/closed-orders/older-than-24h
+ * Admin cleanup for cancelled/expired deposit orders older than 24 hours.
+ */
+exports.clearOldClosedOrders = async (req, res, next) => {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    const [[{ total }]] = await conn.query(
+      `SELECT COUNT(*) as total
+       FROM pending_deposit_orders
+       WHERE status IN ('cancelled', 'expired')
+         AND updated_at < DATE_SUB(NOW(), INTERVAL 24 HOUR)`
+    );
+
+    if (total === 0) {
+      await conn.commit();
+      return res.json({ message: 'No cancelled/expired orders older than 24 hours found.', deleted_count: 0 });
+    }
 
     await conn.query(
       `UPDATE deposits
@@ -820,16 +843,35 @@ exports.clearOldWebhookTransactions = async (req, res, next) => {
 
     await conn.commit();
     res.json({
-      message: `Cleared ${deleteResult.affectedRows} UPI messages and ${closedOrderDeleteResult.affectedRows} cancelled/expired orders older than 24 hours.`,
-      deleted_count: deleteResult.affectedRows + closedOrderDeleteResult.affectedRows,
-      deleted_webhook_count: deleteResult.affectedRows,
-      deleted_closed_order_count: closedOrderDeleteResult.affectedRows,
+      message: `Cleared ${closedOrderDeleteResult.affectedRows} cancelled/expired orders older than 24 hours.`,
+      deleted_count: closedOrderDeleteResult.affectedRows,
     });
   } catch (error) {
     await conn.rollback();
     next(error);
   } finally {
     conn.release();
+  }
+};
+
+/**
+ * DELETE /api/auto-deposit/admin/logs/older-than-24h
+ * Admin cleanup for old auto-deposit audit logs.
+ */
+exports.clearOldAutoDepositLogs = async (req, res, next) => {
+  try {
+    const [result] = await pool.query(
+      'DELETE FROM auto_deposit_logs WHERE created_at < DATE_SUB(NOW(), INTERVAL 24 HOUR)'
+    );
+
+    res.json({
+      message: result.affectedRows > 0
+        ? `Cleared ${result.affectedRows} audit logs older than 24 hours.`
+        : 'No audit logs older than 24 hours found.',
+      deleted_count: result.affectedRows,
+    });
+  } catch (error) {
+    next(error);
   }
 };
 

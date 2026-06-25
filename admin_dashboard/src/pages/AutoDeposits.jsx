@@ -88,6 +88,8 @@ export default function AutoDeposits() {
   const [logPagination, setLogPagination] = useState({});
   const [loading, setLoading] = useState(false);
   const [clearWebhookLoading, setClearWebhookLoading] = useState(false);
+  const [clearClosedOrdersLoading, setClearClosedOrdersLoading] = useState(false);
+  const [clearLogsLoading, setClearLogsLoading] = useState(false);
   const [rawSmsModal, setRawSmsModal] = useState(null);
   const { toasts, success, error: toastError, dismiss } = useToast();
 
@@ -427,7 +429,7 @@ export default function AutoDeposits() {
   };
 
   const handleClearOldWebhookMessages = async () => {
-    if (!window.confirm('Clear all UPI messages plus cancelled/expired orders older than 24 hours? Deposit records and audit logs will stay, but old queue rows will be removed.')) return;
+    if (!window.confirm('Clear UPI messages older than 24 hours? Related deposit, order, and audit references will stay, but the old SMS rows will be removed.')) return;
 
     setClearWebhookLoading(true);
     try {
@@ -435,15 +437,43 @@ export default function AutoDeposits() {
       success(res.data.message || `Cleared ${res.data.deleted_count || 0} old messages.`);
       setRawSmsModal(null);
       setWebhookPage(1);
-      await Promise.all([
-        loadStats(),
-        loadWebhookTxns(),
-        tab === 'orders' ? loadPendingOrders() : Promise.resolve(),
-      ]);
+      await Promise.all([loadStats(), loadWebhookTxns()]);
     } catch (err) {
-      toastError(err.response?.data?.error || 'Failed to clear old UPI messages and orders.');
+      toastError(err.response?.data?.error || 'Failed to clear old UPI messages.');
     } finally {
       setClearWebhookLoading(false);
+    }
+  };
+
+  const handleClearOldClosedOrders = async () => {
+    if (!window.confirm('Clear cancelled and expired deposit orders older than 24 hours? Deposit records and audit logs will stay, but old order queue rows will be removed.')) return;
+
+    setClearClosedOrdersLoading(true);
+    try {
+      const res = await api.delete('/auto-deposit/admin/closed-orders/older-than-24h');
+      success(res.data.message || `Cleared ${res.data.deleted_count || 0} old orders.`);
+      setOrderPage(1);
+      await Promise.all([loadStats(), loadPendingOrders()]);
+    } catch (err) {
+      toastError(err.response?.data?.error || 'Failed to clear old cancelled/expired orders.');
+    } finally {
+      setClearClosedOrdersLoading(false);
+    }
+  };
+
+  const handleClearOldLogs = async () => {
+    if (!window.confirm('Clear audit logs older than 24 hours?')) return;
+
+    setClearLogsLoading(true);
+    try {
+      const res = await api.delete('/auto-deposit/admin/logs/older-than-24h');
+      success(res.data.message || `Cleared ${res.data.deleted_count || 0} old audit logs.`);
+      setLogPage(1);
+      await loadLogs();
+    } catch (err) {
+      toastError(err.response?.data?.error || 'Failed to clear old audit logs.');
+    } finally {
+      setClearLogsLoading(false);
     }
   };
 
@@ -680,7 +710,7 @@ export default function AutoDeposits() {
                 className="inline-flex items-center justify-center gap-2 rounded bg-red-600 px-3 py-2 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-60 sm:text-sm"
               >
                 <Trash2 size={15} />
-                {clearWebhookLoading ? 'Clearing...' : 'Clear Old 24h'}
+                {clearWebhookLoading ? 'Clearing...' : 'Clear Messages 24h'}
               </button>
               <button
                 onClick={loadWebhookTxns}
@@ -878,7 +908,16 @@ export default function AutoDeposits() {
               </button>
             </div>
             
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={handleClearOldClosedOrders}
+                disabled={clearClosedOrdersLoading}
+                className="inline-flex items-center justify-center gap-2 rounded bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-60"
+              >
+                <Trash2 size={15} />
+                {clearClosedOrdersLoading ? 'Clearing...' : 'Clear Closed 24h'}
+              </button>
+
               {/* Page size selector */}
               <select
                 value={orderPageSize}
@@ -924,7 +963,6 @@ export default function AutoDeposits() {
               </button>
             </div>
           )}
-
           <div className="bg-white rounded-lg shadow overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-dark-50 text-dark-600">
@@ -1085,8 +1123,17 @@ export default function AutoDeposits() {
       {/* Audit Logs Tab */}
       {tab === 'logs' && (
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-sm text-dark-500">Audit trail of all auto-deposit actions</div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={handleClearOldLogs}
+                disabled={clearLogsLoading}
+                className="inline-flex items-center justify-center gap-2 rounded bg-red-600 px-3 py-2 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-60 sm:text-sm"
+              >
+                <Trash2 size={15} />
+                {clearLogsLoading ? 'Clearing...' : 'Clear Logs 24h'}
+              </button>
             <button
               onClick={loadLogs}
               title="Refresh (R)"
@@ -1094,6 +1141,7 @@ export default function AutoDeposits() {
             >
               🔄
             </button>
+          </div>
           </div>
           <div className="bg-white rounded-lg shadow overflow-x-auto">
             <table className="w-full text-sm">
