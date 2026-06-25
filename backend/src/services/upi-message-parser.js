@@ -90,6 +90,8 @@ const AMOUNT_PATTERNS = [
   /received\s*(?:Rs\.?|INR|₹)\s*([\d,]+(?:\.\d{1,2})?)/i,
   // "You received ₹500.00" (GPay)
   /you\s+received\s*(?:Rs\.?|INR|₹)?\s*([\d,]+(?:\.\d{1,2})?)/i,
+  // Slice: "You've got ₹1,500.31 from Mrs PRVESH in your slice bank a/c..."
+  /you(?:'|’)?ve\s+got\s*(?:Rs\.?|INR|₹)?\s*([\d,]+(?:\.\d{1,2})?)\s+from/i,
   // "Received Rs.500 from" (PhonePe)
   /Received\s*(?:Rs\.?|INR|₹)?\s*([\d,]+(?:\.\d{1,2})?)\s*from/i,
   // "Received 90.00 Rupees From" (some wallet/UPI apps where currency word follows amount)
@@ -140,6 +142,8 @@ const PAYER_PATTERNS = [
   /from\s+(\S+@\S+?)(?:\.\s|[.\s]$|\s)/i,
   // "From: Name" / "from SENDER via"
   /From\s*[:=]\s*(.+?)(?:\n|$|\.)/i,
+  // Slice: "from Mrs PRVESH in your slice bank a/c..."
+  /from\s+(.+?)\s+in\s+your\s+slice/i,
   /from\s+(.+?)\s+(?:via|through|by)\s/i,
   // "Sender: Name"
   /Sender\s*[:=]\s*(.+?)(?:\n|$)/i,
@@ -166,7 +170,7 @@ const ORDER_REF_PATTERN = /\bRM([A-Z0-9]{6})\b/i;
 const DEBIT_KEYWORDS = /\b(debited|paid|withdrawn|deducted|request|requested|pay\s+₹|pay\s+Rs|you\s+paid|you\s+sent|you\s+transferred)\b/i;
 
 // At least one of these must appear for the message to be treated as an incoming credit.
-const CREDIT_KEYWORDS = /\b(credited|received|credit|deposited|deposit|payment\s+of|money\s+received)\b/i;
+const CREDIT_KEYWORDS = /\b(credited|received|credit|deposited|deposit|payment\s+of|money\s+received|you(?:'|’)?ve\s+got)\b/i;
 
 function parseUpiMessage(rawMessage) {
   if (!rawMessage || typeof rawMessage !== 'string') {

@@ -45,6 +45,16 @@ const testCases = [
     }
   },
   {
+    name: 'Slice Bank Credit SMS',
+    text: 'You’ve got ₹1,500.31 from Mrs PRVESH in your slice bank a/c xx5450. Avl. Bal. ₹11,046.90.',
+    expected: {
+      success: true,
+      amount: 1500.31,
+      referenceNumber: null,
+      payerName: 'Mrs PRVESH',
+    }
+  },
+  {
     name: 'Reject Debit Transaction',
     text: 'Your a/c XX1234 has been debited by Rs.100 for payment to XYZ.',
     expected: {
