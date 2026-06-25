@@ -427,7 +427,7 @@ export default function AutoDeposits() {
   };
 
   const handleClearOldWebhookMessages = async () => {
-    if (!window.confirm('Clear all UPI messages older than 24 hours? Deposit records and audit logs will stay, but old SMS rows will be removed from this list.')) return;
+    if (!window.confirm('Clear all UPI messages plus cancelled/expired orders older than 24 hours? Deposit records and audit logs will stay, but old queue rows will be removed.')) return;
 
     setClearWebhookLoading(true);
     try {
@@ -435,9 +435,13 @@ export default function AutoDeposits() {
       success(res.data.message || `Cleared ${res.data.deleted_count || 0} old messages.`);
       setRawSmsModal(null);
       setWebhookPage(1);
-      await Promise.all([loadStats(), loadWebhookTxns()]);
+      await Promise.all([
+        loadStats(),
+        loadWebhookTxns(),
+        tab === 'orders' ? loadPendingOrders() : Promise.resolve(),
+      ]);
     } catch (err) {
-      toastError(err.response?.data?.error || 'Failed to clear old UPI messages.');
+      toastError(err.response?.data?.error || 'Failed to clear old UPI messages and orders.');
     } finally {
       setClearWebhookLoading(false);
     }
@@ -676,7 +680,7 @@ export default function AutoDeposits() {
                 className="inline-flex items-center justify-center gap-2 rounded bg-red-600 px-3 py-2 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-60 sm:text-sm"
               >
                 <Trash2 size={15} />
-                {clearWebhookLoading ? 'Clearing...' : 'Clear 24h Old'}
+                {clearWebhookLoading ? 'Clearing...' : 'Clear Old 24h'}
               </button>
               <button
                 onClick={loadWebhookTxns}

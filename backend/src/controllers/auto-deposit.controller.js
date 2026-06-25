@@ -728,20 +728,31 @@ exports.triggerExpireOrders = async (req, res, next) => {
 
 /**
  * DELETE /api/auto-deposit/admin/webhook-transactions/older-than-24h
- * Admin cleanup for old UPI webhook messages.
+ * Admin cleanup for old UPI webhook messages and closed deposit orders.
  */
 exports.clearOldWebhookTransactions = async (req, res, next) => {
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
 
-    const [[{ total }]] = await conn.query(
+    const [[{ total: oldWebhookTotal }]] = await conn.query(
       'SELECT COUNT(*) as total FROM upi_webhook_transactions WHERE created_at < DATE_SUB(NOW(), INTERVAL 24 HOUR)'
     );
+    const [[{ total: oldClosedOrderTotal }]] = await conn.query(
+      `SELECT COUNT(*) as total
+       FROM pending_deposit_orders
+       WHERE status IN ('cancelled', 'expired')
+         AND updated_at < DATE_SUB(NOW(), INTERVAL 24 HOUR)`
+    );
 
-    if (total === 0) {
+    if (oldWebhookTotal === 0 && oldClosedOrderTotal === 0) {
       await conn.commit();
-      return res.json({ message: 'No UPI messages older than 24 hours found.', deleted_count: 0 });
+      return res.json({
+        message: 'No UPI messages or closed orders older than 24 hours found.',
+        deleted_count: 0,
+        deleted_webhook_count: 0,
+        deleted_closed_order_count: 0,
+      });
     }
 
     await conn.query(
@@ -770,10 +781,49 @@ exports.clearOldWebhookTransactions = async (req, res, next) => {
       'DELETE FROM upi_webhook_transactions WHERE created_at < DATE_SUB(NOW(), INTERVAL 24 HOUR)'
     );
 
+    await conn.query(
+      `UPDATE deposits
+       SET order_id = NULL
+       WHERE order_id IN (
+         SELECT id
+         FROM pending_deposit_orders
+         WHERE status IN ('cancelled', 'expired')
+           AND updated_at < DATE_SUB(NOW(), INTERVAL 24 HOUR)
+       )`
+    );
+    await conn.query(
+      `UPDATE auto_deposit_logs
+       SET order_id = NULL
+       WHERE order_id IN (
+         SELECT id
+         FROM pending_deposit_orders
+         WHERE status IN ('cancelled', 'expired')
+           AND updated_at < DATE_SUB(NOW(), INTERVAL 24 HOUR)
+       )`
+    );
+    await conn.query(
+      `UPDATE upi_webhook_transactions
+       SET matched_order_id = NULL
+       WHERE matched_order_id IN (
+         SELECT id
+         FROM pending_deposit_orders
+         WHERE status IN ('cancelled', 'expired')
+           AND updated_at < DATE_SUB(NOW(), INTERVAL 24 HOUR)
+       )`
+    );
+
+    const [closedOrderDeleteResult] = await conn.query(
+      `DELETE FROM pending_deposit_orders
+       WHERE status IN ('cancelled', 'expired')
+         AND updated_at < DATE_SUB(NOW(), INTERVAL 24 HOUR)`
+    );
+
     await conn.commit();
     res.json({
-      message: `Cleared ${deleteResult.affectedRows} UPI messages older than 24 hours.`,
-      deleted_count: deleteResult.affectedRows,
+      message: `Cleared ${deleteResult.affectedRows} UPI messages and ${closedOrderDeleteResult.affectedRows} cancelled/expired orders older than 24 hours.`,
+      deleted_count: deleteResult.affectedRows + closedOrderDeleteResult.affectedRows,
+      deleted_webhook_count: deleteResult.affectedRows,
+      deleted_closed_order_count: closedOrderDeleteResult.affectedRows,
     });
   } catch (error) {
     await conn.rollback();
