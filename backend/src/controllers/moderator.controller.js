@@ -1,5 +1,6 @@
 const pool = require('../config/database');
 const bcrypt = require('bcryptjs');
+const { getPhoneCandidates, toE164Phone } = require('../utils/phone');
 
 function generateReferralCode() {
   // Simple format: M + 5 digits (e.g. M55555, M11111)
@@ -136,6 +137,22 @@ exports.createModerator = async (req, res, next) => {
       return res.status(400).json({ error: 'Password must be at least 6 characters.' });
     }
 
+    // Validate and normalize phone
+    const phoneCandidates = getPhoneCandidates(phone);
+    if (phoneCandidates.length === 0) {
+      return res.status(400).json({ error: 'Enter a valid phone number.' });
+    }
+    const normalizedPhone = toE164Phone(phone) || phoneCandidates[0];
+
+    // Check for duplicate phone across all candidate formats
+    const [existingUsers] = await conn.query(
+      'SELECT id FROM users WHERE phone IN (?) LIMIT 1',
+      [phoneCandidates]
+    );
+    if (existingUsers.length > 0) {
+      return res.status(409).json({ error: 'A user with this phone number already exists.' });
+    }
+
     await conn.beginTransaction();
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -143,7 +160,7 @@ exports.createModerator = async (req, res, next) => {
 
     const [result] = await conn.query(
       'INSERT INTO users (name, phone, password, role, referral_code) VALUES (?, ?, ?, ?, ?)',
-      [name, phone, hashedPassword, 'moderator', referralCode]
+      [name, normalizedPhone, hashedPassword, 'moderator', referralCode]
     );
 
     await conn.query('INSERT INTO wallets (user_id, balance, bonus_balance) VALUES (?, 0.00, 0.00)', [result.insertId]);

@@ -441,7 +441,7 @@ exports.adminLogin = async (req, res, next) => {
     }
 
     const [users] = await pool.query(
-      'SELECT id, name, phone, password, role, failed_login_attempts, login_blocked_until FROM users WHERE phone IN (?) AND role IN (?, ?) LIMIT 1',
+      'SELECT id, name, phone, password, role, is_blocked, failed_login_attempts, login_blocked_until FROM users WHERE phone IN (?) AND role IN (?, ?) AND is_deleted = 0 LIMIT 1',
       [phoneCandidates, 'admin', 'moderator']
     );
 
@@ -450,6 +450,11 @@ exports.adminLogin = async (req, res, next) => {
     }
 
     const user = users[0];
+
+    // Check if account is blocked
+    if (user.is_blocked) {
+      return res.status(403).json({ error: 'Your account has been blocked. Contact support.' });
+    }
 
     // Check if account is temporarily locked
     if (user.login_blocked_until && new Date(user.login_blocked_until) > new Date()) {
@@ -480,7 +485,7 @@ exports.adminLogin = async (req, res, next) => {
       expiresIn: process.env.JWT_EXPIRES_IN || '7d'
     });
 
-    const { password: _, failed_login_attempts: _a, login_blocked_until: _b, ...userWithoutPassword } = user;
+    const { password: _, is_blocked: _bl, failed_login_attempts: _a, login_blocked_until: _b, ...userWithoutPassword } = user;
     setAuthCookie(res, token);
     res.json({ message: 'Login successful.', token, user: userWithoutPassword });
   } catch (error) {
