@@ -26,6 +26,8 @@ export default function Withdrawals() {
   const [filter, setFilter] = useState(() => getWithdrawalFiltersFromSearchParams(searchParams).status);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [previewImage, setPreviewImage] = useState(null);
+  const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState(() => {
     const next = getWithdrawalFiltersFromSearchParams(searchParams);
     return {
@@ -142,6 +144,21 @@ export default function Withdrawals() {
       <ToastContainer toasts={toasts} dismiss={dismiss} />
       <ConfirmModal state={confirmState} onConfirm={handleConfirm} onCancel={handleCancel} />
 
+      {/* Image Preview Modal */}
+      {previewImage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 p-4" onClick={() => setPreviewImage(null)}>
+          <div className="relative max-w-full max-h-full">
+            <button
+              onClick={() => setPreviewImage(null)}
+              className="absolute -top-10 right-0 text-white hover:text-gray-300 text-3xl font-bold p-2"
+            >
+              &times;
+            </button>
+            <img src={previewImage} alt="Scanner QR" className="max-w-full max-h-[80vh] object-contain rounded bg-white" onClick={e => e.stopPropagation()} />
+          </div>
+        </div>
+      )}
+
       {/* Rejection reason modal */}
       {rejectModal.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
@@ -188,16 +205,25 @@ export default function Withdrawals() {
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
           <div>
             <h3 className="text-xl font-semibold text-gray-800">Withdrawals</h3>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-gray-500 mt-1 hidden md:block">
               Filter withdrawal requests by user, payment details, date range, method, and moderator assignment.
             </p>
           </div>
-          <div className="text-sm text-gray-500">
-            Total: {pagination.total || 0}
+          <div className="flex items-center justify-between lg:justify-end gap-4 w-full lg:w-auto">
+            <div className="text-sm text-gray-500 font-medium">
+              Total: {pagination.total || 0}
+            </div>
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="lg:hidden px-3 py-1.5 border border-gray-300 rounded text-sm text-gray-700 bg-gray-50"
+            >
+              {showFilters ? 'Hide Filters' : 'Show Filters'}
+            </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3">
+        <div className={`${showFilters ? 'block' : 'hidden'} lg:block space-y-4 pt-2`}>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3">
           <input
             type="text"
             placeholder="Search user, phone, bank, UPI, request id..."
@@ -267,6 +293,7 @@ export default function Withdrawals() {
             }));
           }}
         />
+        </div>
       </div>
 
       <div className="bg-white border overflow-x-auto">
@@ -300,7 +327,7 @@ export default function Withdrawals() {
               } else if (method === 'scanner') {
                 methodBadge = <span className="px-2 py-0.5 bg-teal-100 text-teal-700 text-xs font-medium">Scanner</span>;
                 paymentInfo = w.scanner_image ? (
-                  <a href={buildUploadUrl(w.scanner_image)} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-xs">View Image</a>
+                  <button onClick={() => setPreviewImage(buildUploadUrl(w.scanner_image))} className="text-blue-600 hover:underline text-xs">View Image</button>
                 ) : <span className="text-gray-500 text-xs">-</span>;
               } else {
                 methodBadge = <span className="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs font-medium">Bank</span>;

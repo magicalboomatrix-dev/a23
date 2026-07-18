@@ -34,6 +34,7 @@ const WithDrawPage = () => {
   const [toast, setToast] = useState({ message: '', type: 'info' })
   const [withdrawGuidelines, setWithdrawGuidelines] = useState([])
   const [withdrawalTimeWindows, setWithdrawalTimeWindows] = useState([])
+  const [previewImage, setPreviewImage] = useState(null)
 
   const formatDateTime = (value) => {
     if (!value) return '-'
@@ -219,8 +220,23 @@ const WithDrawPage = () => {
   }
 
   return (
-    <div className="mx-auto min-h-screen w-full max-w-107.5 bg-white pb-6">
-      <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: 'info' })} />
+    <div className="mx-auto min-h-screen w-full max-w-[430px] bg-[#f6f7fa] pb-24">
+      {toast.message && <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: 'info' })} />}
+
+      {/* Image Preview Modal */}
+      {previewImage && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4" onClick={() => setPreviewImage(null)}>
+          <div className="relative max-w-full max-h-full flex items-center justify-center flex-col">
+            <button
+              onClick={() => setPreviewImage(null)}
+              className="absolute -top-12 right-0 text-white hover:text-gray-300 text-3xl font-bold p-2 leading-none"
+            >
+              &times;
+            </button>
+            <img src={previewImage} alt="Scanner QR" className="max-w-[90vw] max-h-[70vh] object-contain rounded bg-white p-2" onClick={e => e.stopPropagation()} />
+          </div>
+        </div>
+      )}
 
       <header className="sticky top-0 z-40 mx-auto flex w-full max-w-107.5 items-center bg-white px-4 py-3 shadow-sm">
         <a href="/home" className="mr-3 inline-flex"><img alt="back" src="/images/back-btn.png" className="h-5 w-5" /></a>
@@ -408,7 +424,7 @@ const WithDrawPage = () => {
                     )}
                     {withdrawItem.withdraw_method === 'scanner' && (
                       <div className="mt-1 text-[11px] text-[#6b5a3a]">
-                        Scanner • {withdrawItem.scanner_image ? <a href={buildUploadUrl(withdrawItem.scanner_image)} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">View Image</a> : '-'}
+                        Scanner • {withdrawItem.scanner_image ? <button onClick={() => setPreviewImage(buildUploadUrl(withdrawItem.scanner_image))} className="text-blue-600 underline">View Image</button> : '-'}
                       </div>
                     )}
 
