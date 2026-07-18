@@ -3,14 +3,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { ChevronRight, Play, BookOpen, Languages } from 'lucide-react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
-const BACKEND_BASE = API_BASE.replace(/\/api\/?$/, '');
+import { buildUploadUrl } from '../lib/api';
 
-function buildVideoUrl(p) {
-  if (!p) return '';
-  const normalized = p.startsWith('/') ? p : `/uploads/${p}`;
-  return `${BACKEND_BASE}${normalized}`;
-}
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 // Static how-to-play steps shown when no description is provided by admin
 const STATIC_STEPS = {
@@ -87,7 +82,7 @@ function VideoCard({ video, lang }) {
       <div className="relative bg-black aspect-video">
         <video
           ref={videoRef}
-          src={buildVideoUrl(video.video_path)}
+          src={buildUploadUrl(video.video_path)}
           className="w-full h-full object-contain"
           controls={playing}
           playsInline

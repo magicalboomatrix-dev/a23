@@ -1,4 +1,15 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
+const BACKEND_BASE = API_BASE.replace(/\/api\/?$/, '');
+
+export function buildUploadUrl(fileName) {
+  if (!fileName) return '';
+  const normalizedPath = fileName.startsWith('/') ? fileName : `/uploads/${fileName}`;
+  let baseUrl = BACKEND_BASE;
+  if (baseUrl && !baseUrl.startsWith('http') && !baseUrl.startsWith('//') && !baseUrl.startsWith('/')) {
+    baseUrl = `https://${baseUrl}`;
+  }
+  return `${baseUrl}${normalizedPath}`;
+}
 
 function buildQuery(params = {}) {
   const searchParams = new URLSearchParams();

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import DepositWithdrawBtns from '../components/DepositWithdrawBtns'
 import SkeletonBlock from '../components/SkeletonBlock'
 import Toast from '../components/Toast'
-import { userAPI, walletAPI, withdrawAPI } from '../lib/api'
+import { userAPI, walletAPI, withdrawAPI, buildUploadUrl } from '../lib/api'
 import { formatStatusLabel } from '../lib/formatters'
 import { useTranslation } from '../lib/LanguageContext'
 import { translations } from '../lib/translations'
@@ -408,7 +408,7 @@ const WithDrawPage = () => {
                     )}
                     {withdrawItem.withdraw_method === 'scanner' && (
                       <div className="mt-1 text-[11px] text-[#6b5a3a]">
-                        Scanner • {withdrawItem.scanner_image ? <a href={`${process.env.NEXT_PUBLIC_API_URL || ''}${withdrawItem.scanner_image}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">View Image</a> : '-'}
+                        Scanner • {withdrawItem.scanner_image ? <a href={buildUploadUrl(withdrawItem.scanner_image)} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">View Image</a> : '-'}
                       </div>
                     )}
 

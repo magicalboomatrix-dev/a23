@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import api from '../utils/api';
+import api, { buildUploadUrl } from '../utils/api';
 import { useToast, ToastContainer, useConfirm, ConfirmModal } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import SavedFilterPresets from '../components/SavedFilterPresets';
@@ -300,7 +300,7 @@ export default function Withdrawals() {
               } else if (method === 'scanner') {
                 methodBadge = <span className="px-2 py-0.5 bg-teal-100 text-teal-700 text-xs font-medium">Scanner</span>;
                 paymentInfo = w.scanner_image ? (
-                  <a href={`${import.meta.env.VITE_API_URL?.replace('/api', '') || ''}${w.scanner_image}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-xs">View Image</a>
+                  <a href={buildUploadUrl(w.scanner_image)} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-xs">View Image</a>
                 ) : <span className="text-gray-500 text-xs">-</span>;
               } else {
                 methodBadge = <span className="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs font-medium">Bank</span>;

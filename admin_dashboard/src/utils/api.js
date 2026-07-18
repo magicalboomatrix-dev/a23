@@ -10,7 +10,11 @@ export function buildUploadUrl(fileName) {
   }
 
   const normalizedPath = fileName.startsWith('/') ? fileName : `/uploads/${fileName}`;
-  return `${BACKEND_BASE}${normalizedPath}`;
+  let baseUrl = BACKEND_BASE;
+  if (baseUrl && !baseUrl.startsWith('http') && !baseUrl.startsWith('//') && !baseUrl.startsWith('/')) {
+    baseUrl = `https://${baseUrl}`;
+  }
+  return `${baseUrl}${normalizedPath}`;
 }
 
 const api = axios.create({
