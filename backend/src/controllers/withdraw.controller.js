@@ -6,15 +6,20 @@ exports.requestWithdraw = async (req, res, next) => {
   const conn = await pool.getConnection();
   try {
     const { bank_id, bank_account_id, amount, withdraw_method, upi_id, phone_number } = req.body;
+    let { scanner_image } = req.body;
+    if (req.file) {
+      scanner_image = `/uploads/scanners/${req.file.filename}`;
+    }
     const method = withdraw_method || 'bank';
 
-    if (!['bank', 'upi', 'phone'].includes(method)) {
+    if (!['bank', 'upi', 'phone', 'scanner'].includes(method)) {
       return res.status(400).json({ error: 'Invalid withdrawal method.' });
     }
 
     let resolvedBankId = null;
     let cleanedUpi = null;
     let cleanedPhone = null;
+    let cleanedScannerImage = null;
 
     if (method === 'bank') {
       resolvedBankId = bank_id || bank_account_id;
@@ -42,6 +47,11 @@ exports.requestWithdraw = async (req, res, next) => {
         return res.status(400).json({ error: 'Invalid phone number. Must be 10 digits.' });
       }
       cleanedPhone = digits;
+    } else if (method === 'scanner') {
+      if (!scanner_image || !scanner_image.trim()) {
+        return res.status(400).json({ error: 'Scanner image URL is required.' });
+      }
+      cleanedScannerImage = scanner_image.trim();
     }
 
     if (!amount) {
@@ -128,8 +138,8 @@ exports.requestWithdraw = async (req, res, next) => {
 
     // Create withdraw request
     const [result] = await conn.query(
-      'INSERT INTO withdraw_requests (user_id, bank_id, withdraw_method, upi_id, phone_number, amount) VALUES (?, ?, ?, ?, ?, ?)',
-      [req.user.id, resolvedBankId || null, method, cleanedUpi, cleanedPhone, parsedAmount]
+      'INSERT INTO withdraw_requests (user_id, bank_id, withdraw_method, upi_id, phone_number, scanner_image, amount) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [req.user.id, resolvedBankId || null, method, cleanedUpi, cleanedPhone, cleanedScannerImage, parsedAmount]
     );
 
     await recordWalletTransaction(conn, {
@@ -165,7 +175,7 @@ exports.getWithdrawHistory = async (req, res, next) => {
     );
 
     const [withdrawals] = await pool.query(`
-      SELECT wr.id, wr.user_id, wr.bank_id, wr.withdraw_method, wr.upi_id, wr.phone_number,
+      SELECT wr.id, wr.user_id, wr.bank_id, wr.withdraw_method, wr.upi_id, wr.phone_number, wr.scanner_image,
              wr.amount, wr.status, wr.reject_reason, wr.created_at, wr.updated_at,
              ba.account_number, ba.bank_name, ba.account_holder
       FROM withdraw_requests wr
@@ -344,7 +354,7 @@ exports.getAllWithdrawals = async (req, res, next) => {
       : '';
 
     const baseQuery = `
-      SELECT wr.id, wr.user_id, wr.bank_id, wr.withdraw_method, wr.upi_id, wr.phone_number,
+      SELECT wr.id, wr.user_id, wr.bank_id, wr.withdraw_method, wr.upi_id, wr.phone_number, wr.scanner_image,
              wr.amount, wr.status, wr.reject_reason, wr.created_at, wr.updated_at,
              u.name as user_name, u.phone as user_phone, u.moderator_id,
              moderator_user.name AS moderator_name,

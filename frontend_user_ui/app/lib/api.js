@@ -122,7 +122,7 @@ export const autoDepositAPI = {
 
 // Withdrawals
 export const withdrawAPI = {
-  request: (data) => request('/withdraw/request', { method: 'POST', body: JSON.stringify(data) }),
+  request: (data) => request('/withdraw/request', { method: 'POST', body: data instanceof FormData ? data : JSON.stringify(data) }),
   history: (params) => request(`/withdraw/history${buildQuery(params)}`),
 };
 

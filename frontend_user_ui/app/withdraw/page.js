@@ -14,6 +14,7 @@ const getMethods = (t) => [
   { key: 'bank', label: t(translations.bankAccounts.title) },
   { key: 'upi', label: 'UPI ID' },
   { key: 'phone', label: 'Phone / UPI Number' },
+  { key: 'scanner', label: 'Scanner' },
 ]
 
 const WithDrawPage = () => {
@@ -25,6 +26,7 @@ const WithDrawPage = () => {
   const [withdrawMethod, setWithdrawMethod] = useState('bank')
   const [upiId, setUpiId] = useState('')
   const [phoneNumber, setPhoneNumber] = useState('')
+  const [scannerImageFile, setScannerImageFile] = useState(null)
   const [amount, setAmount] = useState('')
   const [withdrawableAmount, setWithdrawableAmount] = useState(0)
   const [loadingData, setLoadingData] = useState(true)
@@ -142,6 +144,10 @@ const WithDrawPage = () => {
       setToast({ message: 'Phone number must be at least 10 digits.', type: 'error' })
       return
     }
+    if (withdrawMethod === 'scanner' && !scannerImageFile) {
+      setToast({ message: 'Please upload a scanner image.', type: 'error' })
+      return
+    }
 
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
       setToast({ message: 'Withdrawal amount must be greater than 0.', type: 'error' })
@@ -155,19 +161,28 @@ const WithDrawPage = () => {
 
     setSubmitting(true)
     try {
-      const payload = { amount: parsedAmount, withdraw_method: withdrawMethod }
+      let payload
       let methodLabel = '-'
 
-      if (withdrawMethod === 'bank') {
-        payload.bank_account_id = Number(selectedAccountId)
-        const selectedBank = bankAccounts.find((account) => String(account.id) === String(selectedAccountId))
-        methodLabel = selectedBank ? formatBankOption(selectedBank) : '-'
-      } else if (withdrawMethod === 'upi') {
-        payload.upi_id = upiId.trim()
-        methodLabel = `UPI: ${upiId.trim()}`
-      } else if (withdrawMethod === 'phone') {
-        payload.phone_number = phoneNumber.replace(/\D/g, '')
-        methodLabel = `Phone: ${phoneNumber.replace(/\D/g, '')}`
+      if (withdrawMethod === 'scanner') {
+        payload = new FormData()
+        payload.append('amount', parsedAmount)
+        payload.append('withdraw_method', withdrawMethod)
+        payload.append('scanner_image', scannerImageFile)
+        methodLabel = 'Scanner'
+      } else {
+        payload = { amount: parsedAmount, withdraw_method: withdrawMethod }
+        if (withdrawMethod === 'bank') {
+          payload.bank_account_id = Number(selectedAccountId)
+          const selectedBank = bankAccounts.find((account) => String(account.id) === String(selectedAccountId))
+          methodLabel = selectedBank ? formatBankOption(selectedBank) : '-'
+        } else if (withdrawMethod === 'upi') {
+          payload.upi_id = upiId.trim()
+          methodLabel = `UPI: ${upiId.trim()}`
+        } else if (withdrawMethod === 'phone') {
+          payload.phone_number = phoneNumber.replace(/\D/g, '')
+          methodLabel = `Phone: ${phoneNumber.replace(/\D/g, '')}`
+        }
       }
 
       const response = await withdrawAPI.request(payload)
@@ -178,6 +193,7 @@ const WithDrawPage = () => {
       setAmount('')
       setUpiId('')
       setPhoneNumber('')
+      setScannerImageFile(null)
       await fetchData()
       const params = new URLSearchParams({
         type: 'withdraw',
@@ -322,6 +338,17 @@ const WithDrawPage = () => {
                   />
                 )}
 
+                {/* Scanner */}
+                {withdrawMethod === 'scanner' && (
+                  <input
+                    className="h-11 w-full border border-[#d8d1c4] bg-[#faf7f0] px-4 py-2.5 text-sm"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setScannerImageFile(e.target.files[0])}
+                    required
+                  />
+                )}
+
                 <button
                   className="h-11 w-full bg-[#111] text-sm font-semibold text-white disabled:opacity-60"
                   type="submit"
@@ -378,6 +405,11 @@ const WithDrawPage = () => {
                     )}
                     {withdrawItem.withdraw_method === 'phone' && (
                       <div className="mt-1 text-[11px] text-[#6b5a3a]">Phone • {withdrawItem.phone_number || '-'}</div>
+                    )}
+                    {withdrawItem.withdraw_method === 'scanner' && (
+                      <div className="mt-1 text-[11px] text-[#6b5a3a]">
+                        Scanner • {withdrawItem.scanner_image ? <a href={`${process.env.NEXT_PUBLIC_API_URL || ''}${withdrawItem.scanner_image}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">View Image</a> : '-'}
+                      </div>
                     )}
 
                     <div className="mt-3 space-y-2 text-xs">

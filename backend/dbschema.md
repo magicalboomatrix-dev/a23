@@ -459,14 +459,13 @@
 | id | int | NO | PRI |  | auto_increment |
 | user_id | int | NO | MUL |  |  |
 | bank_id | int | YES | MUL |  |  |
-| withdraw_method | enum('bank','upi','phone') | NO |  | bank |  |
+| withdraw_method | enum('bank','upi','phone','scanner') | NO |  | bank |  |
 | upi_id | varchar(100) | YES |  |  |  |
 | phone_number | varchar(20) | YES |  |  |  |
+| scanner_image | varchar(500) | YES |  |  |  |
 | amount | decimal(12,2) | NO |  |  |  |
 | status | enum('pending','approved','rejected') | YES | MUL | pending |  |
 | approved_by | int | YES | MUL |  |  |
 | reject_reason | varchar(255) | YES |  |  |  |
 | created_at | timestamp | YES | MUL | CURRENT_TIMESTAMP | DEFAULT_GENERATED |
 | updated_at | timestamp | YES |  | CURRENT_TIMESTAMP | DEFAULT_GENERATED on update CURRENT_TIMESTAMP |
-
-
