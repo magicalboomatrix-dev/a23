@@ -256,12 +256,6 @@ const WithDrawPage = () => {
             </div>
           )}
 
-          {/* Important Announcement */}
-          <div className="mt-4 border border-red-300 bg-red-50 px-3 py-3 text-sm font-bold text-red-700 text-center shadow-sm">
-            <p className="mb-1">क्वाड की पेमेंट नहीं मिलेगी</p>
-            <p>डबल जोड़ी मान्य नहीं होगी लास्ट टाइम</p>
-          </div>
-
           <section className="mt-4 border border-[#d6b774] bg-white p-4 shadow-[0_12px_28px_rgba(79,52,10,0.08)]">
             {loadingData ? (
               <div className="space-y-3">
