@@ -24,6 +24,7 @@ const EXPECTED_SETTINGS = {
     { key: 'max_withdraw_time_minutes', label: 'Max Withdraw Time (Minutes)', description: 'Maximum withdrawal processing time', default: '45' },
   ],
   'Bonus & Referral': [
+    { key: 'bonus_usage_percent', label: 'Bonus Usage on Bets (%)', description: 'Percentage of bet deducted from bonus balance', default: '0' },
     { key: 'first_deposit_bonus_percent', label: 'First Deposit Bonus %', description: 'First deposit bonus percentage', default: '10' },
     { key: 'referral_bonus', label: 'Referral Bonus', description: 'Referral bonus amount', default: '50' },
     { key: 'bonus_slab_2500', label: 'Bonus Slab ₹2,500', description: 'Bonus for deposit of ₹2,500', default: '100' },
