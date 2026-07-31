@@ -138,7 +138,6 @@ export default function FinancialReport() {
 
   // Load financial data when filters change
   useEffect(() => {
-    if (!isAdmin) return;
 
     const loadFinancialData = async () => {
       setLoading(true);
@@ -163,14 +162,6 @@ export default function FinancialReport() {
 
     loadFinancialData();
   }, [filters, isAdmin]);
-
-  if (!isAdmin) {
-    return (
-      <div className="bg-white border p-6 text-sm text-gray-600">
-        Financial Report is available for admins only.
-      </div>
-    );
-  }
 
   const updateFilter = (key, value) => {
     setFilters((current) => ({ ...current, [key]: value }));
@@ -245,16 +236,18 @@ export default function FinancialReport() {
               <option key={game.id} value={String(game.id)}>{game.name}</option>
             ))}
           </select>
-          <select
-            value={filters.moderator_id}
-            onChange={(e) => updateFilter('moderator_id', e.target.value)}
-            className="w-full px-3 py-2 border bg-white text-sm focus:ring-2 focus:ring-primary-500 outline-none"
-          >
-            <option value="">All Moderators</option>
-            {moderators.map((mod) => (
-              <option key={mod.id} value={String(mod.id)}>{mod.name}</option>
-            ))}
-          </select>
+          {isAdmin && (
+            <select
+              value={filters.moderator_id}
+              onChange={(e) => updateFilter('moderator_id', e.target.value)}
+              className="w-full px-3 py-2 border bg-white text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+            >
+              <option value="">All Moderators</option>
+              {moderators.map((mod) => (
+                <option key={mod.id} value={String(mod.id)}>{mod.name}</option>
+              ))}
+            </select>
+          )}
           <button
             type="button"
             onClick={clearFilters}

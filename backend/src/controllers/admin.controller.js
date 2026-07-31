@@ -1219,7 +1219,10 @@ exports.listReferrals = async (req, res, next) => {
 
 exports.getFinancialReport = async (req, res, next) => {
   try {
-    const { from_date, to_date, game_id, moderator_id } = req.query;
+    let { from_date, to_date, game_id, moderator_id } = req.query;
+    if (req.user.role === 'moderator') {
+      moderator_id = req.user.id;
+    }
 
     // Date filter clause builder
     const buildDateFilter = (tableAlias) => {
@@ -1414,9 +1417,9 @@ exports.getFinancialReport = async (req, res, next) => {
         COALESCE((SELECT SUM(b.win_amount) FROM bets b JOIN users u ON u.id = b.user_id WHERE u.moderator_id = m.id${betDate.clause}${gameFilter}), 0) as total_win,
         COALESCE((SELECT SUM(CASE WHEN b.status = 'loss' THEN b.total_amount ELSE 0 END) FROM bets b JOIN users u ON u.id = b.user_id WHERE u.moderator_id = m.id${betDate.clause}${gameFilter}), 0) as retained_stake
        FROM users m
-       WHERE m.role = 'moderator' AND m.is_deleted = 0
+       WHERE m.role = 'moderator' AND m.is_deleted = 0 ${req.user.role === 'moderator' ? 'AND m.id = ?' : ''}
        ORDER BY total_deposit_amount DESC`,
-      [...depositDate.params, ...depositDate.params, ...withdrawalDate.params, ...withdrawalDate.params, ...bonusDate.params, ...bonusDate.params, ...betDate.params, ...gameParams, ...betDate.params, ...gameParams, ...betDate.params, ...gameParams, ...betDate.params, ...gameParams]
+      [...depositDate.params, ...depositDate.params, ...withdrawalDate.params, ...withdrawalDate.params, ...bonusDate.params, ...bonusDate.params, ...betDate.params, ...gameParams, ...betDate.params, ...gameParams, ...betDate.params, ...gameParams, ...betDate.params, ...gameParams, ...(req.user.role === 'moderator' ? [req.user.id] : [])]
     );
 
     // Calculate comprehensive P&L for each moderator
@@ -1487,7 +1490,9 @@ exports.getFinancialReport = async (req, res, next) => {
     };
 
     // Add admin entry to the beginning of the array
-    moderatorsWithProfit.unshift(adminDirectEntry);
+    if (req.user.role === 'admin') {
+      moderatorsWithProfit.unshift(adminDirectEntry);
+    }
 
     // ===================== PLATFORM CALCULATIONS =====================
 
