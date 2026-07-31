@@ -35,6 +35,32 @@ export default function PWAHandler() {
 
     checkMode();
 
+    // Auto-reload on Next.js ChunkLoadError (happens on new deployments)
+    const handleGlobalError = (event) => {
+      const msg = event.message || '';
+      if (msg.includes('Failed to load chunk') || msg.includes('ChunkLoadError')) {
+        const reloads = parseInt(sessionStorage.getItem('chunk_retries') || '0', 10);
+        if (reloads < 3) {
+          sessionStorage.setItem('chunk_retries', String(reloads + 1));
+          window.location.reload();
+        }
+      }
+    };
+    
+    const handleGlobalRejection = (event) => {
+      const msg = event.reason?.message || '';
+      if (msg.includes('Failed to load chunk') || msg.includes('ChunkLoadError')) {
+        const reloads = parseInt(sessionStorage.getItem('chunk_retries') || '0', 10);
+        if (reloads < 3) {
+          sessionStorage.setItem('chunk_retries', String(reloads + 1));
+          window.location.reload();
+        }
+      }
+    };
+
+    window.addEventListener('error', handleGlobalError);
+    window.addEventListener('unhandledrejection', handleGlobalRejection);
+
     // Listen for display mode changes
     const mediaQuery = window.matchMedia('(display-mode: standalone)');
     const handleChange = (e) => {
