@@ -8,6 +8,7 @@ const {
   getResultDate,
   isResultVisible,
   canSettleGame,
+  formatDate,
 } = require('../utils/game-time');
 
 exports.listGames = async (req, res, next) => {
@@ -57,13 +58,14 @@ exports.listGames = async (req, res, next) => {
     const gameDateMap = games.map((g) => ({
       id: g.id,
       currentSessionDate: getResultDate(g, now),
+      todayDate: formatDate(now),
     }));
 
     // Single batch query for current session results
     let batchResults = [];
     if (games.length > 0) {
       const gameIds = gameDateMap.map((d) => d.id);
-      const allDates = [...new Set(gameDateMap.map((d) => d.currentSessionDate))];
+      const allDates = [...new Set([...gameDateMap.map((d) => d.currentSessionDate), ...gameDateMap.map((d) => d.todayDate)])];
       const [rows] = await pool.query(
         `SELECT game_id, result_number, DATE_FORMAT(result_date, '%Y-%m-%d') AS result_date,
                 declared_at, is_settled
@@ -104,9 +106,10 @@ exports.listGames = async (req, res, next) => {
     }
 
     for (const g of games) {
-      const { currentSessionDate } = gameDateMap.find((d) => d.id === g.id);
+      const { currentSessionDate, todayDate } = gameDateMap.find((d) => d.id === g.id);
 
       const currentResult = resultMap[`${g.id}:${currentSessionDate}`] || null;
+      const todayResult = resultMap[`${g.id}:${todayDate}`] || null;
       const lastResult = recentMap[g.id] || null;
 
       // Current session info
@@ -116,6 +119,12 @@ exports.listGames = async (req, res, next) => {
       g.is_result_settled = currentResult ? !!currentResult.is_settled : null;
       g.result_visible = currentResult ? isResultVisible(g, currentSessionDate, now) : false;
       g.current_session_date = currentSessionDate;
+
+      // Today info
+      g.today_result_number = todayResult ? todayResult.result_number : null;
+      g.today_result_date = todayResult ? todayResult.result_date : todayDate;
+      g.is_today_result_settled = todayResult ? !!todayResult.is_settled : null;
+      g.today_result_visible = todayResult ? isResultVisible(g, todayDate, now) : false;
 
       // Last declared result (may be from a prior session)
       g.last_result_number = lastResult ? lastResult.result_number : null;

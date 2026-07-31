@@ -536,8 +536,8 @@ const HomePage = () => {
                         </div>
                         <div className="bg-[#ffe8ef] backdrop-blur-[1px] p-2 text-center text-sm font-black text-[#000000]">
                           {/* Show today's result if visible, else lock */}
-                          {game.result_visible && game.result_number
-                            ? game.result_number
+                          {game.today_result_visible && game.today_result_number
+                            ? game.today_result_number
                             : <LockBadge size="text-sm" />}
                         </div>
                         <div
