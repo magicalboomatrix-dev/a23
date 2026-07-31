@@ -135,11 +135,11 @@ const Header = () => {
         <div className={`absolute right-0 top-10 z-50  w-55 bg-[rgba(255,255,255,0.95)] p-3 text-black shadow-[0_16px_32px_rgba(0,0,0,0.25)] transition ${usopen ? 'visible translate-y-0 opacity-100' : 'invisible -translate-y-2 opacity-0'}`}>
           <div className="border border-[#b88831] bg-[#f1f1f1] px-3 py-2">
             <div className="mb-3 flex items-start justify-between gap-3 text-[13px] leading-4">
-              <span>{t(translations.header.walletAmount)} <br/><small>{t(translations.header.inclusiveBonus)}</small></span>
+              <span>{t(translations.header.walletAmount)}</span>
               <strong>{wallet.total?.toFixed(2) || '0.00'}</strong>
             </div>
             <div className="mb-3 flex items-center justify-between text-[13px] leading-4"><span>{t(translations.header.netExposure)}</span><strong>{wallet.exposure?.toFixed(2) || '0.00'}</strong></div>
-            <div className="mb-3 flex items-center justify-between text-[13px] leading-4"><span>{t(translations.header.bonus)}</span><strong>{wallet.bonus_balance?.toFixed(2) || '0.00'}</strong></div>
+            {/* <div className="mb-3 flex items-center justify-between text-[13px] leading-4"><span>{t(translations.header.bonus)}</span><strong>{wallet.bonus_balance?.toFixed(2) || '0.00'}</strong></div> */}
             <div className="flex items-center justify-between text-[13px] leading-4"><span>{t(translations.header.availableWithdrawal)}</span><strong>{wallet.available_withdrawal?.toFixed(2) || '0.00'}</strong></div>
           </div>
 
@@ -147,7 +147,7 @@ const Header = () => {
           <ul className="border-t border-[#b88831] pt-2 text-sm font-semibold">
             <li><Link href="/account-statement" className='flex items-center gap-2 border-b border-[#eee] px-2 py-2'><i className="fa fa-university"></i> {t(translations.header.accountStatement)}</Link></li>
             <li><Link href="/profit-loss" className='flex items-center gap-2 border-b border-[#eee] px-2 py-2'><i className="fa fa-cog"></i> {t(translations.header.bettingProfitLoss)}</Link></li>
-            <li><Link href="/bonus-rules" className='flex items-center gap-2 border-b border-[#eee] px-2 py-2'><i className="fa fa-gavel"></i> {t(translations.header.bonusRules)}</Link></li>
+            {/* <li><Link href="/bonus-rules" className='flex items-center gap-2 border-b border-[#eee] px-2 py-2'><i className="fa fa-gavel"></i> {t(translations.header.bonusRules)}</Link></li> */}
             {isLoggedIn ? (
               <li><button onClick={handleLogout} className='flex w-full items-center gap-2 px-2 py-2 text-left text-red-600 text-shadow-red-700 cursor-pointer'><i className="fa fa-sign-out"></i> {t(translations.header.logout)}</button></li>
             ) : (

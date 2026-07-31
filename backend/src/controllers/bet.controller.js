@@ -115,6 +115,27 @@ exports.placeBet = async (req, res, next) => {
     }
 
     const { maxBet, minBet, minutesLeft } = betCheck;
+
+    // Prevent duplicate bets on the same number in the last 15 minutes
+    if (minutesLeft <= 15) {
+      const numberList = betNumbers.map(item => String(item.number).padStart(type === 'jodi' || type === 'crossing' ? 2 : 1, '0'));
+      if (numberList.length > 0) {
+        const [existingBets] = await conn.query(`
+          SELECT bn.number 
+          FROM bets b
+          JOIN bet_numbers bn ON b.id = bn.bet_id
+          WHERE b.user_id = ? AND b.game_id = ? AND b.type = ? AND b.session_date = ? 
+            AND bn.number IN (?)
+          LIMIT 1
+        `, [req.user.id, game_id, type, session_date, numberList]);
+        
+        if (existingBets.length > 0) {
+          await conn.rollback();
+          return res.status(400).json({ error: 'Closing ke aakhiri 15 min mein ek number par dobara bet allowed nahi hai.' });
+        }
+      }
+    }
+
     const totalAmount = betNumbers.reduce((sum, n) => sum + parseFloat(n.amount), 0);
 
     // Validate each number amount
@@ -141,8 +162,12 @@ exports.placeBet = async (req, res, next) => {
     const currentBalance = parseFloat(wallets[0].balance);
     const currentBonus = parseFloat(wallets[0].bonus_balance || 0);
 
-    // Calculate bonus portion: 10% of bet, capped at available bonus
-    const idealBonusPortion = Math.round(totalAmount * 0.10 * 100) / 100;
+    // Fetch dynamic bonus usage percent from settings (default to 0 if not set)
+    const [bonusSetting] = await conn.query("SELECT setting_value FROM settings WHERE setting_key = 'bonus_usage_percent'");
+    const bonusUsagePercent = bonusSetting.length > 0 ? parseFloat(bonusSetting[0].setting_value) : 0;
+
+    // Calculate bonus portion: configurable % of bet, capped at available bonus
+    const idealBonusPortion = Math.round(totalAmount * (bonusUsagePercent / 100) * 100) / 100;
     const bonusUsed = Math.min(idealBonusPortion, currentBonus);
     const balanceUsed = Math.round((totalAmount - bonusUsed) * 100) / 100;
 

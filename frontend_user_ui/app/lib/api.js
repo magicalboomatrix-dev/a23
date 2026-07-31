@@ -141,7 +141,6 @@ export const withdrawAPI = {
 export const bonusAPI = {
   referrals: () => request('/bonus/referrals'),
   rules: () => request('/bonus/rules'),
-  claimDaily: () => request('/bonus/claim-daily', { method: 'POST' }),
 };
 
 // Results

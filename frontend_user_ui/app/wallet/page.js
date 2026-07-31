@@ -242,7 +242,7 @@ export default function WalletPage() {
     </div>
 
     {/* Bonus Wallet */}
-    <div className="flex flex-col items-center justify-center border border-white/10 bg-white/6 backdrop-blur-sm p-3">
+    {/* <div className="flex flex-col items-center justify-center border border-white/10 bg-white/6 backdrop-blur-sm p-3">
       <div className="text-[10px] uppercase tracking-[0.14em] text-white/60">
         {t(translations.header.bonus)}
       </div>
@@ -250,7 +250,7 @@ export default function WalletPage() {
       <div className="mt-2 text-[28px] font-bold leading-none text-[#7df48f]">
         {formatCurrency(wallet?.bonus_balance)}
       </div>
-    </div>
+    </div> */}
 
   </div>
 </div>

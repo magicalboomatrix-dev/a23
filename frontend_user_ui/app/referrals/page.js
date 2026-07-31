@@ -9,8 +9,6 @@ export default function ReferralsPage() {
   const [referralCode, setReferralCode] = useState('')
   const [myReferral, setMyReferral] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [claiming, setClaiming] = useState(false)
-  const [claimMsg, setClaimMsg] = useState(null)
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
@@ -32,20 +30,6 @@ export default function ReferralsPage() {
     }
   }
 
-  const claimDaily = async () => {
-    setClaiming(true)
-    setClaimMsg(null)
-    try {
-      const res = await bonusAPI.claimDaily()
-      setClaimMsg({ type: 'success', text: res.message || `₹${res.bonus_amount} credited!` })
-    } catch (err) {
-      const msg = err?.message || 'Could not claim bonus.'
-      setClaimMsg({ type: 'error', text: msg })
-    } finally {
-      setClaiming(false)
-    }
-  }
-
   const copyCode = () => {
     if (!referralCode) return
     navigator.clipboard.writeText(referralCode).then(() => {
@@ -60,26 +44,6 @@ export default function ReferralsPage() {
       <div className="bg-white pb-6">
         <DepositWithdrawBtns />
         <div className="mx-auto w-full max-w-[430px] space-y-0">
-
-          {/* Daily bonus card */}
-          <div className="bg-[linear-gradient(94deg,#b6842d,#ebda8d_55%,#b7862f)] px-4 py-2.5 text-center text-[#111]">
-            <h2 className="text-sm font-semibold uppercase tracking-[0.08em]"><b>Daily Bonus</b></h2>
-          </div>
-          <div className="border border-t-0 border-[#d6b774] bg-white px-4 py-4 text-center shadow-[0_12px_28px_rgba(79,52,10,0.08)]">
-            <p className="mb-3 text-xs text-gray-500">Claim your free daily bonus once every 24 hours.</p>
-            <button
-              onClick={claimDaily}
-              disabled={claiming}
-              className="h-10 w-full bg-[#111] text-sm font-semibold text-[#ebda8d] disabled:opacity-50"
-            >
-              {claiming ? 'Claiming…' : 'Claim Daily Bonus'}
-            </button>
-            {claimMsg && (
-              <p className={`mt-2 text-xs font-medium ${claimMsg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
-                {claimMsg.text}
-              </p>
-            )}
-          </div>
 
           {/* Referral code */}
           <div className="mt-4 bg-[linear-gradient(94deg,#b6842d,#ebda8d_55%,#b7862f)] px-4 py-2.5 text-center text-[#111]">
