@@ -63,9 +63,9 @@ exports.requestWithdraw = async (req, res, next) => {
       return res.status(400).json({ error: 'Amount must be positive.' });
     }
 
-    // Check min withdrawal and withdrawal time windows
+    // Check min withdrawal, withdrawal time windows, and min retained balance
     const [settings] = await pool.query(
-      "SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('min_withdraw', 'withdrawal_time_windows')"
+      "SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('min_withdraw', 'withdrawal_time_windows', 'min_retained_balance')"
     );
     const settingsMap = {};
     for (const s of settings) settingsMap[s.setting_key] = s.setting_value;
@@ -127,12 +127,18 @@ exports.requestWithdraw = async (req, res, next) => {
     // Check available balance
     const [wallets] = await conn.query('SELECT balance FROM wallets WHERE user_id = ? FOR UPDATE', [req.user.id]);
     const balance = parseFloat(wallets[0].balance);
-    const availableWithdrawal = balance;
+    const minRetainedBalance = settingsMap.min_retained_balance ? parseFloat(settingsMap.min_retained_balance) : 0;
+    const availableWithdrawal = Math.max(0, balance - minRetainedBalance);
 
     if (parsedAmount > availableWithdrawal) {
       await conn.rollback();
+      if (minRetainedBalance > 0 && availableWithdrawal <= 0) {
+        return res.status(400).json({
+          error: `You must maintain a minimum balance of ₹${minRetainedBalance.toFixed(2)}.`
+        });
+      }
       return res.status(400).json({
-        error: `Insufficient available balance. Available: ₹${availableWithdrawal.toFixed(2)}`
+        error: `Insufficient available balance. Available for withdrawal: ₹${availableWithdrawal.toFixed(2)} (Minimum maintained balance: ₹${minRetainedBalance.toFixed(2)})`
       });
     }
 

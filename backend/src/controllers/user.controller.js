@@ -23,6 +23,12 @@ exports.getProfile = async (req, res, next) => {
     const pendingWithdrawalCount = Number(pendingWithdrawalResult[0].pending_count || 0);
     const pendingWithdrawalAmount = parseFloat(pendingWithdrawalResult[0].pending_amount || 0);
 
+    // Fetch min_retained_balance
+    const [settings] = await pool.query("SELECT setting_value FROM settings WHERE setting_key = 'min_retained_balance'");
+    const minRetainedBalance = settings.length > 0 ? parseFloat(settings[0].setting_value) || 0 : 0;
+
+    const availableWithdrawal = Math.max(0, parseFloat(wallet.balance) - minRetainedBalance);
+
     res.json({
       user: {
         id: req.user.id,
@@ -37,7 +43,7 @@ exports.getProfile = async (req, res, next) => {
         balance: parseFloat(wallet.balance),
         bonus_balance: parseFloat(wallet.bonus_balance),
         exposure,
-        available_withdrawal: parseFloat(wallet.balance),
+        available_withdrawal: availableWithdrawal,
         pending_withdrawal_count: pendingWithdrawalCount,
         pending_withdrawal_amount: pendingWithdrawalAmount,
         betting_locked: false,
@@ -336,7 +342,8 @@ exports.getUiConfig = async (req, res, next) => {
          'max_withdraw_time_minutes',
          'first_deposit_bonus_percent',
          'referral_bonus',
-         'withdrawal_time_windows'
+         'withdrawal_time_windows',
+         'min_retained_balance'
        )`
     );
 
@@ -351,6 +358,7 @@ exports.getUiConfig = async (req, res, next) => {
     const maxWithdrawTimeMinutes = Number(settingsMap.max_withdraw_time_minutes || 45);
     const firstDepositBonusPercent = Number(settingsMap.first_deposit_bonus_percent || 0);
     const referralBonus = Number(settingsMap.referral_bonus || 0);
+    const minRetainedBalance = Number(settingsMap.min_retained_balance || 0);
 
     let withdrawalTimeWindows = [];
     if (settingsMap.withdrawal_time_windows) {
@@ -375,6 +383,7 @@ exports.getUiConfig = async (req, res, next) => {
         max_withdraw_time_minutes: maxWithdrawTimeMinutes,
         first_deposit_bonus_percent: firstDepositBonusPercent,
         referral_bonus: referralBonus,
+        min_retained_balance: minRetainedBalance,
       },
       withdrawal_time_windows: withdrawalTimeWindows,
       deposit_guidelines: [
@@ -387,6 +396,7 @@ exports.getUiConfig = async (req, res, next) => {
       ],
       withdraw_guidelines: [
         `Minimum withdrawal amount is Rs ${minWithdraw}.`,
+        minRetainedBalance > 0 ? `A minimum balance of Rs ${minRetainedBalance} must be maintained in your account.` : '',
         'Withdrawals are processed from the main wallet only.',
         'Bonus wallet balance cannot be withdrawn directly.',
         'Use only your own verified bank account to avoid account review.',
