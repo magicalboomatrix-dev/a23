@@ -22,7 +22,7 @@ const EXPECTED_SETTINGS = {
     { key: 'max_deposit', label: 'Maximum Deposit', description: 'Maximum deposit amount', default: '50000' },
     { key: 'min_withdraw', label: 'Minimum Withdrawal', description: 'Minimum withdrawal amount', default: '200' },
     { key: 'max_withdraw_time_minutes', label: 'Max Withdraw Time (Minutes)', description: 'Maximum withdrawal processing time', default: '45' },
-    { key: 'min_retained_balance', label: 'Minimum Retained Balance', description: 'Minimum balance that must remain after withdrawal', default: '500' },
+    { key: 'min_retained_balance', label: 'Minimum Retained Balance', description: 'Minimum balance that must remain after withdrawal', default: '0' },
   ],
   'Bonus & Referral': [
     { key: 'bonus_usage_percent', label: 'Bonus Usage on Bets (%)', description: 'Percentage of bet deducted from bonus balance', default: '0' },
