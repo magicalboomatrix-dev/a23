@@ -73,31 +73,53 @@ function getGameAvailability(game, referenceDate = new Date()) {
     };
   }
 
-  const { openTime, closeTime } = getGameWindow(
-    game.open_time,
-    game.close_time,
-    referenceDate,
-  );
-
-  if (referenceDate < openTime) {
-    return {
-      canPlay: false,
-      label: `opens_at`,
-      openTime: openTime.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false }),
-    };
+  // Get IST hours and minutes safely to ignore the user's local timezone
+  const options = { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: 'numeric', hour12: false };
+  const formatter = new Intl.DateTimeFormat('en-US', options);
+  const parts = formatter.formatToParts(referenceDate);
+  let currentHour = 0;
+  let currentMinute = 0;
+  for (const part of parts) {
+    if (part.type === 'hour') currentHour = Number(part.value);
+    if (part.type === 'minute') currentMinute = Number(part.value);
   }
+  
+  // Handle midnight 24 vs 0
+  if (currentHour === 24) currentHour = 0;
 
-  if (referenceDate >= closeTime) {
-    return {
-      canPlay: false,
-      label: "closed",
-    };
+  const nowMins = currentHour * 60 + currentMinute;
+  
+  const openParts = parseTimeParts(game.open_time);
+  const closeParts = parseTimeParts(game.close_time);
+  
+  const openMins = openParts.hours * 60 + openParts.minutes;
+  const closeMins = closeParts.hours * 60 + closeParts.minutes;
+  
+  const isOvernight = closeMins < openMins;
+
+  if (isOvernight) {
+    if (nowMins >= openMins || nowMins < closeMins) {
+      return { canPlay: true, label: "play_now" };
+    } else {
+      return { 
+        canPlay: false, 
+        label: 'opens_at',
+        openTime: game.open_time?.substring(0, 5) 
+      };
+    }
+  } else {
+    if (nowMins < openMins) {
+      return { 
+        canPlay: false, 
+        label: 'opens_at',
+        openTime: game.open_time?.substring(0, 5) 
+      };
+    }
+    if (nowMins >= closeMins) {
+      return { canPlay: false, label: "closed" };
+    }
+    return { canPlay: true, label: "play_now" };
   }
-
-  return {
-    canPlay: true,
-    label: "play_now",
-  };
 }
 
 function LockBadge({ size = "text-base" }) {
@@ -336,12 +358,19 @@ const HomePage = () => {
 
   // Memoized helpers
   const getResultForGame = useCallback(
-    (gameName) => {
-      const result = liveResults.find((item) => item.name === gameName);
-      if (!result || !result.result_visible || !result.result_number) {
-        return <LockBadge size="text-sm" />;
+    (game) => {
+      // First check if the backend API already provided the Today result
+      if ((game?.is_today_result_visible || game?.today_result_visible) && game?.today_result_number) {
+        return game.today_result_number;
       }
-      return result.result_number;
+
+      // Fallback to liveResults for real-time updates
+      const gameName = typeof game === 'string' ? game : game?.name;
+      const result = liveResults.find((item) => item.name === gameName);
+      if (result && result.result_visible && result.result_number) {
+        return result.result_number;
+      }
+      return <LockBadge size="text-sm" />;
     },
     [liveResults],
   );
@@ -536,9 +565,7 @@ const HomePage = () => {
                         </div>
                         <div className="bg-[#ffe8ef] backdrop-blur-[1px] p-2 text-center text-sm font-black text-[#000000]">
                           {/* Show today's result if visible, else lock */}
-                          {game.today_result_visible && game.today_result_number
-                            ? game.today_result_number
-                            : <LockBadge size="text-sm" />}
+                          {getResultForGame(game)}
                         </div>
                         <div
                           className={`flex items-center justify-center px-2 text-center text-[11px] font-black uppercase tracking-widest text-white ${availability.canPlay ? "bg-green-700" : "bg-[#b91c1c]"}`}

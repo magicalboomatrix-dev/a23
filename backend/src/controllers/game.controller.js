@@ -8,6 +8,7 @@ const {
   getResultDate,
   isResultVisible,
   canSettleGame,
+  resolveGameWindow,
   formatDate,
 } = require('../utils/game-time');
 
@@ -58,14 +59,17 @@ exports.listGames = async (req, res, next) => {
     const gameDateMap = games.map((g) => ({
       id: g.id,
       currentSessionDate: getResultDate(g, now),
-      todayDate: formatDate(now),
+      displaySessionDate: formatDate(resolveGameWindow(g, now).closeDatetime),
     }));
 
     // Single batch query for current session results
     let batchResults = [];
     if (games.length > 0) {
       const gameIds = gameDateMap.map((d) => d.id);
-      const allDates = [...new Set([...gameDateMap.map((d) => d.currentSessionDate), ...gameDateMap.map((d) => d.todayDate)])];
+      const allDates = [...new Set([
+        ...gameDateMap.map((d) => d.currentSessionDate),
+        ...gameDateMap.map((d) => d.displaySessionDate)
+      ])];
       const [rows] = await pool.query(
         `SELECT game_id, result_number, DATE_FORMAT(result_date, '%Y-%m-%d') AS result_date,
                 declared_at, is_settled
@@ -76,7 +80,7 @@ exports.listGames = async (req, res, next) => {
       batchResults = rows;
     }
 
-    // Also fetch the most recent declared result per game strictly BEFORE current session date (Yesterday)
+    // Also fetch the most recent declared result per game strictly BEFORE display session date (Yesterday)
     let recentResults = [];
     if (games.length > 0) {
       const queries = gameDateMap.map(d => 
@@ -86,7 +90,7 @@ exports.listGames = async (req, res, next) => {
            FROM game_results
            WHERE game_id = ? AND result_date < ? AND declared_at IS NOT NULL
            ORDER BY result_date DESC LIMIT 1`,
-          [d.id, d.currentSessionDate]
+          [d.id, d.displaySessionDate]
         )
       );
       const results = await Promise.all(queries);
@@ -106,10 +110,10 @@ exports.listGames = async (req, res, next) => {
     }
 
     for (const g of games) {
-      const { currentSessionDate, todayDate } = gameDateMap.find((d) => d.id === g.id);
+      const { currentSessionDate, displaySessionDate } = gameDateMap.find((d) => d.id === g.id);
 
       const currentResult = resultMap[`${g.id}:${currentSessionDate}`] || null;
-      const todayResult = resultMap[`${g.id}:${todayDate}`] || null;
+      const displayResult = resultMap[`${g.id}:${displaySessionDate}`] || null;
       const lastResult = recentMap[g.id] || null;
 
       // Current session info
@@ -120,13 +124,14 @@ exports.listGames = async (req, res, next) => {
       g.result_visible = currentResult ? isResultVisible(g, currentSessionDate, now) : false;
       g.current_session_date = currentSessionDate;
 
-      // Today info
-      g.today_result_number = todayResult ? todayResult.result_number : null;
-      g.today_result_date = todayResult ? todayResult.result_date : todayDate;
-      g.is_today_result_settled = todayResult ? !!todayResult.is_settled : null;
-      g.today_result_visible = todayResult ? isResultVisible(g, todayDate, now) : false;
+      // Display session info (Today)
+      g.today_result_number = displayResult ? displayResult.result_number : null;
+      g.today_result_date = displayResult ? displayResult.result_date : displaySessionDate;
+      g.is_today_result_settled = displayResult ? !!displayResult.is_settled : null;
+      g.today_result_visible = displayResult ? isResultVisible(g, displaySessionDate, now) : false;
+      g.is_today_result_visible = g.today_result_visible;
 
-      // Last declared result (may be from a prior session)
+      // Last declared result strictly before display session (Yesterday)
       g.last_result_number = lastResult ? lastResult.result_number : null;
       g.last_result_date = lastResult ? lastResult.result_date : null;
       g.is_last_result_settled = lastResult ? !!lastResult.is_settled : null;
