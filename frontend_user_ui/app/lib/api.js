@@ -160,6 +160,9 @@ export const notificationAPI = {
   my: () => request('/notifications/my'),
   recent: () => request('/notifications/recent'),
   markRead: (id) => request(`/notifications/${id}/read`, { method: 'PUT' }),
+  getVapidPublicKey: () => request('/notifications/push/public-key'),
+  subscribePush: (data) => request('/notifications/push/subscribe', { method: 'POST', body: JSON.stringify(data) }),
+  unsubscribePush: (data) => request('/notifications/push/unsubscribe', { method: 'POST', body: JSON.stringify(data) }),
 };
 
 // Support

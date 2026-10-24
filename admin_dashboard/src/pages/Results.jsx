@@ -379,8 +379,16 @@ export default function Results() {
       <ConfirmModal state={confirmState} onConfirm={handleConfirm} onCancel={handleCancel} />
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <form onSubmit={handleResultSave} className="bg-white border p-5 space-y-3">
-          <div>
+          <div className="flex items-center justify-between">
             <h3 className="text-base font-semibold text-gray-800">{editingResultId ? 'Edit Result' : 'Add Or Update Result'}</h3>
+            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              Auto Push Active
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1.5 rounded">
+            <span>🔔</span>
+            <span>रिजल्ट सेव होते ही सभी ऐप यूज़र्स को ऑटोमैटिक पुश नोटिफिकेशन भेजा जाएगा।</span>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <select className="results-input" value={resultForm.game_id} onChange={(event) => setResultForm((current) => ({ ...current, game_id: event.target.value }))}>

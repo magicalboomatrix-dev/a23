@@ -365,6 +365,7 @@ exports.declareResult = async (req, res, next) => {
     // Notify subscribers that a result was declared (fire-and-forget, outside tx)
     eventBus.emit('result_declared', {
       gameId: parseInt(id),
+      gameName: game.name,
       resultId,
       resultDate: result_date,
       resultNumber: resultStr,

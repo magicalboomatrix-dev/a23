@@ -34,7 +34,7 @@ function buildCsp(nonce: string, isDev: boolean): string {
 
   return [
     "default-src 'self'",
-    `connect-src 'self' ${API_ORIGIN} wss://${new URL(API_ORIGIN).hostname} ws:`,
+    `connect-src 'self' ${API_ORIGIN} wss://${new URL(API_ORIGIN).hostname} ws: https://*.googleapis.com https://fcm.googleapis.com https://*.push.apple.com https://*.mozilla.com`,
     `upgrade-insecure-requests`,
     scriptSrc,
     "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com",

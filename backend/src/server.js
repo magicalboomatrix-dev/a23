@@ -37,6 +37,7 @@ const { startRetryWorker } = require('./services/auto-deposit-retry');
 // Do NOT import or start auto-settle here — it causes duplicate processing
 // when multiple HTTP server instances are deployed.
 const { initSocket } = require('./services/socket.service');
+const pushNotificationService = require('./services/push-notification.service');
 const redis = require('./services/redis.service');
 const pool = require('./config/database');
 const logger = require('./utils/logger');

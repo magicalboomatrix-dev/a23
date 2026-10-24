@@ -500,7 +500,7 @@ exports.upsertResult = async (req, res, next) => {
            completed_at = NULL`,
         [resultId, gameId, resultStr, result_date]
       );
-      eventBus.emit('result_declared', { gameId, resultId, resultDate: result_date, resultNumber: resultStr });
+      eventBus.emit('result_declared', { gameId, gameName: game.name, resultId, resultDate: result_date, resultNumber: resultStr });
     }
 
     if (isRevision && reversedBetIds.length > 0) {
@@ -606,7 +606,7 @@ exports.updateResultById = async (req, res, next) => {
          completed_at = NULL`,
       [resultId, gameId, resultNumber.padStart(2, '0'), result_date]
     );
-    eventBus.emit('result_declared', { gameId, resultId, resultDate: result_date, resultNumber: resultNumber.padStart(2, '0') });
+    eventBus.emit('result_declared', { gameId, gameName: game.name, resultId, resultDate: result_date, resultNumber: resultNumber.padStart(2, '0') });
 
     // Reconcile wallets for reversed bets if any
     if (force && reversedCount > 0) {

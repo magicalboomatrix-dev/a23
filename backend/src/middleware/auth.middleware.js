@@ -72,6 +72,43 @@ const authenticate = async (req, res, next) => {
   }
 };
 
+const optionalAuthenticate = async (req, res, next) => {
+  try {
+    let token = getCookieToken(req.headers.cookie);
+    if (!token) {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.split(' ')[1];
+      }
+    }
+    if (!token) {
+      req.user = null;
+      return next();
+    }
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const cacheKey = userCacheKey(decoded.id);
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      req.user = JSON.parse(cached);
+      return next();
+    }
+    const [users] = await pool.query(
+      'SELECT id, name, phone, role, moderator_id, referral_code, is_blocked, is_deleted, created_at FROM users WHERE id = ?',
+      [decoded.id]
+    );
+    if (users.length > 0 && !users[0].is_deleted && !users[0].is_blocked) {
+      await redis.set(cacheKey, JSON.stringify(users[0]), USER_CACHE_TTL);
+      req.user = users[0];
+    } else {
+      req.user = null;
+    }
+    next();
+  } catch {
+    req.user = null;
+    next();
+  }
+};
+
 const authorize = (...roles) => {
   return (req, res, next) => {
     if (!roles.includes(req.user.role)) {
@@ -81,4 +118,4 @@ const authorize = (...roles) => {
   };
 };
 
-module.exports = { authenticate, authorize, invalidateUserCache };
+module.exports = { authenticate, optionalAuthenticate, authorize, invalidateUserCache };
